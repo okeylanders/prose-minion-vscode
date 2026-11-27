@@ -3,8 +3,9 @@
  * engine of its own, on Proofread's model while the writer has picked none,
  * moving when Proofread's does; picked, its own. Model ids are placeholders.
  */
+import { DEFAULT_MODEL_SELECTIONS } from '@shared/constants/defaultModelSelections';
 import { AIResourceManager } from '@orchestration/AIResourceManager';
-import { DEFAULT_PROOFREAD_MODEL, followingModelScopes } from '@orchestration/ModelScopeSelections';
+import { followingModelScopes } from '@orchestration/ModelScopeSelections';
 
 const PROOFREAD = 'placeholder/proofread-model';
 const HELPER = 'placeholder/helper-model';
@@ -26,7 +27,7 @@ describe('AIResourceManager: the helper scope (ADR 2026-11-05 D3)', () => {
     expect(helper).toBeDefined();
     expect(helper).not.toBe(manager.getEngine('proofread'));
     expect(helper).not.toBe(manager.getEngine('assistant'));
-    expect(helper?.getModel()).toBe(DEFAULT_PROOFREAD_MODEL);
+    expect(helper?.getModel()).toBe(DEFAULT_MODEL_SELECTIONS.proofread);
     manager.dispose();
   });
 

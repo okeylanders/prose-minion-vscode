@@ -5,15 +5,13 @@
  * model (the Workshop's), and the helper (ADR 2026-11-05 D3) Proofread's,
  * until they have one of their own. Model ids are placeholders.
  */
+import { DEFAULT_MODEL_SELECTIONS } from '@shared/constants/defaultModelSelections';
 import {
-  DEFAULT_PROOFREAD_MODEL,
-  DEFAULT_WIDGET_MODEL,
   MODEL_SCOPE_SETTING_KEYS,
   followingModelScopes,
   ownFollowingModel,
   resolveModelScopeSelections
 } from '@orchestration/ModelScopeSelections';
-import { DEFAULT_CATEGORY_MODEL } from '@providers/OpenRouterModels';
 import { MODEL_SCOPE_FOLLOWS, isFollowingModelScope } from '@messages';
 
 const WORKSHOP = 'placeholder/workshop-model';
@@ -71,13 +69,13 @@ describe('resolveModelScopeSelections: the Lightbox model scope (Slice 4L)', () 
       assistant: defaults.assistant,
       dictionary: 'placeholder/dictionary-model',
       context: '',
-      category: DEFAULT_CATEGORY_MODEL,
-      widget: DEFAULT_WIDGET_MODEL,
+      category: DEFAULT_MODEL_SELECTIONS.category,
+      widget: DEFAULT_MODEL_SELECTIONS.widget,
       lightbox: defaults.assistant,
-      proofread: DEFAULT_PROOFREAD_MODEL,
+      proofread: DEFAULT_MODEL_SELECTIONS.proofread,
       craft: defaults.assistant,
-      helper: DEFAULT_PROOFREAD_MODEL,
-      passageSearch: DEFAULT_CATEGORY_MODEL
+      helper: DEFAULT_MODEL_SELECTIONS.proofread,
+      passageSearch: DEFAULT_MODEL_SELECTIONS.category
     });
   });
 });
@@ -114,7 +112,7 @@ describe('resolveModelScopeSelections: the Proofread model scope (ADR 2026-10-21
 
   it('defaults to the inexpensive Proofread model, never the assistant model', () => {
     const selections = resolveModelScopeSelections(settingsOf({ assistantModel: WORKSHOP }));
-    expect(selections.proofread).toBe(DEFAULT_PROOFREAD_MODEL);
+    expect(selections.proofread).toBe(DEFAULT_MODEL_SELECTIONS.proofread);
     expect(selections.proofread).not.toBe(WORKSHOP);
   });
 
@@ -137,7 +135,7 @@ describe('resolveModelScopeSelections: the helper model scope (ADR 2026-11-05 D3
   const HELPER = 'placeholder/helper-model';
 
   it('follows Proofread\'s model, not the assistant\'s, while it has none of its own', () => {
-    expect(resolveModelScopeSelections(settingsOf({ assistantModel: WORKSHOP })).helper).toBe(DEFAULT_PROOFREAD_MODEL);
+    expect(resolveModelScopeSelections(settingsOf({ assistantModel: WORKSHOP })).helper).toBe(DEFAULT_MODEL_SELECTIONS.proofread);
     const values: Record<string, unknown> = { assistantModel: WORKSHOP, proofreadModel: PROOFREAD, helperModel: '' };
     expect(resolveModelScopeSelections(settingsOf(values)).helper).toBe(PROOFREAD);
     expect(followingModelScopes(settingsOf(values))).toContain('helper');
@@ -203,7 +201,7 @@ describe('the following scopes', () => {
 
 describe('resolveModelScopeSelections: the Passage Search model scope (ADR 2026-11-20 D14)', () => {
   it('follows Category Search\'s model until picked, and moves when that one does', () => {
-    expect(resolveModelScopeSelections(settingsOf({})).passageSearch).toBe(DEFAULT_CATEGORY_MODEL);
+    expect(resolveModelScopeSelections(settingsOf({})).passageSearch).toBe(DEFAULT_MODEL_SELECTIONS.category);
     expect(resolveModelScopeSelections(settingsOf({ categoryModel: 'placeholder/category-model' })).passageSearch).toBe('placeholder/category-model');
   });
 

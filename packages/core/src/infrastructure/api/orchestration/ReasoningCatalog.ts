@@ -7,13 +7,14 @@
  *
  * OpenRouter's catalog marks a model that always reasons
  * (`reasoning.mandatory: true`), and such a model rejects `effort: 'none'`.
- * A Draft Edit pass at `off` refuses that model before anything is sent: it
+ * Proofread at `off` refuses that model before anything is sent: it
  * never sends a request the provider will refuse, never quietly lets the
  * model think anyway, and never picks another model or level for the
  * writer. The helper asks the same question and applies its own rule.
  *
- * Only `off` asks the catalog: every other level is a budget a reasoning
- * model takes, so the default levels fetch nothing. The catalog is asked
+ * Only `off` asks whether reasoning is mandatory. Other Proofread levels
+ * budget reasoning directly. Craft Flags reads support for its estimate.
+ * The catalog is asked
  * about the exact model the call goes to. When it cannot say (offline, a
  * model it does not list, no `mandatory` field, or a failed read), `off` is
  * sent as asked and the provider's own answer stands.
@@ -29,12 +30,21 @@ export interface ReasoningCatalog {
   alwaysReasons(model: string): Promise<boolean | undefined>;
 }
 
+/** Whether a live model advertises reasoning support at all. */
+export interface ReasoningSupportCatalog {
+  supportsReasoning(model: string): Promise<boolean | undefined>;
+}
+
 /** The live catalog, fetched once if nothing has fetched it yet (a free request, never billable). */
-export function liveCatalogReasoning(log: LogSink): ReasoningCatalog {
+export function liveCatalogReasoning(log: LogSink): ReasoningCatalog & ReasoningSupportCatalog {
   return {
     async alwaysReasons(model: string): Promise<boolean | undefined> {
       await OpenRouterModels.fetchModels(log);
       return OpenRouterModels.getCachedAlwaysReasons(model);
+    },
+    async supportsReasoning(model: string): Promise<boolean | undefined> {
+      await OpenRouterModels.fetchModels(log);
+      return OpenRouterModels.getCachedSupportsReasoning(model);
     }
   };
 }

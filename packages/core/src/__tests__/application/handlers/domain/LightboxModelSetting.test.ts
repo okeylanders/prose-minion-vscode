@@ -11,6 +11,7 @@ import {
   stubModelCatalog
 } from '@/__tests__/application/handlers/domain/modelSettingsHarness';
 import { OpenRouterModels } from '@providers/OpenRouterModels';
+import { DEFAULT_MODEL_SELECTIONS } from '@shared/constants/defaultModelSelections';
 
 const WORKSHOP = 'placeholder/workshop-model';
 const WORKSHOP_NEXT = 'placeholder/workshop-model-next';
@@ -111,6 +112,25 @@ describe('the Lightbox model setting (Slice 4L): settings sync, both ways', () =
 
     expect(host.values.lightboxModel).toBe(LIGHTBOX);
     expect(host.latestModelData('lightbox')).toMatchObject({ selections: { lightbox: LIGHTBOX }, following: ['craft', 'helper', 'passageSearch'] });
+  });
+
+  it('reports the shared scope defaults before the model manager has resolved selections', async () => {
+    const host = await createHosts({ dictionaryModel: 'custom/dictionary', contextModel: '' });
+    jest.spyOn(host.manager, 'getResolvedModelSelections').mockReturnValue({});
+
+    await host.handlers.sidebar.sendModelData();
+
+    expect(host.latestModelData('sidebar')).toMatchObject({
+      selections: {
+        ...DEFAULT_MODEL_SELECTIONS,
+        dictionary: 'custom/dictionary',
+        context: '',
+        lightbox: DEFAULT_MODEL_SELECTIONS.assistant,
+        craft: DEFAULT_MODEL_SELECTIONS.assistant,
+        helper: DEFAULT_MODEL_SELECTIONS.proofread,
+        passageSearch: DEFAULT_MODEL_SELECTIONS.category
+      }
+    });
   });
 
   it('the Lightbox picker → VS Code settings → the Settings overlay', async () => {

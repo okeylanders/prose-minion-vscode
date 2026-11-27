@@ -13,6 +13,7 @@
 /* eslint-disable @typescript-eslint/naming-convention -- the mocked barrel's export names. */
 jest.mock('@prose-minion/core', () => ({
   CRAFT_FLAG_CATEGORIES: jest.requireActual('@/domain/models/CraftFlag').CRAFT_FLAG_CATEGORIES,
+  CRAFT_FLAGS_REASONING_LEVELS: jest.requireActual('@/domain/models/ReasoningLevel').CRAFT_FLAGS_REASONING_LEVELS,
   DRAFT_EDIT_LANGUAGE_IDS: jest.requireActual('@/domain/models/DraftEdit').DRAFT_EDIT_LANGUAGE_IDS,
   PROOFREAD_SPELLING_CONVENTIONS: jest.requireActual('@/domain/models/DraftEdit').PROOFREAD_SPELLING_CONVENTIONS,
   DRAFT_EDIT_PASS_POLICIES: jest.requireActual('@/domain/models/DraftEdit').DRAFT_EDIT_PASS_POLICIES,
@@ -26,6 +27,7 @@ import * as path from 'path';
 import { LIGHTBOX_FILE_LANGUAGE_IDS } from '@app/application/commands/openFileInLightbox';
 import {
   CRAFT_FLAG_CATEGORIES,
+  CRAFT_FLAGS_REASONING_LEVELS,
   DRAFT_EDIT_LANGUAGE_IDS,
   DRAFT_EDIT_PASS_POLICIES,
   PROOFREAD_SPELLING_CONVENTIONS,
@@ -496,19 +498,19 @@ describe('app-shell provider assembly', () => {
       .toContain(`craftFlagCategories: () => vscode.workspace.getConfiguration('proseMinion').get<unknown>('craftFlags.categories')`);
   });
 
-  it('declares each pass\'s reasoning level: the four levels, the pass\'s default, under the key the host reads (2026-10-27)', () => {
+  it('declares each pass\'s reasoning levels and default under the key the host reads', () => {
     const manifest = JSON.parse(fs.readFileSync(EXTENSION_MANIFEST, 'utf8')) as {
       contributes: { configuration: { properties: Record<string, { type?: string; default?: unknown; enum?: string[]; enumDescriptions?: string[] }> } };
     };
     const entry = fs.readFileSync(EXTENSION_ENTRY, 'utf8');
     const passes = [
-      ['proofread', 'proofreadReasoning', DRAFT_EDIT_PASS_POLICIES.proofread.reasoning],
-      ['craftFlags', 'craftFlagsReasoning', DRAFT_EDIT_PASS_POLICIES.craft.reasoning]
+      ['proofread', 'proofreadReasoning', DRAFT_EDIT_PASS_POLICIES.proofread.reasoning, REASONING_LEVELS],
+      ['craftFlags', 'craftFlagsReasoning', DRAFT_EDIT_PASS_POLICIES.craft.reasoning, CRAFT_FLAGS_REASONING_LEVELS]
     ] as const;
-    for (const [section, hostMethod, fallback] of passes) {
+    for (const [section, hostMethod, fallback, levels] of passes) {
       const setting = manifest.contributes.configuration.properties[`proseMinion.${section}.reasoning`];
-      expect(setting).toMatchObject({ type: 'string', enum: [...REASONING_LEVELS], default: fallback });
-      expect(setting.enumDescriptions).toHaveLength(REASONING_LEVELS.length);
+      expect(setting).toMatchObject({ type: 'string', enum: [...levels], default: fallback });
+      expect(setting.enumDescriptions).toHaveLength(levels.length);
       expect(entry).toContain(`${hostMethod}: () => vscode.workspace.getConfiguration('proseMinion').get<unknown>('${section}.reasoning')`);
     }
   });

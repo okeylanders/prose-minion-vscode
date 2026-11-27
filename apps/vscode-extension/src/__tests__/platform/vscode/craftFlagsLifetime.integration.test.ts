@@ -74,7 +74,7 @@ jest.mock('@prose-minion/core', () => ({
   craftFlagCategoriesOf: jest.requireActual('@/domain/models/CraftFlag').craftFlagCategoriesOf,
   DRAFT_EDIT_LANGUAGE_IDS: jest.requireActual('@/domain/models/DraftEdit').DRAFT_EDIT_LANGUAGE_IDS,
   DRAFT_EDIT_PASS_POLICIES: jest.requireActual('@/domain/models/DraftEdit').DRAFT_EDIT_PASS_POLICIES,
-  reasoningLevelOf: jest.requireActual('@/domain/models/ReasoningLevel').reasoningLevelOf,
+  craftFlagsReasoningLevelOf: jest.requireActual('@/domain/models/ReasoningLevel').craftFlagsReasoningLevelOf,
   shiftRanges: jest.requireActual('@/utils/draftEdit/shiftRanges').shiftRanges,
   CraftFlagsUseCase: jest.requireActual('@/application/services/draftEdit/CraftFlagsUseCase').CraftFlagsUseCase,
   describeCraftFlagsOutcome: jest.requireActual('@/application/services/draftEdit/craftFlagsSummary').describeCraftFlagsOutcome,
@@ -162,7 +162,6 @@ function start(document: FakeDocument) {
       await pricing.promise;
       return ESTIMATE;
     }),
-    refusesReasoning: jest.fn(async () => false),
     flag: jest.fn(async (request: { passage: string; stillCurrent?: () => boolean }) => {
       if (request.stillCurrent && !request.stillCurrent()) {
         return { kind: 'ended' as const };

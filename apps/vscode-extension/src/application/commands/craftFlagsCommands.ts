@@ -33,11 +33,10 @@
 
 import {
   DRAFT_EDIT_LANGUAGE_IDS,
-  DRAFT_EDIT_PASS_POLICIES,
   craftFlagCategoriesOf,
+  craftFlagsReasoningLevelOf,
   describeCraftFlagsOutcome,
   describeCraftFlagsPlan,
-  reasoningLevelOf,
   type CraftFlagsApproval,
   type CraftFlagsBegin,
   type CraftFlagsGesture,
@@ -106,7 +105,7 @@ export async function runCraftFlags(host: CraftFlagsCommandHost, runner: CraftFl
   const pass: CraftFlagsPass = {
     kind: 'craft',
     categories,
-    reasoning: reasoningLevelOf(host.craftFlagsReasoning(), DRAFT_EDIT_PASS_POLICIES.craft.reasoning)
+    reasoning: craftFlagsReasoningLevelOf(host.craftFlagsReasoning())
   };
 
   // Taken before anything is awaited: the gesture's document is watched from this read on (PR #177 F-02).
@@ -125,8 +124,8 @@ export async function runCraftFlags(host: CraftFlagsCommandHost, runner: CraftFl
     if (!(await host.confirm(describeCraftFlagsPlan(plan, editor.label), RUN))) {
       return { kind: 'declined' };
     }
-    // The model the confirmation named, whatever the setting says by now (F-01).
-    const approval: CraftFlagsApproval = { model: plan.estimate.model };
+    const { model, reasoningBudgeted } = plan.estimate;
+    const approval: CraftFlagsApproval = { model, ...(reasoningBudgeted === undefined ? {} : { reasoningBudgeted }) };
     const outcome = await host.withProgress(
       `Craft Flags: reading ${editor.label}${editor.selection ? ' (selection)' : ''}…`,
       (signal) => runner.run(gesture, approval, signal)

@@ -1,6 +1,5 @@
+import { DEFAULT_MODEL_SELECTIONS } from '@shared/constants/defaultModelSelections';
 import { AIResourceManager } from '@orchestration/AIResourceManager';
-import { DEFAULT_CATEGORY_MODEL } from '@providers/OpenRouterModels';
-import { DEFAULT_PROOFREAD_MODEL } from '@orchestration/ModelScopeSelections';
 import { apiKeyFingerprint } from '@orchestration/apiKeyFingerprint';
 
 describe('AIResourceManager lifecycle', () => {
@@ -76,8 +75,8 @@ describe('AIResourceManager lifecycle', () => {
     expect(manager.getGeneration('context')).toBe(1);
     expect(manager.getResolvedModel('context')).toBe('google/gemini-3.1-pro-preview');
     expect(manager.getEngine('context')?.getModel()).toBe('google/gemini-3.1-pro-preview');
-    expect(manager.getEngine('assistant')?.getModel()).toBe('anthropic/claude-sonnet-5');
-    expect(manager.getEngine('category')?.getModel()).toBe(DEFAULT_CATEGORY_MODEL);
+    expect(manager.getEngine('assistant')?.getModel()).toBe(DEFAULT_MODEL_SELECTIONS.assistant);
+    expect(manager.getEngine('category')?.getModel()).toBe(DEFAULT_MODEL_SELECTIONS.category);
     manager.dispose();
   });
 
@@ -358,8 +357,8 @@ describe('AIResourceManager, the proofread scope (Draft Edit Slice 1)', () => {
     expect(proofread).toBeDefined();
     expect(proofread).not.toBe(manager.getEngine('assistant'));
     expect(proofread).not.toBe(manager.getEngine('lightbox'));
-    expect(proofread?.getModel()).toBe(DEFAULT_PROOFREAD_MODEL);
-    expect(manager.getResolvedModel('proofread')).toBe(DEFAULT_PROOFREAD_MODEL);
+    expect(proofread?.getModel()).toBe(DEFAULT_MODEL_SELECTIONS.proofread);
+    expect(manager.getResolvedModel('proofread')).toBe(DEFAULT_MODEL_SELECTIONS.proofread);
   });
 
   it('hot-swaps only the Proofread engine when its model is picked, and the assistant model never moves it', async () => {

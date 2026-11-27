@@ -12,9 +12,7 @@ jest.mock('@prose-minion/core', () => ({
   craftFlagCategoriesOf: jest.requireActual('@/domain/models/CraftFlag').craftFlagCategoriesOf,
   // eslint-disable-next-line @typescript-eslint/naming-convention -- the mocked barrel's export name.
   DRAFT_EDIT_LANGUAGE_IDS: jest.requireActual('@/domain/models/DraftEdit').DRAFT_EDIT_LANGUAGE_IDS,
-  // eslint-disable-next-line @typescript-eslint/naming-convention -- the mocked barrel's export name.
-  DRAFT_EDIT_PASS_POLICIES: jest.requireActual('@/domain/models/DraftEdit').DRAFT_EDIT_PASS_POLICIES,
-  reasoningLevelOf: jest.requireActual('@/domain/models/ReasoningLevel').reasoningLevelOf,
+  craftFlagsReasoningLevelOf: jest.requireActual('@/domain/models/ReasoningLevel').craftFlagsReasoningLevelOf,
   describeCraftFlagsOutcome: jest.requireActual('@/application/services/draftEdit/craftFlagsSummary').describeCraftFlagsOutcome,
   describeCraftFlagsPlan: jest.requireActual('@/application/services/draftEdit/craftFlagsSummary').describeCraftFlagsPlan
 }));
@@ -145,7 +143,8 @@ describe('Craft Flags', () => {
   });
 
   it.each([
-    ['off', 'off'],
+    ['off', 'standard'],
+    ['light', 'light'],
     ['deep', 'deep'],
     [undefined, 'standard'],
     ['Standard', 'standard'],
@@ -196,15 +195,14 @@ describe('Craft Flags', () => {
     expect(changed.runner.run).not.toHaveBeenCalled();
   });
 
-  it('shows no confirmation, and says what to change, when reasoning off meets a model that always reasons (PR #181 F-01)', async () => {
-    const refused = setup({ active: editor(), plan: { kind: 'reasoning-required', model: 'test/always-reasons' } });
-    expect(await runCraftFlags(refused.host, refused.runner)).toEqual({ kind: 'ran', outcome: { kind: 'reasoning-required', model: 'test/always-reasons' } });
-    expect(refused.host.confirm).not.toHaveBeenCalled();
-    expect(refused.runner.run).not.toHaveBeenCalled();
-    expect(refused.runner.release).toHaveBeenCalled();
-    expect(refused.host.showWarning).toHaveBeenCalledWith(
-      'Craft Flags sent nothing: the model catalog says test/always-reasons always reasons, so it cannot be asked for reasoning off. '
-        + 'Set proseMinion.craftFlags.reasoning to light or higher, or choose another model in proseMinion.craftModel.'
+  it('uses the estimate without a reasoning budget when the writer approves it', async () => {
+    const plan = { ...READY, estimate: { ...READY.estimate, reasoningBudgeted: false } };
+    const { host, runner, gesture } = setup({ active: editor(), plan, confirm: true });
+    const outcome = await runCraftFlags(host, runner);
+
+    expect(outcome).toEqual({ kind: 'ran', outcome: COMPLETED });
+    expect(runner.run).toHaveBeenCalledWith(
+      gesture, { model: plan.estimate.model, reasoningBudgeted: false }, expect.any(AbortSignal)
     );
   });
 

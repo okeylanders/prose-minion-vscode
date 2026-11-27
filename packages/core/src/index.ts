@@ -294,5 +294,5 @@ export {
   type ProofreadSpellingConvention
 } from '@/domain/models/DraftEdit';
 export { proofreadWordList } from '@/utils/proofread/proofreadWordList';
-export { REASONING_LEVELS, reasoningLevelOf, type ReasoningLevel } from '@/domain/models/ReasoningLevel';
+export { CRAFT_FLAGS_REASONING_LEVELS, REASONING_LEVELS, craftFlagsReasoningLevelOf, reasoningLevelOf, type ReasoningLevel } from '@/domain/models/ReasoningLevel';
 export { shiftRanges, type TextChange } from '@/utils/draftEdit/shiftRanges';
