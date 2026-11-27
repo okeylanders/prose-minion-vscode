@@ -326,25 +326,25 @@
       "properties": {
         "proseMinion.assistantModel": {
           "type": "string",
-          "default": "anthropic/claude-sonnet-5",
+          "default": "anthropic/claude-sonnet-5.5",
           "description": "AI model for assistant tools (Prose/Dialogue analysis). See Settings Overlay for curated list, or enter any OpenRouter model ID.",
           "order": 2
         },
         "proseMinion.dictionaryModel": {
           "type": "string",
-          "default": "anthropic/claude-haiku-4.5",
+          "default": "anthropic/claude-haiku-5.5",
           "description": "AI model for dictionary and utility tools. See Settings Overlay for curated list, or enter any OpenRouter model ID.",
           "order": 3
         },
         "proseMinion.contextModel": {
           "type": "string",
-          "default": "openai/gpt-5.4",
+          "default": "openai/gpt-6.2-sol",
           "description": "AI model for context bot features. See Settings Overlay for curated list, or enter any OpenRouter model ID.",
           "order": 4
         },
         "proseMinion.widgetModel": {
           "type": "string",
-          "default": "anthropic/claude-sonnet-5",
+          "default": "anthropic/claude-sonnet-5.5",
           "description": "AI model for quality-first Conversation Widget generation (for example, Gesture Playground's semantic scan and alternatives). Enter any OpenRouter model ID.",
           "order": 5
         },
@@ -397,15 +397,14 @@
         },
         "proseMinion.craftFlags.reasoning": {
           "type": "string",
-          "enum": ["off", "light", "standard", "deep"],
+          "enum": ["light", "standard", "deep"],
           "enumDescriptions": [
-            "No thinking: the model answers at once. Refused, with nothing sent, on a model that always thinks.",
             "A little thinking: a budget of about 1,000 tokens.",
             "Some thinking: a budget of about 4,000 tokens.",
             "Much thinking: a budget of about 12,000 tokens; slower and costlier."
           ],
           "default": "standard",
-          "markdownDescription": "How much a thinking model may think before it reads the chapter for each **Prose Minion: Craft Flags** category. The budget comes on top of the reply's own room, and the confirmation's price counts typical thinking. Models differ: some take only a rough level. A model the OpenRouter catalog marks as always thinking cannot be asked for `off`: Craft Flags then sends nothing and says so, and you choose a level or another model. Models that do not think ignore this.",
+          "markdownDescription": "How much reasoning **Prose Minion: Craft Flags** requests for each category when the model supports it. Standard allows about 4,000 reasoning tokens per call in addition to the reply budget. Light reduces the estimated cost. An older `off` setting uses Standard.",
           "order": 5.75
         },
         "proseMinion.proofread.fixReview": {

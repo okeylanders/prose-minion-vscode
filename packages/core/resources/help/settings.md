@@ -4,25 +4,25 @@
 
 | Key | Type | Default | Description |
 | --- | --- | --- | --- |
-| proseMinion.assistantModel | string | "anthropic/claude-sonnet-5" | AI model for assistant tools (Prose/Dialogue analysis). See Settings Overlay for curated list, or enter any OpenRouter model ID. |
+| proseMinion.assistantModel | string | "anthropic/claude-sonnet-5.5" | AI model for assistant tools (Prose/Dialogue analysis). See Settings Overlay for curated list, or enter any OpenRouter model ID. |
 
 ## Setting dictionary model
 
 | Key | Type | Default | Description |
 | --- | --- | --- | --- |
-| proseMinion.dictionaryModel | string | "anthropic/claude-haiku-4.5" | AI model for dictionary and utility tools. See Settings Overlay for curated list, or enter any OpenRouter model ID. |
+| proseMinion.dictionaryModel | string | "anthropic/claude-haiku-5.5" | AI model for dictionary and utility tools. See Settings Overlay for curated list, or enter any OpenRouter model ID. |
 
 ## Setting context model
 
 | Key | Type | Default | Description |
 | --- | --- | --- | --- |
-| proseMinion.contextModel | string | "openai/gpt-5.4" | AI model for context bot features. See Settings Overlay for curated list, or enter any OpenRouter model ID. |
+| proseMinion.contextModel | string | "openai/gpt-6.2-sol" | AI model for context bot features. See Settings Overlay for curated list, or enter any OpenRouter model ID. |
 
 ## Setting widget model
 
 | Key | Type | Default | Description |
 | --- | --- | --- | --- |
-| proseMinion.widgetModel | string | "anthropic/claude-sonnet-5" | AI model for quality-first Conversation Widget generation (for example, Gesture Playground's semantic scan and alternatives). Enter any OpenRouter model ID. |
+| proseMinion.widgetModel | string | "anthropic/claude-sonnet-5.5" | AI model for quality-first Conversation Widget generation (for example, Gesture Playground's semantic scan and alternatives). Enter any OpenRouter model ID. |
 
 ## Setting lightbox model
 
@@ -64,7 +64,7 @@
 
 | Key | Type | Default | Description |
 | --- | --- | --- | --- |
-| proseMinion.craftFlags.reasoning | string | "standard" | How much a thinking model may think before it reads the chapter for each **Prose Minion: Craft Flags** category. The budget comes on top of the reply's own room, and the confirmation's price counts typical thinking. Models differ: some take only a rough level. A model the OpenRouter catalog marks as always thinking cannot be asked for `off`: Craft Flags then sends nothing and says so, and you choose a level or another model. Models that do not think ignore this. |
+| proseMinion.craftFlags.reasoning | string | "standard" | How much reasoning **Prose Minion: Craft Flags** requests for each category when the model supports it. Standard allows about 4,000 reasoning tokens per call in addition to the reply budget. Light reduces the estimated cost. An older `off` setting uses Standard. |
 
 ## Setting proofread fix review
 

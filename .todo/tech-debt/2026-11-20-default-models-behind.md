@@ -1,7 +1,7 @@
 # The Default Models Sit a Generation Behind, and Are Set in Three Places
 
 **Date:** 2026-11-20
-**Status:** Open. A small chore that can fold into any release.
+**Status:** Implemented on `sprint/highlights-default-models`.
 **Priority:** Medium. Writers who never picked a model run on the defaults.
 **Found by:** Okey
 
@@ -75,23 +75,46 @@
 
 ## Watch for
 
-- **Models that always reason.** Proofread, Craft Flags and the helper
-  refuse to send `off` to such a model, or give it a budget. None of the
-  recommended defaults for those scopes always reasons; `gpt-6.2-sol` goes
-  only to context, which sends no reasoning setting. A test can hold that
-  line: no default for a scope that sends a reasoning level may be a model
-  the curated list marks as always reasoning.
+- **Models that always reason.** Sonnet 5.5 and GPT-6.2 Sol require reasoning according to the live catalog. On 2026-11-27 Okey chose to request reasoning in Craft Flags whenever its model supports it. Proofread and the helper retain their own policies.
 - **`ModelParameterMetadata`** has labels for some models. Add one for any
   new default that lacks it.
 
+## Implementation
+
+The host's model resolver and `MODEL_DATA` fallback, plus the webview's
+initial settings, use `DEFAULT_MODEL_SELECTIONS`. A test checks each
+scope against the manifest, verifies that the pickers list every own default
+and guards compatibility for the scopes that can request reasoning Off.
+Explicit model choices take precedence, including overrides for following scopes.
+
+OpenRouter's public catalog on 2026-11-27 listed the following base prices
+in USD per million input and output tokens. Context's GPT-6.2 Sol always
+reasons, so elapsed time and total token usage can change with each brief.
+[OpenRouter catalog](https://openrouter.ai/api/v1/models)
+
+| Scope | Model change | Previous → new input / output |
+| --- | --- | --- |
+| Assistant and Conversation Widgets | Sonnet 5 → Sonnet 5.5 | $2 / $10 → $2 / $10 |
+| Dictionary | Haiku 4.5 → Haiku 5.5 | $1 / $5 → $0.10 / $0.50 |
+| Context | GPT-5.4 → GPT-6.2 Sol | $2.50 / $15 → $2 / $10 |
+
+Lightbox and Craft Flags follow the Assistant model unless the writer picks
+their models separately. Craft Flags offers Light, Standard and Deep. A saved
+Off setting reads as Standard. Sonnet 5.5 requires reasoning and accepts the
+selected budget. Models the catalog identifies as lacking reasoning can still
+run Craft Flags with the ordinary reply allowance.
+Proofread and its helper still use Haiku 5.5. Category Search and its Passage
+Search follower still use GPT-OSS 120B Nitro, which routes for throughput.
+[OpenRouter catalog](https://openrouter.ai/api/v1/models) · [Nitro routing](https://openrouter.ai/docs/guides/routing/model-variants/nitro)
+
 ## Completion Criteria
 
-- [ ] One defaults table, read by the host and the webview; the old
+- [x] One defaults table, read by the host and the webview. The old
       constants are gone.
-- [ ] A sync test holds the manifest's defaults to it.
-- [ ] The new defaults are in the manifest, prices checked, and the
+- [x] A sync test holds the manifest's defaults to it.
+- [x] The new defaults are in the manifest, prices checked, and the
       changelog says who moves.
-- [ ] Help tables regenerated; `helpReferenceSync.test.ts` passes.
+- [x] The regenerated help tables pass `helpReferenceSync.test.ts`.
 - [ ] Tests pinning the old defaults are updated; the full suite passes.
 
 ## Related Files
@@ -100,6 +123,7 @@
 - `packages/core/src/infrastructure/api/orchestration/ModelScopeSelections.ts`
 - `packages/core/src/presentation/webview/hooks/domain/useModelsSettings.ts`
 - `packages/core/src/infrastructure/api/providers/OpenRouterModels.ts`
-  (`DEFAULT_CATEGORY_MODEL`, the curated lists)
+  (the curated lists)
 - `packages/core/src/infrastructure/api/providers/ModelParameterMetadata.ts`
+- `packages/core/src/shared/constants/defaultModelSelections.ts` (runtime defaults)
 - `packages/core/resources/help/settings.md` (generated tables)

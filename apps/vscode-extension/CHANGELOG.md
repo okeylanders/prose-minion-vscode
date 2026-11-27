@@ -14,6 +14,8 @@ For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](https://g
 
 ### Changed
 
+- **Default models.** Assistant and Conversation Widgets now use Claude Sonnet 5.5, Dictionary uses Claude Haiku 5.5, and Context uses GPT-6.2 Sol. These defaults apply to scopes where you haven’t chosen a model. Lightbox and Craft Flags follow Assistant by default. Sonnet 5.5 and GPT-6.2 Sol always reason, which can affect response time and token use.
+- **Craft Flags** now requests reasoning whenever the model supports it. Choose Light, Standard or Deep. A saved Off setting uses Standard. The cost estimate includes the reasoning budget in its calculation.
 - The Workshop startup tour opens again after this update. Its first five pages cover Passage Search in the sidebar and Workshop, closing to-dos, comparing a draft with Git, and setting up context paths.
 - Workshop protects named sessions from overlapping saves. If a window leaves a save unfinished, use **Recover…** on the session’s row in **Sessions**. Available unsaved work is kept in a separate local recovery session.
 
