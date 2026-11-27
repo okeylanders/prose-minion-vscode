@@ -34,6 +34,11 @@ export function workshopCapabilityResultLogSummary(result: WorkshopCapabilityRes
       return historyMetrics(result);
     case 'locations':
       return locationsMetrics(result);
+    case 'problems': {
+      const total = result.metadata?.diagnosticCount;
+      const shown = result.metadata?.shownCount;
+      return `problemsMetrics=shown=${typeof shown === 'number' ? shown : 'n/a'};total=${typeof total === 'number' ? total : 'n/a'}`;
+    }
     case 'dictionary':
       // The dictionary's metadata is its own log's business; the line keeps its old shape.
       return 'resourceMetrics=none';

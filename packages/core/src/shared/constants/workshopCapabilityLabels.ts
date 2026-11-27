@@ -47,6 +47,8 @@ export function workshopCapabilityFamilyLabel(
       return 'File History';
     case 'locations':
       return 'Context Paths';
+    case 'problems':
+      return 'File Problems';
     case 'analysis':
       return toolLabel ?? 'Analysis';
   }

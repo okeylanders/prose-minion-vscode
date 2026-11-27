@@ -208,7 +208,8 @@ import {
   cloneTurn,
   cloneWidgetRecommendation,
   excerptSnapshot,
-  messageAttachmentSnapshot
+  messageAttachmentSnapshot,
+  workshopProblemsReadReceipt
 } from '@/application/services/workshop/WorkshopSessionRecords';
 import type {
   WorkshopActiveRun,
@@ -1621,12 +1622,12 @@ export class WorkshopSessionService {
    * `describeCapabilityArtifactRefusal`) instead of misattributing it.
    */
   recordCapabilityArtifact(
-    input: WorkshopCapabilityArtifactInput
+    candidate: WorkshopCapabilityArtifactInput
   ): WorkshopToolReportCompletion | undefined {
-    if (this.capabilityArtifactRefusal(input)) {
+    if (this.capabilityArtifactRefusal(candidate)) {
       return undefined;
     }
-
+    const input = candidate.details.operation === 'problems.read' ? workshopProblemsReadReceipt(candidate) : candidate;
     const isAnalysis = input.details.operation === 'analysis.run';
     const turnId = this.nextTurnId('assistant');
     const artifact: WorkshopTurnArtifact = (() => {
@@ -1654,6 +1655,7 @@ export class WorkshopSessionService {
         case 'locations.current': return 'locations_current';
         case 'locations.folders': return 'locations_folders';
         case 'locations.check': return 'locations_check';
+        case 'problems.read': return 'problems_read';
         default: return assertNever(input.details.operation);
       }
     })();

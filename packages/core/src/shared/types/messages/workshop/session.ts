@@ -183,6 +183,7 @@ export const WORKSHOP_TURN_ARTIFACTS = [
   'locations_current',
   'locations_folders',
   'locations_check',
+  'problems_read',
   'excerpt_revision',
   'context_change',
   'standing_directive_change',
