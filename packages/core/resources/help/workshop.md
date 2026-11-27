@@ -100,11 +100,13 @@ Each Workshop room can hold up to four results that have not been sent. With fou
 
 ## Highlight passages in the excerpt file
 
-Pin a file as your Workshop excerpt, or select text from a file and choose **Send to New Workshop Excerpt**. Ask your host or guest to “Highlight the lines Fresh called predictable and leave a note on each” or “Highlight where Mara puts on the blue sweater.” A persona can use the conversation, an attached report or a Lightbox reading to find passages in the excerpt's file. It proposes read-only highlights when you ask. A reply can propose up to 24 places. If the persona finds more, it tells you and waits for you to ask for another set.
+Pin a file as your Workshop excerpt, or select text from a file and choose **Send to New Workshop Excerpt**. Ask your host or guest to “Highlight the lines Fresh called predictable and leave a note on each” or “Highlight where Mara puts on the blue sweater.” A persona can also propose a set when specific passages would help with the writing task you are discussing. It can use the conversation, an attached report or a Lightbox reading to find places in the excerpt's file. A reply can propose up to 24 places. If the persona finds more, it tells you and waits for you to ask for another set.
 
-When Workshop offers the set in a notification, choose **Keep highlights** to save it with the reply or **Skip** to discard it. If the excerpt's file is already open when you keep the set, the marks appear in the editor. Hover a mark to read its note, or use the **Problems** panel and **F8** to visit the marks. The reply's chip names the kept set. Use **Show** to open the source file or bring that set back after clearing it, closing the file or reloading. Show checks the live file again and reports how many places it could not mark.
+When Workshop offers the set in chat, choose **Apply highlights** to save it with the reply or **Skip** to discard it. If the excerpt's file is already open, applying the set draws its read-only marks in the editor. Hover a mark to read its note, or use the **Problems** panel and **F8** to visit the marks.
 
-Sets from different replies can appear together. Use **Clear** on a reply's chip to remove that set, or run **Prose Minion: Clear All Workshop Highlights** from the Command Palette to clear every Workshop set in the current window. You can use **Show** on the reply again while it remains in the conversation.
+Sets from different replies can appear together. Use **Clear** on a reply's chip to remove its current marks, or run **Prose Minion: Clear All Workshop Highlights** from the Command Palette to clear all Workshop marks in the window. **Show** on a reply opens the source file if needed and directly redraws that set against the live text.
+
+When you reopen a saved conversation, Workshop may offer to restore its kept sets for the excerpt. If the release notice is open, close it to see the question. Choose **Restore highlights** to redraw the offered sets, **Not now** to skip this opening, or **Don’t ask again for these highlights** to skip future prompts for the offered sets. New sets you keep can still appear in a future restore prompt. **Show** remains available on each saved reply.
 
 ## Read file Problems
 

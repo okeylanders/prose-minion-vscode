@@ -39,7 +39,7 @@ describe('Workshop highlights prompt', () => {
     expect(trailer.startsWith(`<${WORKSHOP_HIGHLIGHTS_TAG}>`)).toBe(true);
     expect(trailer.endsWith(`</${WORKSHOP_HIGHLIGHTS_TAG}>`)).toBe(true);
 
-    const reply = 'I found where Mara puts on the blue sweater and where she slips away.';
+    const reply = 'I suggest marking where Mara puts on the blue sweater and where she slips away.';
     const controls = extractWorkshopReplyControls(`${reply}\n\n${trailer}`, { memoryOpen: false });
     expect(controls.rest).toBe(reply);
     expect(controls.highlights?.rejections).toEqual([]);
@@ -63,6 +63,18 @@ describe('Workshop highlights prompt', () => {
     expect(Object.values(result.dropped)).toEqual([0, 0, 0, 0]);
   });
 
+  it('teaches when to send a concrete proposal and when to stay in prose', () => {
+    expect(prompt).toContain('when the writer asks for marks in the file or when annotating exact passages would materially help with the writing task they are discussing');
+    expect(prompt).toContain('A proposal needs concrete passages and useful notes.');
+    expect(prompt).toContain('a request limited to feedback or quotes in chat');
+    expect(prompt).toContain('Incidental tool findings alone do not call for a proposal.');
+    expect(prompt).toContain('only after the writer chooses **Apply highlights** in the chat.');
+
+    const offer = prompt.match(/a tentative offer such as “([^”]+)” in ordinary prose/)?.[1];
+    expect(offer).toBe('I can highlight passages if that would help');
+    expect(extractWorkshopReplyControls(offer!, { memoryOpen: false }).highlights).toBeUndefined();
+  });
+
   it.each(['host', 'guest'] as const)('reaches the %s through the production prompt assembler and loader', async role => {
     const loader = new PromptLoader(coreRoot, createFakeFileSystem({ readFile: fs.promises.readFile }));
     const assembled = await assembleWorkshopPersonaSystemPrompt(loader, {
@@ -77,9 +89,6 @@ describe('Workshop highlights prompt', () => {
     expect(assembled.sections).toEqual(expect.arrayContaining([
       expect.objectContaining({ name: 'Workshop highlights', part: 'tool-use' })
     ]));
-    expect(prompt).toContain('only when the writer asks you to mark passages in the file or accepts your offer');
-    expect(prompt).toContain('Take the request from the writer\'s current message.');
-    expect(prompt).toContain('Workshop saves a set with the reply only after the writer chooses **Keep highlights**.');
     expect(prompt).toContain('`Kind: file` and `Kind: editor-selection` both qualify.');
     expect(prompt).toContain('If there is no source frame for the current excerpt');
   });
