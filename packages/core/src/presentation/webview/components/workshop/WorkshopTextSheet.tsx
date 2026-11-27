@@ -22,6 +22,7 @@
  */
 
 import * as React from 'react';
+import { workshopMessageAttachmentKind } from '@shared/constants/workshopThreadArtifactKinds';
 import { Icon } from '@components/shared/Icon';
 import { MarkdownRenderer } from '@components/shared/MarkdownRenderer';
 import { WorkshopModalShell } from './WorkshopModalShell';
@@ -30,6 +31,7 @@ import { countWords } from '@/utils/textUtils';
 import { formatReadInTime } from '@utils/workshop/contextSources';
 import type { WorkshopTurnPreview } from '@messages';
 import { workshopPrivateThreadLabel } from './WorkshopTurnBubble';
+import { workshopAttachmentSize } from './workshopAttachmentPills';
 import type {
   WorkshopTextSheetMode
 } from '@hooks/domain/workshop/controllers/useWorkshopContextSheet';
@@ -203,6 +205,22 @@ const sheetCopy = (
         openLabel: 'Open in editor tab',
         loadingLabel: ATTACHED_TEXT_LOADING
       };
+    case 'sent-attachment': {
+      const { attachment } = mode;
+      const { selectedText, lightboxTile, truncation } = attachment;
+      const where = selectedText
+        ? [attachment.relativePath, selectedText.startLine === selectedText.endLine
+          ? `line ${selectedText.startLine}` : `lines ${selectedText.startLine}–${selectedText.endLine}`]
+        : lightboxTile ? [lightboxTile.sourceLabel, `Board ${lightboxTile.boardId}`, `Tile ${lightboxTile.tileId}`]
+          : [attachment.relativePath];
+      const size = truncation ? `First ${truncation.keptWords.toLocaleString()} of ${truncation.totalWords.toLocaleString()} words`
+        : `${attachment.words.toLocaleString()} ${attachment.words === 1 ? 'word' : 'words'}`;
+      return {
+        kicker: 'Sent attachment', title: attachment.label, sub: 'The stored text from this message. Protective markers appear as you wrote them.',
+        placeholder: '', editLabel: 'Sent text', meta: '', foot: [...where, attachment.pastedText ? workshopAttachmentSize(attachment, 'turn') : size].filter(Boolean).join(' · '),
+        applyLabel: '', readOnly: true, openLabel: 'Open current file', loadingLabel: 'Loading the sent attachment…'
+      };
+    }
     case 'read-in':
       return {
         kicker: `Read in by ${mode.participantLabel}`,
@@ -355,7 +373,7 @@ export const WorkshopTextSheet: React.FC<WorkshopTextSheetProps> = ({
         <WorkshopModalShell.CloseButton />
       </div>
 
-      <div className="pm-ws-text-sheet-tabs" role="tablist" aria-label={copy.title}>
+      {mode.kind !== 'sent-attachment' && <div className="pm-ws-text-sheet-tabs" role="tablist" aria-label={copy.title}>
         <button
           className={`pm-ws-text-sheet-tab${tab === 'edit' ? ' pm-ws-text-sheet-tab-on' : ''}`}
           type="button"
@@ -379,7 +397,7 @@ export const WorkshopTextSheet: React.FC<WorkshopTextSheetProps> = ({
         <span className="pm-ws-text-sheet-hint">
           Preview shows formatted output · read-only
         </span>
-      </div>
+      </div>}
 
       <div className="pm-ws-text-sheet-body">
         {readIn && changedSinceRead && !loading && !error ? (
@@ -404,7 +422,9 @@ export const WorkshopTextSheet: React.FC<WorkshopTextSheetProps> = ({
           </div>
         ) : null}
 
-        {/* `hidden` as well as the class: the class hides the pane from the
+        {mode.kind === 'sent-attachment' ? (
+          value !== undefined && <pre className="pm-ws-sent-attachment-body" tabIndex={0} aria-label="Sent attachment text">{value}</pre>
+        ) : <>{/* `hidden` as well as the class: the class hides the pane from the
             eye, but only `hidden` takes the inactive panel out of the
             accessibility tree — without it a screen reader is offered BOTH. */}
         <div
@@ -482,12 +502,15 @@ export const WorkshopTextSheet: React.FC<WorkshopTextSheetProps> = ({
             <span className="pm-ws-text-sheet-count">{wordLabel}</span>
             <span>Markdown rendered as the room will read it</span>
           </div>
-        </div>
+        </div></>}
       </div>
 
       <footer className="pm-ws-session-sheet-foot">
         <span>
           {copy.foot}
+          {mode.kind === 'sent-attachment' && !error && !loading && !canOpenInEditor
+            && mode.attachment.relativePath && !workshopMessageAttachmentKind(mode.attachment)
+            ? ' · The current source file cannot be identified in this workspace.' : null}
           {readIn && onShowWhereRead ? (
             <>
               {' · '}

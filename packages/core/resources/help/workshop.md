@@ -44,6 +44,8 @@ You can react to a message with an emoji. The reply's author hears about your re
 
 Select text in the editor, open the Prose Minion submenu and choose **Send to New Workshop Excerpt** to make it the room's excerpt. **Add Selection to Workshop Message** stages a Selected Text pill for just your next message. In the composer, **Include selected text** lets you stage a selection directly. Review the pills before sending. When continuing with a chapter carried into another room, **Continue** re-reads it from file. Use **Re-read from file** to pick up subsequent edits.
 
+Click a pill on a sent writer message, including one in **Show earlier turns**, to inspect the copy that went with that message. The sheet shows its source and any cut. **Open current file** opens the file as it is now when the project can identify it. A private instrument message has no attachment copy in the room.
+
 Type @ in the composer and start a file name. The list groups matching configured files and offers **Browse project…** for the full picker. Use Up or Down to move, Enter or Tab to pick, or Escape to close. Picking adds a text token and stages a pill for that message. Picking an already staged file inserts its token again without duplicating the pill. To remove the attachment, remove its pill. Deleting only the token leaves the attachment staged.
 
 ## Pinned context
