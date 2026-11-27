@@ -374,16 +374,19 @@ export class WorkshopPersonaCapability implements AgentCapability<
       operation: request.capability,
       indivisible: request.capability === 'analysis.run' || request.capability === 'dictionary.full-entry',
       settle: (notice) => {
-        if (notice === undefined) {
-          recordReadDelivery?.();
-        }
+        const commitReadDelivery = recordReadDelivery;
         recordReadDelivery = undefined;
-        const settled: WorkshopCapabilityResult = notice === undefined ? result : {
+        if (notice === undefined) {
+          commitReadDelivery?.();
+          return this.recordFulfillment(request, result, model, evidence, startedAt);
+        }
+        const replacement = withUnrunNativeCalls(notice, unrunNativeCalls);
+        const refusal: WorkshopCapabilityResult = {
           capability: request.capability, status: 'rejected', requestSummary: this.requestSummary(request),
-          error: notice, metadata: { reason: 'context-window-exceeded' }, usage: result.usage
+          error: replacement, metadata: { reason: 'context-window-exceeded' }, usage: result.usage
         };
-        const recorded = this.recordFulfillment(request, settled, model, notice ?? evidence, startedAt);
-        return notice === undefined ? recorded : { evidence: notice, artifacts: [], deliveredItems: [], deliveredSources: [], usage: result.usage };
+        this.recordFulfillment(request, refusal, model, replacement, startedAt);
+        return { evidence: replacement, artifacts: [], deliveredItems: [], deliveredSources: [], usage: result.usage };
       }
     };
   }
@@ -1139,10 +1142,7 @@ export class WorkshopPersonaCapability implements AgentCapability<
     }
     if (result.error) lines.push(`<error>${this.escapeXml(result.error)}</error>`);
     lines.push('</workshop-capability-result>', this.evidenceFraming(result.capability));
-    if (unrunNativeCalls > 0) {
-      lines.push(workshopUnrunNativeCallsNote(unrunNativeCalls));
-    }
-    return lines.join('\n');
+    return withUnrunNativeCalls(lines.join('\n'), unrunNativeCalls);
   }
 
   /** The trust framing that closes each family's evidence. */
@@ -1204,4 +1204,9 @@ function workshopPerTurnLimitMessage(limit: number, singular: string, plural: st
   return limit === 1
     ? `Only one ${singular} is allowed per user turn.`
     : `Only ${limit} ${plural} are allowed per user turn.`;
+}
+
+/** Unexecuted siblings belong to the provider reply whether its first result is delivered or withheld. */
+function withUnrunNativeCalls(evidence: string, count: number): string {
+  return count > 0 ? `${evidence}\n${workshopUnrunNativeCallsNote(count)}` : evidence;
 }
