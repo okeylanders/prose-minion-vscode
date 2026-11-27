@@ -129,6 +129,7 @@ import { VsCodeEditorContext } from './platform/vscode/VsCodeEditorContext';
 import { VsCodeDocumentEditor } from './platform/vscode/VsCodeDocumentEditor';
 import { VsCodeFileEditAuthorityEpoch } from './platform/vscode/VsCodeFileEditAuthorityEpoch';
 import { VsCodeWorkshopHighlightDocuments } from './platform/vscode/VsCodeWorkshopHighlightDocuments';
+import { VsCodeWorkshopProblemsReader } from './platform/vscode/VsCodeWorkshopProblemsReader';
 import { CRAFT_FLAGS, WORKSHOP_HIGHLIGHTS, VsCodeIssueAnnotator } from './platform/vscode/VsCodeIssueAnnotator';
 import { OpenFileInLightboxHost, openFileInLightbox } from './application/commands/openFileInLightbox';
 import { shutDownExtension, workshopPersistenceLog, type ExtensionShutdownParts } from './application/extensionShutdown';
@@ -201,6 +202,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const workshopAnnotator = new VsCodeIssueAnnotator(workshopHighlightCommands, WORKSHOP_HIGHLIGHTS);
   const workshopHighlights = new WorkshopHighlightService(new VsCodeWorkshopHighlightDocuments(), workshopAnnotator);
   context.subscriptions.push(workshopAnnotator);
+  const workshopProblemsReader = new VsCodeWorkshopProblemsReader();
   // Draft Edit's runs follow their open document's edits, and end when it closes (PR #171 F-03, F-04);
   // a review held when its document closes is logged, since VS Code gives no way to end it (PR #172 F-02, F-06).
   const documentEditor = new VsCodeDocumentEditor(outputChannel);
@@ -677,18 +679,13 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     assistantToolService.setWorkshopMemorySuggestionLevel(() => workshopConversationSettingsService.memorySuggestionLevel());
     // A file's git history for personas (ADR 2026-11-19 D11): the host's history port, the saved
     // file, and the room's excerpt file, authorized as Re-read from file authorizes it.
+    const fileAuthority = new WorkshopContextIntakeService(
+      contextResourceResolver.countsOnly(), platform.fileSystem, platform.workspace, contextResourceResolver
+    );
     const workshopHistoryPorts = {
       history: platform.fileHistory,
       fileSystem: platform.fileSystem,
-      excerpt: workshopHistoryExcerptFile(
-        workshopSessionService,
-        new WorkshopContextIntakeService(
-          contextResourceResolver.countsOnly(),
-          platform.fileSystem,
-          platform.workspace,
-          contextResourceResolver
-        )
-      ),
+      excerpt: workshopHistoryExcerptFile(workshopSessionService, fileAuthority),
       // One cache for every turn: a continuation never aligns the paragraphs again (PR #286 F-03).
       diffs: new WorkshopHistoryDiffCache()
     };
@@ -704,7 +701,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       lexicalGravityLensRepository,
       workshopHelpReference,
       workshopHistoryPorts,
-      { scan: projectFolderScan, checker: contextPathChecker }
+      { scan: projectFolderScan, checker: contextPathChecker },
+      { intake: fileAuthority, reader: workshopProblemsReader }
     );
     const workshopToolSidePass = new RunWorkshopToolSidePass(
       assistantToolService,
