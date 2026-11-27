@@ -9,6 +9,7 @@ import { UrlCitation } from '../citations';
 import type { LabeledContextBudgetSnapshot } from '../inferenceContext';
 import type { ModelScope } from '../configuration';
 import type { WorkshopBookmarkSummary } from './bookmarks';
+import type { WorkshopHighlightPrompt } from './highlights';
 import type { WorkshopReactionDelivery, WorkshopTurnReactionSummary } from './reactions';
 import type { WorkshopTrailerOutcomes } from '../../workshopTrailerOutcomes';
 import type { WorkshopTodoClosedBy, WorkshopTodoStatusChange } from './todoStatus';
@@ -528,6 +529,8 @@ export interface WorkshopTurn {
   highlights?: {
     source: { sourceUri: string; relativePath: string };
     set: import('../../../../utils/workshopReplyHighlights').WorkshopHighlightsDraft;
+    /** The writer declined future restore prompts for this saved set. Manual Show still works. */
+    suppressRestorePrompt?: true;
   };
   /** Display projection of a set. Never persisted. */
   highlightSummary?: { title: string; count: number };
@@ -1049,6 +1052,8 @@ export interface WorkshopEarlierTurnsMessage extends MessageEnvelope<WorkshopEar
 }
 
 export interface WorkshopSessionStatePayload {
+  /** Pane-local question replayed on readiness. Never part of the saved room snapshot. */
+  highlightPrompt?: WorkshopHighlightPrompt;
   session: WorkshopSessionSnapshot;
   /** Global writer setting, deliberately outside the serializable session aggregate. */
   writerProfile: WorkshopWriterProfile;

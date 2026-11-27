@@ -330,7 +330,7 @@ export class WorkshopRoomHandler {
     private readonly runToolSidePass: RunWorkshopToolSidePass,
     private readonly capabilityFactory: WorkshopPersonaCapabilityFactory,
     private readonly postMessage: MessageTransport,
-    private readonly shell: ShellService,
+    shell: ShellService,
     private readonly contextIntakeService: WorkshopContextIntakeService,
     private readonly conversationSettingsService: WorkshopConversationSettingsService,
     private readonly sessionTime: WorkshopSessionTimeService,
@@ -900,7 +900,8 @@ export class WorkshopRoomHandler {
           passageSearch: await this.sliceComposition.replyPassageSearch(result.content, controller.signal),
           highlights: await authorizeWorkshopReplyHighlights({ reply: result.content, requestId, roomRevision: joinRoomRevision,
             excerpt: joinStart.excerpt, persona: workshopPersonaLabel(personaId), intake: this.contextIntakeService, editor: this.workshopHighlights,
-            signal: controller.signal, session: this.session, shell: this.shell }),
+            signal: controller.signal, session: this.session,
+            ask: (details, signal) => this.sliceComposition.askHighlightProposal(details, signal) }),
           reactionsOpen: this.conversationSettingsService.personaReactionsOpen(),
           session: this.session,
           requestId,
@@ -1508,7 +1509,8 @@ export class WorkshopRoomHandler {
         passageSearch: await this.sliceComposition.replyPassageSearch(result.content, controller.signal),
         highlights: roomReader && executeOptions?.writerComposed && !directedRun && !widgetArtifact
           ? await authorizeWorkshopReplyHighlights({ reply: result.content, requestId, roomRevision: messageRoomRevision, excerpt, persona: label,
-            intake: this.contextIntakeService, editor: this.workshopHighlights, signal: controller.signal, session: this.session, shell: this.shell })
+            intake: this.contextIntakeService, editor: this.workshopHighlights, signal: controller.signal, session: this.session,
+            ask: (details, signal) => this.sliceComposition.askHighlightProposal(details, signal) })
           : undefined,
         ...delivery?.completion(),
         reactionsOpen: this.conversationSettingsService.personaReactionsOpen(),
@@ -1898,6 +1900,7 @@ export class WorkshopRoomHandler {
       source: 'extension.workshop',
       payload: {
         session,
+        highlightPrompt: this.sliceComposition.highlightPrompt(),
         writerProfile: this.conversationSettingsService.getWriterProfile(),
         webResearch: this.conversationSettingsService.getWebResearch(),
         projectMemory: this.conversationSettingsService.getProjectMemoryMode(),
