@@ -1,9 +1,11 @@
 import * as vscode from 'vscode';
+import { openTextTabUris } from './vscodeTextTabs';
 import type { WorkshopHighlightDocuments } from '@prose-minion/core';
 
 export class VsCodeWorkshopHighlightDocuments implements WorkshopHighlightDocuments {
   readOpen(fsPath: string) {
     const uri = vscode.Uri.file(fsPath).toString();
+    if (!openTextTabUris().has(uri)) { return undefined; }
     const document = vscode.workspace.textDocuments.find(doc => !doc.isClosed && doc.uri.toString() === uri);
     return document && { uri, version: document.version, languageId: document.languageId, text: document.getText() };
   }

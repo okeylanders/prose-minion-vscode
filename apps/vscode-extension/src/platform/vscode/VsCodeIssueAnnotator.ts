@@ -32,6 +32,7 @@
  *   or `fixAll` command (Craft Flags) never offers that action.
  */
 import * as vscode from 'vscode';
+import { openTextTabUris } from './vscodeTextTabs';
 import {
   DRAFT_EDIT_LANGUAGE_IDS,
   shiftRanges,
@@ -54,6 +55,8 @@ export interface VsCodeFlagFamily {
   readonly clearAllTitle?: string;
   /** Workshop supports any file-backed excerpt. Draft Edit's passes run in prose languages. */
   readonly fileSelector?: vscode.DocumentFilter;
+  /** Withdraw this family's marks when the writer closes the last tab showing their file. */
+  readonly clearOnLastTabClose?: boolean;
 }
 
 export const PROOFREAD_FLAGS: VsCodeFlagFamily = { collection: 'prose-minion.draftEdit', source: 'Prose Minion', noun: 'Proofread' };
@@ -65,7 +68,8 @@ export const WORKSHOP_HIGHLIGHTS: VsCodeFlagFamily = {
   noun: 'Workshop',
   dismissTitle: 'Dismiss this Workshop highlight',
   clearAllTitle: 'Clear all Workshop highlights',
-  fileSelector: { scheme: 'file' }
+  fileSelector: { scheme: 'file' },
+  clearOnLastTabClose: true
 };
 
 export const DRAFT_EDIT_DIAGNOSTIC_SOURCE = PROOFREAD_FLAGS.source;
@@ -98,6 +102,17 @@ export class VsCodeIssueAnnotator implements IssueAnnotator, vscode.CodeActionPr
         { providedCodeActionKinds: [vscode.CodeActionKind.QuickFix] }
       )
     ];
+    if (family.clearOnLastTabClose) {
+      // The editor can retain a text model after closing its last tab. Keep all background tabs eligible.
+      const prune = () => {
+        if (!this.shown.size) { return; }
+        const open = openTextTabUris();
+        for (const uri of this.shown.keys()) {
+          if (!open.has(uri)) { this.clear(uri); }
+        }
+      };
+      this.subscriptions.push(vscode.window.tabGroups.onDidChangeTabs(prune), vscode.window.tabGroups.onDidChangeTabGroups(prune));
+    }
   }
 
   show(uri: string, version: number, annotations: readonly DocumentAnnotation[]): boolean {

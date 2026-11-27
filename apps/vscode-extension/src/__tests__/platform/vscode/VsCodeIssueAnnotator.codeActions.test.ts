@@ -5,72 +5,7 @@
  * controlled double; text is synthetic, around *Alice*.
  */
 
-/* eslint-disable @typescript-eslint/naming-convention -- the double mirrors VS Code's own API names, and the mocked barrel's exports. */
-jest.mock('vscode', () => {
-  type Listener = (event: unknown) => void;
-  const emitter = () => {
-    const listeners = new Set<Listener>();
-    return {
-      event: (listener: Listener) => {
-        listeners.add(listener);
-        return { dispose: () => listeners.delete(listener) };
-      },
-      fire: (event: unknown) => listeners.forEach((listener) => listener(event))
-    };
-  };
-  const changes = emitter();
-  const closes = emitter();
-  const diagnostics = new Map<string, unknown[]>();
-  // Each named collection keeps its own diagnostics; Proofread's is `diagnostics`.
-  const collections = new Map<string, Map<string, unknown[]>>([['prose-minion.draftEdit', diagnostics]]);
-  class Range {
-    constructor(readonly start: { offset: number }, readonly end: { offset: number }) {}
-  }
-  class Diagnostic {
-    source?: string;
-    code?: unknown;
-    relatedInformation?: unknown[];
-    constructor(readonly range: Range, readonly message: string, readonly severity: number) {}
-  }
-  class Location {
-    constructor(readonly uri: unknown, readonly range: Range) {}
-  }
-  class DiagnosticRelatedInformation {
-    constructor(readonly location: Location, readonly message: string) {}
-  }
-  class CodeAction {
-    diagnostics?: unknown[];
-    isPreferred?: boolean;
-    command?: { title: string; command: string; arguments: unknown[] };
-    constructor(readonly title: string, readonly kind: string) {}
-  }
-  return {
-    window: { showTextDocument: jest.fn() },
-    workspace: { openTextDocument: jest.fn(), textDocuments: [] as unknown[], onDidChangeTextDocument: changes.event, onDidCloseTextDocument: closes.event },
-    languages: {
-      createDiagnosticCollection: (name: string) => {
-        const own = collections.get(name) ?? new Map<string, unknown[]>();
-        collections.set(name, own);
-        return {
-          set: (uri: unknown, list: unknown[]) => own.set(String(uri), list),
-          delete: (uri: unknown) => own.delete(String(uri)),
-          clear: () => own.clear(),
-          dispose: () => own.clear()
-        };
-      },
-      registerCodeActionsProvider: () => ({ dispose: () => undefined })
-    },
-    Uri: { file: (path: string) => ({ toString: () => `file://${path}` }), parse: (value: string) => ({ toString: () => value }) },
-    Range,
-    Diagnostic,
-    Location,
-    DiagnosticRelatedInformation,
-    CodeAction,
-    DiagnosticSeverity: { Warning: 1, Information: 2 },
-    CodeActionKind: { QuickFix: 'quickfix' },
-    mockHost: { changes, closes, diagnostics, collections }
-  };
-}, { virtual: true });
+import './mockIssueAnnotatorHost';
 
 jest.mock('@prose-minion/core', () => ({
   DRAFT_EDIT_LANGUAGE_IDS: jest.requireActual('@/domain/models/DraftEdit').DRAFT_EDIT_LANGUAGE_IDS,
@@ -86,6 +21,8 @@ import { CRAFT_FLAGS, WORKSHOP_HIGHLIGHTS, DRAFT_EDIT_DIAGNOSTIC_SOURCE, VsCodeI
 interface MockHost {
   changes: { fire(event: unknown): void };
   closes: { fire(event: unknown): void };
+  tabsChanged: { fire(event: unknown): void };
+  groupsChanged: { fire(event: unknown): void };
   diagnostics: Map<string, Diagnostic[]>;
   collections: Map<string, Map<string, Diagnostic[]>>;
 }
@@ -332,6 +269,8 @@ describe('Workshop highlights in the live editor', () => {
   const highlights = () => host.collections.get(WORKSHOP_HIGHLIGHTS.collection)?.get(URI) ?? [];
   const openDocument = vscode.workspace.openTextDocument as jest.Mock;
   const showDocument = vscode.window.showTextDocument as jest.Mock;
+  const tabGroups = vscode.window.tabGroups as unknown as { all: Array<{ tabs: Array<{ input: unknown }> }> };
+  const fileTab = (uri = URI) => ({ input: new vscode.TabInputText(vscode.Uri.parse(uri)) });
   let text: string;
   const doc = { ...document, languageId: 'markdown', getText: () => text };
   let annotator: VsCodeIssueAnnotator;
@@ -343,12 +282,13 @@ describe('Workshop highlights in the live editor', () => {
     text = TEXT;
     doc.version = 3;
     workspace.textDocuments = [doc];
+    tabGroups.all = [{ tabs: [fileTab()] }];
     host.collections.forEach(collection => collection.clear());
     openDocument.mockReset().mockImplementation(async () => {
       workspace.textDocuments = [doc];
       return doc;
     });
-    showDocument.mockReset().mockResolvedValue(undefined);
+    showDocument.mockReset().mockImplementation(async () => { tabGroups.all = [{ tabs: [fileTab()] }]; });
     annotator = new VsCodeIssueAnnotator({ dismiss: 'dismissHighlight', clear: 'clearHighlights' }, WORKSHOP_HIGHLIGHTS);
     service = new WorkshopHighlightService(new VsCodeWorkshopHighlightDocuments(), annotator);
     room = service.forRoom();
@@ -415,6 +355,33 @@ describe('Workshop highlights in the live editor', () => {
     expect(highlights()).toHaveLength(1);
   });
 
+  it('keeps background and split tabs and withdraws Workshop marks when the last tab closes despite a cached model', async () => {
+    const set = draft('Names', 'Alice');
+    const proofread = new VsCodeIssueAnnotator(COMMANDS);
+    const other = fileTab('file:///workspace/elsewhere.md');
+    try {
+      proofread.show(URI, doc.version, [annotation('proofread', 'Alice')]);
+      tabGroups.all = [{ tabs: [fileTab(), other] }, { tabs: [fileTab()] }];
+      expect(room.showOpen('turn', path, 'Jill', set)?.placed).toBe(1);
+      // Closing the split leaves the first group's background copy.
+      tabGroups.all.pop();
+      host.groupsChanged.fire({});
+      expect(highlights()).toHaveLength(1);
+      tabGroups.all = [{ tabs: [other] }];
+      host.tabsChanged.fire({});
+      expect(workspace.textDocuments).toContain(doc);
+      expect(highlights()).toHaveLength(0);
+      expect(proofread.current(URI)?.annotations).toHaveLength(1);
+      expect(room.showOpen('another', path, 'Cat', set)).toBeUndefined();
+      expect(openDocument).not.toHaveBeenCalled();
+      text = 'Hi, Alice.';
+      expect((await room.show('turn', path, 'Jill', set, () => true))?.placed).toBe(1);
+      expect(highlights()[0].range.start.offset).toBe(4);
+    } finally {
+      proofread.dispose();
+    }
+  });
+
   it('reads and places again when the annotation host rejects a stale document version', () => {
     jest.spyOn(annotator, 'show').mockImplementationOnce(() => {
       text = 'Hello ' + TEXT;
@@ -457,6 +424,7 @@ describe('Workshop highlights in the live editor', () => {
     const otherPath = '/workspace/chapter-02.md';
     const otherUri = vscode.Uri.file(otherPath);
     workspace.textDocuments = [doc, { ...doc, uri: otherUri }];
+    tabGroups.all = [{ tabs: [fileTab(), fileTab(otherUri.toString())] }];
     const saved = draft('Names', 'Alice');
     room.showOpen('one', path, 'Jill', saved);
     secondRoom.showOpen('two', otherPath, 'Cat', draft('First line', 'Alice'));
