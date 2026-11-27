@@ -39,5 +39,6 @@ export * from './widgets';
 export * from './todoStatus';
 export * from './locationsProposal';
 export * from './passageSearch';
+export * from './highlights';
 export * from './sessionRecovery';
 export * from './session';

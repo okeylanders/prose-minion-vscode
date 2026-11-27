@@ -25,6 +25,12 @@ import type { WorkshopFileEditControls } from '@components/workshop/fileEdits/Wo
 import type { WorkshopReactionControls } from '@components/workshop/reactions/WorkshopTurnReactions';
 import { workshopEditOfferRefusalWords } from '@shared/constants/workshopEditOfferWords';
 
+import { MessageType } from '@messages';
+import { useWorkshopHighlightAction } from '@hooks/domain/workshop/useWorkshopHighlightAction';
+import { useVSCodeApi } from '@hooks/useVSCodeApi';
+
+jest.mock('@hooks/useVSCodeApi');
+
 const PATH = 'chapters/down-the-rabbit-hole.md';
 const GROUP = 'Edits Jill can suggest from this reply';
 
@@ -69,13 +75,14 @@ const recommendation = {
 
 interface BubbleOptions {
   turn?: WorkshopTurn;
+  onHighlightAction?: ReturnType<typeof useWorkshopHighlightAction>;
   offers?: WorkshopEditOfferControls;
   reactions?: WorkshopReactionControls;
   fileEdits?: WorkshopFileEditControls;
   onOpenWidgetRecommendation?: jest.Mock;
 }
 
-const bubble = ({ turn = reply(), offers, reactions, fileEdits, onOpenWidgetRecommendation }: BubbleOptions = {}) => (
+const bubble = ({ turn = reply(), onHighlightAction, offers, reactions, fileEdits, onOpenWidgetRecommendation }: BubbleOptions = {}) => (
   <WorkshopTurnBubble
     turn={turn}
     quickActionToolId={null}
@@ -83,6 +90,7 @@ const bubble = ({ turn = reply(), offers, reactions, fileEdits, onOpenWidgetReco
     onTalkDirectly={jest.fn()}
     onCopy={jest.fn()}
     onSave={jest.fn()}
+    onHighlightAction={onHighlightAction}
     editOffers={offers}
     reactions={reactions}
     fileEdits={fileEdits}
@@ -423,5 +431,29 @@ describe('the press and its answer in the thread (U3, U4)', () => {
     render(bubble({ turn: reply({ fileEditProposals: [card({ intent: undefined })] }), fileEdits }));
     expect(document.querySelector('.pm-ws-file-edit-stack')).toBeNull();
     expect(Array.from(document.querySelectorAll('.pm-ws-file-edit-class')).map((each) => each.textContent)).toEqual(['chapter']);
+  });
+});
+
+describe('reply highlights in the footer', () => {
+  it('shows the projected title and count and sends IDs only, even after reloading a room', () => {
+    const postMessage = jest.fn();
+    (useVSCodeApi as jest.Mock).mockReturnValue({ postMessage });
+    const Footer = ({ revision, count }: { revision: number; count: number }) => {
+      const onHighlightAction = useWorkshopHighlightAction(revision);
+      return bubble({ turn: reply({ highlightSummary: { title: 'Signature lines', count } }), onHighlightAction });
+    };
+    const view = render(<Footer revision={9} count={2} />);
+    const chip = () => within(screen.getByRole('group', { name: 'Highlights · Signature lines' }));
+    expect(chip().getByText('Signature lines · 2 highlights')).toBeTruthy();
+    fireEvent.click(chip().getByRole('button', { name: 'Show' }));
+    fireEvent.click(chip().getByRole('button', { name: 'Clear' }));
+    view.rerender(<Footer revision={10} count={1} />);
+    expect(chip().getByText('Signature lines · 1 highlight')).toBeTruthy();
+    fireEvent.click(chip().getByRole('button', { name: 'Show' }));
+    expect(postMessage.mock.calls.map(([{ type, payload }]) => [type, payload])).toEqual([
+      [MessageType.WORKSHOP_SHOW_HIGHLIGHTS, { roomRevision: 9, turnId: 'turn-2' }],
+      [MessageType.WORKSHOP_CLEAR_HIGHLIGHTS, { roomRevision: 9, turnId: 'turn-2' }],
+      [MessageType.WORKSHOP_SHOW_HIGHLIGHTS, { roomRevision: 10, turnId: 'turn-2' }]
+    ]);
   });
 });

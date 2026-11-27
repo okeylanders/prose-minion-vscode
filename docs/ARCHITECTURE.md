@@ -322,6 +322,7 @@ workshop/
 ├── selectedText.ts          # The editor's selection as a one-shot attachment: seed offer/accept/staged, watch and current
 ├── todoStatus.ts            # A persona's to-do changes: closedBy, receipt rows, Undo (ADR 2026-11-19 D8, D9)
 ├── locationsProposal.ts     # A persona context-paths card: the checked view, baselines, answers (ADR 2026-11-19 D27)
+├── highlights.ts             # Reply highlight Show and Clear, addressed by room revision and turn ID
 ├── passageSearch.ts         # A persona passage-search card: scopes, the derived view, the receipt, its routes (ADR 2026-11-20 D16–D21)
 ├── sessionRecovery.ts       # Recover… for a saved session left mid-save: request and answer by request id (ADR 2026-11-19 D6e)
 └── settings.ts              # Defaults, validators, coercers, equality

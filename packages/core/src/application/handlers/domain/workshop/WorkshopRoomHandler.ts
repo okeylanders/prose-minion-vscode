@@ -383,7 +383,7 @@ export class WorkshopRoomHandler {
         session: this.session,
         postMessage: this.postMessage,
         shell,
-        contextIntakeService,
+        contextIntakeService: this.contextIntakeService,
         sessionPersistence: this.sessionPersistence,
         transcriptExport,
         widgetRuntime,

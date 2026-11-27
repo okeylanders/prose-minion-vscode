@@ -54,6 +54,7 @@ import { useWorkshopMemoryManager } from '@hooks/domain/workshop/useWorkshopMemo
 import { useWorkshopFileEdits } from '@hooks/domain/workshop/useWorkshopFileEdits';
 import { useWorkshopTodoReceiptControls } from '@components/workshop/todos/useWorkshopTodoReceiptControls';
 import { useWorkshopLocationsProposalControls } from '@components/workshop/locations/useWorkshopLocationsProposalControls';
+import { useWorkshopHighlightAction } from '@hooks/domain/workshop/useWorkshopHighlightAction';
 import { useWorkshopPassageSearchControls } from '@components/workshop/passageSearch/useWorkshopPassageSearchControls';
 import { useWorkshopNamedSessionRecovery } from '@hooks/domain/workshop/useWorkshopNamedSessionRecovery';
 import { WorkshopNamedSessionRecoveryMount } from '@components/workshop/WorkshopNamedSessionRecoveryMount';
@@ -631,6 +632,7 @@ export const WorkshopApp: React.FC = () => {
   const fileEditControls = useWorkshopFileEditControls({ fileEdits, locked: roomMutationLocked, running: workshop.isRunning });
   const todoReceiptControls = useWorkshopTodoReceiptControls({ roomKey, ...(workshop.sessionReady ? { roomRevision: workshop.roomRevision } : {}), locked: roomMutationLocked });
   const locationsProposalControls = useWorkshopLocationsProposalControls({ roomKey, ...(workshop.sessionReady ? { roomRevision: workshop.roomRevision } : {}), locked: roomMutationLocked });
+  const onHighlightAction = useWorkshopHighlightAction(workshop.sessionReady ? workshop.roomRevision : undefined);
   const passageSearchControls = useWorkshopPassageSearchControls({ roomKey, ...(workshop.sessionReady ? { roomRevision: workshop.roomRevision } : {}), locked: roomMutationLocked });
   const reactionControls = React.useMemo<WorkshopReactionControls>(() => ({
     reactionsOf: (turnId) => reactions.reactionsByTurn.get(turnId) ?? NO_TURN_REACTIONS,
@@ -1462,6 +1464,7 @@ export const WorkshopApp: React.FC = () => {
             fileEdits={fileEditControls}
             todoReceipt={todoReceiptControls}
             locationsProposal={locationsProposalControls}
+            onHighlightAction={onHighlightAction}
             passageSearch={passageSearchControls}
             reactions={reactionControls}
             editOffers={editOfferControls}
