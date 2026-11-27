@@ -18,12 +18,22 @@ import { OpenRouterClient } from '@providers/OpenRouterClient';
 /* eslint-disable @typescript-eslint/naming-convention -- these mocks use VS Code's public property names. */
 jest.mock('vscode', () => {
   const noop = () => ({ dispose() {} });
+  const emptyGroup = { tabs: [], activeTab: undefined, isActive: true, viewColumn: 1 };
   const uri = (path: string) => ({ fsPath: path, path, toString: () => 'file://' + path });
   return {
-    languages: { createDiagnosticCollection: noop, registerCodeActionsProvider: noop },
+    languages: {
+      createDiagnosticCollection: jest.fn(() => ({ ...noop(), clear: jest.fn() })),
+      registerCodeActionsProvider: noop
+    },
     CodeActionKind: { QuickFix: 'quickfix' }, RelativePattern: class {}, ViewColumn: { Active: -1 },
     Uri: { file: uri, joinPath: (base: {path: string}, ...parts: string[]) => uri([base.path, ...parts].join('/')) },
-    window: { createOutputChannel: () => ({ appendLine: mockOutputLine, dispose() {} }), showErrorMessage: jest.fn() },
+    window: {
+      createOutputChannel: () => ({ appendLine: mockOutputLine, dispose() {} }), showErrorMessage: jest.fn(),
+      tabGroups: {
+        all: [emptyGroup], activeTabGroup: emptyGroup,
+        onDidChangeTabs: jest.fn(noop), onDidChangeTabGroups: jest.fn(noop)
+      }
+    },
     workspace: {}, commands: {}
   };
 }, { virtual: true });
@@ -157,6 +167,20 @@ describe.each([
   });
 
   if (shape === 'single folder') {
+    it('registers Workshop tab lifetime listeners and clears its diagnostic collection from the palette', () => {
+      expect(vscode.window.tabGroups.onDidChangeTabs).toHaveBeenCalledWith(expect.any(Function));
+      expect(vscode.window.tabGroups.onDidChangeTabGroups).toHaveBeenCalledWith(expect.any(Function));
+      const collections = jest.mocked(vscode.languages.createDiagnosticCollection).mock;
+      const clear = commands.get('prose-minion.clearWorkshopHighlights');
+      expect(clear).toBeDefined();
+      clear!();
+      const workshopIndex = collections.calls.findIndex(([name]) => name === 'prose-minion.workshopHighlights');
+      expect(workshopIndex).toBeGreaterThanOrEqual(0);
+      for (const [index, { value }] of collections.results.entries()) {
+        expect(value.clear).toHaveBeenCalledTimes(index === workshopIndex ? 1 : 0);
+      }
+    });
+
     it('registers every Workshop restore type to the same provider and Lightbox to its own provider', () => {
       const registrations = new Map(serializers.mock.calls);
       expect(serializers).toHaveBeenCalledTimes(4);
