@@ -2,13 +2,14 @@ import { createWorkshopRouteTestHarness, analysisResult } from '@/__tests__/appl
 import type { WorkshopHighlightsDraft } from '@/utils/workshopReplyHighlights';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import { completeWorkshopRun, workshopMessageCompletionCopy, type WorkshopRunCompletionInput } from '@/application/services/workshop/WorkshopRunCompletion';
-import { authorizeWorkshopReplyHighlights } from '@/application/services/workshop/highlights/WorkshopReplyHighlights';
+import { authorizeWorkshopReplyHighlights, type WorkshopHighlightProposalDetails } from '@/application/services/workshop/highlights/WorkshopReplyHighlights';
 import type { WorkshopHighlightCounts } from '@/application/services/workshop/highlights/WorkshopHighlightEditor';
 import { workshopTurnForWebview } from '@/application/services/workshop/fileEdits/WorkshopFileEditWebviewView';
 import { projectWorkshopTranscript } from '@/application/services/workshop/transcript/WorkshopTranscript';
 import { workshopTrailerOutcomesFrameFor } from '@/application/services/workshop/trailerOutcomes/WorkshopTrailerOutcomesFrame';
 import { parseWorkshopPersistedSession, decodeWorkshopPersistedSessionCheckpoint } from '@/application/services/workshop/WorkshopPersistedSession';
-import { MessageType, type WorkshopExcerptSource, type WorkshopTurn } from '@messages';
+import { WorkshopHighlightProposal } from '@/application/handlers/domain/workshop/WorkshopHighlightProposal';
+import { MessageType, type WorkshopHighlightPrompt, type WorkshopExcerptSource, type WorkshopTurn } from '@messages';
 
 const set = { title: 'Private title', places: [
   { start: { quote: 'Private quote' }, note: 'Private note' },
@@ -32,10 +33,10 @@ function room(provenance: WorkshopExcerptSource = { kind: 'file', ...source }) {
   });
   const log = jest.fn();
   const controller = new AbortController();
-  const showInformationMessage = jest.fn(async (): Promise<string | undefined> => 'Keep highlights');
+  const ask = jest.fn(async (_details: WorkshopHighlightProposalDetails, _signal: AbortSignal) => true);
   const prepare = (reply = frame) => authorizeWorkshopReplyHighlights({ reply, requestId, roomRevision: session.readRoomRevision(), excerpt,
     intake: { authorizeExcerptReread, toDisplayPath: () => source.relativePath }, editor: { showOpen, show: jest.fn(), clear: jest.fn(), retain: jest.fn() }, signal: controller.signal,
-    persona: 'Jill', session, shell: { showInformationMessage } });
+    persona: 'Jill', session, ask });
   const complete = (extra: Partial<WorkshopRunCompletionInput>, content = frame) => completeWorkshopRun({
     session, requestId, label: 'Jill',
     result: { toolName: 'workshop-test', content, conversationId: 'host-conversation', timestamp: new Date(0) },
@@ -44,14 +45,29 @@ function room(provenance: WorkshopExcerptSource = { kind: 'file', ...source }) {
     events: { streamCompleted: jest.fn(), turnCompleted: jest.fn(), status: jest.fn(), error: jest.fn(), widgetRecommendationRejected: jest.fn() },
     ...extra
   });
-  return { session, authorizeExcerptReread, showInformationMessage, showOpen, prepare, complete, log, controller };
+  return { session, authorizeExcerptReread, ask, showOpen, prepare, complete, log, controller };
 }
 
 describe('highlights on a writer-directed Workshop reply', () => {
   async function routedRoom() {
     const showOpen = jest.fn(() => counts);
     const harness = createWorkshopRouteTestHarness({ workshopHighlights: { showOpen, show: jest.fn(), retain: jest.fn(), clear: jest.fn() } });
-    const ask = jest.spyOn(harness.shell, 'showInformationMessage');
+    const notification = jest.spyOn(harness.shell, 'showInformationMessage');
+    const proposals = new Map<string, WorkshopHighlightPrompt>();
+    let waiting: ((prompt: WorkshopHighlightPrompt) => void) | undefined;
+    harness.postMessage.mockImplementation(async (message) => {
+      const prompt = message.type === MessageType.WORKSHOP_SESSION_STATE && message.payload.highlightPrompt;
+      if (prompt?.kind === 'proposal' && !proposals.has(prompt.promptId)) {
+        proposals.set(prompt.promptId, prompt);
+        waiting?.(prompt);
+        waiting = undefined;
+      }
+    });
+    const nextProposal = () => new Promise<WorkshopHighlightPrompt>((resolve) => { waiting = resolve; });
+    const answer = (prompt: WorkshopHighlightPrompt, choice: 'apply' | 'skip') => harness.router.route({
+      type: MessageType.WORKSHOP_ANSWER_HIGHLIGHT_PROMPT, source: 'webview.workshop', timestamp: 2,
+      payload: { promptId: prompt.promptId, roomRevision: prompt.roomRevision, choice }
+    });
     const path = 'Characters/raven.md';
     await harness.router.route({ type: MessageType.WORKSHOP_SET_EXCERPT, timestamp: 0, source: 'webview.workshop', payload: {
       text: 'Raven looks at the token.', source: { kind: 'editor-selection', sourceUri: `file:///ws/${path}`, relativePath: path }
@@ -63,29 +79,43 @@ describe('highlights on a writer-directed Workshop reply', () => {
       type: MessageType.WORKSHOP_INVITE_GUEST, source: 'webview.workshop', timestamp: 1,
       payload: { personaId: 'margot', openingMessage: 'Hello. What do you think of this scene?' }
     });
-    return { harness, showOpen, ask, path, send, invite };
+    return { harness, showOpen, notification, proposals, nextProposal, answer, path, send, invite };
   }
 
   it('draws an approved composer reply and asks again before retaining a later set', async () => {
-    const { harness, ask, path, send, showOpen } = await routedRoom();
-    ask.mockResolvedValueOnce('Keep highlights').mockResolvedValueOnce('Skip');
+    const { harness, notification, proposals, nextProposal, answer, path, send, showOpen } = await routedRoom();
     harness.service.startWorkshopPersonaConversation.mockResolvedValueOnce(analysisResult(frame, { conversationId: 'host-conv' }));
-    await send('Marca esos pasajes.');
+    const offered = nextProposal();
+    const requested = send('Marca esos pasajes.');
+    const prompt = await offered;
+    expect(prompt).toEqual({ kind: 'proposal', persona: 'Jill', title: 'Private title', count: 2,
+      displayPath: path, roomRevision: harness.session.readRoomRevision(), promptId: expect.any(String) });
+    expect(showOpen).not.toHaveBeenCalled();
+    expect(harness.session.readRoomLedger().some(turn => turn.highlights)).toBe(false);
+    await harness.router.route({ type: MessageType.WORKSHOP_REQUEST_SESSION, source: 'webview.workshop', timestamp: 2, payload: {} });
+    expect(harness.posted(MessageType.WORKSHOP_SESSION_STATE).at(-1).payload.highlightPrompt).toEqual(prompt);
+    await answer(prompt, 'apply');
+    await requested;
     const reply = harness.session.readRoomLedger().at(-1)!;
-    expect(ask).toHaveBeenCalledWith(expect.stringContaining('Jill proposed “Private title” with 2 highlights'), 'Keep highlights', 'Skip');
-    expect(ask.mock.calls[0][0]).toContain(path);
     expect(showOpen).toHaveBeenCalledWith(reply.id, `/ws/${path}`, 'Jill', set);
     expect(reply.highlights?.set).toEqual(set);
     expect(JSON.stringify(harness.postMessage.mock.calls)).toContain('highlightSummary');
     expect(JSON.stringify(harness.postMessage.mock.calls)).not.toMatch(/Private quote|Private note/);
 
     harness.service.continueConversation.mockResolvedValueOnce(analysisResult(`The scene works.\n${frame}`, { conversationId: 'host-conv' }));
-    await send('Just critique the pacing.');
+    const another = nextProposal();
+    const unsolicited = send('Just critique the pacing.');
+    const second = await another;
+    expect(second.promptId).not.toBe(prompt.promptId);
+    await answer(prompt, 'apply');
+    await answer(second, 'skip');
+    await unsolicited;
     const critique = harness.session.readRoomLedger().at(-1)!;
     expect(critique.content).toBe('The scene works.');
     expect(critique.highlights).toBeUndefined();
     expect(critique.trailerOutcomes?.highlights?.rejected).toEqual([{ reason: 'skipped', count: 1 }]);
-    expect(ask).toHaveBeenCalledTimes(2);
+    expect(proposals.size).toBe(2);
+    expect(notification).not.toHaveBeenCalled();
     expect(showOpen).toHaveBeenCalledTimes(1);
     harness.handler.dispose();
   });
@@ -95,45 +125,52 @@ describe('highlights on a writer-directed Workshop reply', () => {
     ['a malformed set', '<prose-minion-highlights>{}</prose-minion-highlights>', false],
     ['an unsolicited set', frame, true]
   ] as const)('retains a guest opening with %s without drawing', async (_case, content, offered) => {
-    const { harness, ask, invite, showOpen } = await routedRoom();
-    ask.mockResolvedValue(undefined);
+    const { harness, notification, proposals, nextProposal, answer, invite, showOpen } = await routedRoom();
     harness.service.startWorkshopGuestConversation.mockResolvedValueOnce(analysisResult(content, { conversationId: 'guest-conv' }));
-    await invite();
+    const question = offered ? nextProposal() : undefined;
+    const joined = invite();
+    if (question) {
+      await answer(await question, 'skip');
+    }
+    await joined;
     const reply = harness.session.readRoomLedger().at(-1)!;
     expect(reply.participant).toBe('guest');
     expect(reply.highlights).toBeUndefined();
     expect(showOpen).not.toHaveBeenCalled();
-    expect(ask).toHaveBeenCalledTimes(offered ? 1 : 0);
+    expect(proposals.size).toBe(offered ? 1 : 0);
+    expect(notification).not.toHaveBeenCalled();
     if (offered) {
       expect(reply.trailerOutcomes?.highlights?.rejected).toEqual([{ reason: 'skipped', count: 1 }]);
     }
     harness.handler.dispose();
   });
 
-  it('lets Stop release an unanswered notification and ignores a late Keep', async () => {
-    const { prepare, controller, showInformationMessage, showOpen } = room();
-    let answer!: (choice: string) => void;
-    showInformationMessage.mockImplementation(() => new Promise((resolve) => { answer = resolve; }));
+  it('lets Stop release an unanswered Workshop question and ignores a late Apply', async () => {
+    const { prepare, controller, ask, showOpen } = room();
+    const broker = new WorkshopHighlightProposal(jest.fn());
+    ask.mockImplementation((details, signal) => broker.ask(details, signal));
     const pending = prepare();
     await Promise.resolve();
-    expect(showInformationMessage).toHaveBeenCalledTimes(1);
+    const prompt = broker.current()!;
+    expect(prompt.kind).toBe('proposal');
     controller.abort();
     expect(await pending).toBeUndefined();
-    answer('Keep highlights');
+    expect(broker.current()).toBeUndefined();
+    broker.answer({ ...prompt, choice: 'apply' });
     expect(showOpen).not.toHaveBeenCalled();
   });
 
-  it('checks room ownership before the prompt, after Keep, and on adoption of exactly the approved reply', async () => {
+  it('checks room ownership before the prompt, after Apply, and on adoption of exactly the approved reply', async () => {
     const before = room();
     const pending = before.prepare();
     before.session.invalidatePendingRoomReads();
     expect(await pending).toBeUndefined();
-    expect(before.showInformationMessage).not.toHaveBeenCalled();
+    expect(before.ask).not.toHaveBeenCalled();
 
     const after = room();
-    after.showInformationMessage.mockImplementation(async () => {
+    after.ask.mockImplementation(async () => {
       after.session.abandonRun(requestId);
-      return 'Keep highlights';
+      return true;
     });
     expect(await after.prepare()).toBeUndefined();
     expect(after.showOpen).not.toHaveBeenCalled();
@@ -151,7 +188,7 @@ describe('highlights on a writer-directed Workshop reply', () => {
     const turn = complete({ highlights: await prepare(mixed), reactionsOpen: true }, mixed)!;
     expect(turn.reactionOnly).toBeUndefined();
     expect(turn.highlights?.set).toEqual(set);
-    expect(turn.content).toContain('requested highlights');
+    expect(turn.content).toContain('proposed highlights');
     expect(session.readRoomReactions()).toHaveLength(1);
   });
 
@@ -160,7 +197,7 @@ describe('highlights on a writer-directed Workshop reply', () => {
     const turn = complete({ highlights: await prepare() })!;
     expect(authorizeExcerptReread).toHaveBeenCalledWith({ kind: 'file', ...source });
     expect(showOpen).toHaveBeenCalledWith(turn.id, '/chapters/private.md', turn.personaLabel, set);
-    expect(turn.content).toBe('Requested highlights.');
+    expect(turn.content).toBe('Proposed highlights.');
     expect(turn.highlights).toEqual({ source, set });
     const view = workshopTurnForWebview(turn);
     expect(view.highlightSummary).toEqual({ title: set.title, count: 2 });
@@ -168,7 +205,7 @@ describe('highlights on a writer-directed Workshop reply', () => {
     const outcomes = workshopTrailerOutcomesFrameFor(session.readRoomLedger(), { kind: 'host' });
     expect(outcomes).toContain('1 placed, 1 dropped (ambiguous)');
     const transcript = projectWorkshopTranscript(session.readRoomLedger(), { title: 'Example', exportedAt: 42 });
-    expect(transcript.entries.filter((entry) => entry.kind === 'event' && entry.text === 'Requested 2 highlights.')).toHaveLength(1);
+    expect(transcript.entries.filter((entry) => entry.kind === 'event' && entry.text === 'Kept 2 highlights.')).toHaveLength(1);
     expect(JSON.stringify([outcomes, log.mock.calls, transcript])).not.toMatch(/Private (title|note|quote)|private\.md/);
   });
 

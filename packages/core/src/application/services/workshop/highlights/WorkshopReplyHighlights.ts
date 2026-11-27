@@ -1,7 +1,6 @@
-import type { ShellService } from '@/platform';
 import type { WorkshopSessionService } from '../WorkshopSessionService';
 import { extractWorkshopReplyControls } from '@/utils/workshopReplyControls';
-import type { WorkshopExcerpt, WorkshopTurn } from '@messages';
+import type { WorkshopExcerpt, WorkshopHighlightPrompt, WorkshopTurn } from '@messages';
 import type { WorkshopContextIntakeService } from '../WorkshopContextIntakeService';
 import type { WorkshopHighlightEditor } from './WorkshopHighlightEditor';
 import { WORKSHOP_HIGHLIGHTS_TAG, type WorkshopReplyHighlightsControl } from '@/utils/workshopReplyHighlights';
@@ -29,6 +28,8 @@ export interface WorkshopHighlightTarget extends WorkshopHighlightRun {
 
 export type WorkshopHighlightChoice = WorkshopHighlightTarget | (WorkshopHighlightRun & { readonly kind: 'skipped' });
 
+export type WorkshopHighlightProposalDetails = Omit<Extract<WorkshopHighlightPrompt, { kind: 'proposal' }>, 'kind' | 'promptId'>;
+
 interface WorkshopHighlightRequest {
   readonly reply: string;
   readonly requestId: string;
@@ -39,22 +40,7 @@ interface WorkshopHighlightRequest {
   readonly session: Pick<WorkshopSessionService, 'readRoomRevision' | 'getExcerptVersion' | 'personaReplyReactionTarget'>;
   readonly intake: Pick<WorkshopContextIntakeService, 'authorizeExcerptReread' | 'toDisplayPath'>;
   readonly editor?: WorkshopHighlightEditor;
-  readonly shell: Pick<ShellService, 'showInformationMessage'>;
-}
-
-const KEEP = 'Keep highlights';
-const SKIP = 'Skip';
-
-/** VS Code notifications can stay open after a run is stopped. Release the run and ignore any subsequent click. */
-async function askToKeep(shell: WorkshopHighlightRequest['shell'], message: string, signal: AbortSignal): Promise<boolean> {
-  let cancel!: () => void;
-  const cancelled = new Promise<undefined>((resolve) => { cancel = () => resolve(undefined); });
-  signal.addEventListener('abort', cancel, { once: true });
-  try {
-    return !signal.aborted && await Promise.race([shell.showInformationMessage(message, KEEP, SKIP), cancelled]) === KEEP;
-  } finally {
-    signal.removeEventListener('abort', cancel);
-  }
+  readonly ask: (details: WorkshopHighlightProposalDetails, signal: AbortSignal) => Promise<boolean>;
 }
 
 export async function authorizeWorkshopReplyHighlights(request: WorkshopHighlightRequest): Promise<WorkshopHighlightChoice | undefined> {
@@ -78,22 +64,21 @@ export async function authorizeWorkshopReplyHighlights(request: WorkshopHighligh
     const count = set.places.length;
     const title = set.title.replace(/\s+/g, ' ').trim();
     const displayPath = auth.source.configuredResource?.path ?? intake.toDisplayPath(auth.fsPath);
-    const message = `${request.persona} proposed “${title}” with ${count} ${count === 1 ? 'highlight' : 'highlights'}. Keep this set on the reply and show it if “${displayPath}” is open?`;
-    const keep = await askToKeep(request.shell, message, signal);
+    const keep = await request.ask({ persona: request.persona, roomRevision, title, count, displayPath }, signal);
     if (!current()) {
       return undefined;
     }
     if (!keep) {
       return { ...run, kind: 'skipped' };
     }
-    // The writer may have been away while the notification was open. Recheck the exact authorized file.
+    // The writer may have been away while the question was open. Recheck the exact authorized file.
     const checked = await intake.authorizeExcerptReread(auth.source);
     if (checked.kind === 'authorized' && checked.fsPath === auth.fsPath && current()) {
       return { ...run, kind: 'approved', editor, fsPath: checked.fsPath,
         source: { sourceUri: checked.source.sourceUri, relativePath: checked.source.relativePath } };
     }
   } catch {
-    // Catalog, filesystem and notification errors can contain private data.
+    // Catalog, filesystem and prompt errors can contain private data.
   }
   return undefined;
 }

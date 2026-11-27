@@ -186,7 +186,7 @@ const REACTION_OBJECT = "the writer's message";
 export function workshopTrailersOnlyReplyLine(kinds: WorkshopTrailerKinds): string {
   if (kinds.highlights) {
     const others = workshopTrailersOnlyReplyLine({ ...kinds, highlights: false });
-    return others === WORKSHOP_NO_MESSAGE_REPLY_LINE ? 'Requested highlights.' : `${others.slice(0, -1)}, and requested highlights.`;
+    return others === WORKSHOP_NO_MESSAGE_REPLY_LINE ? 'Proposed highlights.' : `${others.slice(0, -1)}, and proposed highlights.`;
   }
   if (kinds.passageSearch) {
     const others = workshopTrailersOnlyReplyLine({ ...kinds, passageSearch: false });

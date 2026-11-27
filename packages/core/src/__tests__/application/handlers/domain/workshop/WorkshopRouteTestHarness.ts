@@ -306,6 +306,7 @@ export const createWorkshopRouteTestHarness = (options: WorkshopRouteTestHarness
       roomInstance.replaced();
       return { attachmentLabels: [] };
     }),
+    takeHighlightRestoreOpening: jest.fn(() => undefined),
     openRoomInstance: jest.fn(() => roomInstance.current()),
     onRoomReplaced: jest.fn((listener: Parameters<WorkshopOpenRoomInstance['subscribe']>[0]) => roomInstance.subscribe(listener)),
     rewindTo: jest.fn(),
