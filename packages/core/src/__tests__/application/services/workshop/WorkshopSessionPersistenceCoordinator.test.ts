@@ -204,6 +204,7 @@ describe('WorkshopSessionPersistenceCoordinator', () => {
     await coordinator.initialize();
     await coordinator.flush();
 
+    expect(coordinator.takeHighlightRestoreOpening()).toBeUndefined();
     expect(current?.workshop.excerpt?.text).toBe('A complete pinned excerpt.');
     expect(current?.workshop.turns.at(-1)?.artifact).toBe('session_start');
     expect(current?.summary.excerptWordCount).toBe(4);
@@ -243,6 +244,8 @@ describe('WorkshopSessionPersistenceCoordinator', () => {
 
     expect(first.restored).toBe(true);
     expect(second).toBe(first);
+    expect(coordinator.takeHighlightRestoreOpening()).toMatchObject({ roomRevision: session.readRoomRevision(), excerptVersion: session.getExcerptVersion() });
+    expect(coordinator.takeHighlightRestoreOpening()).toBeUndefined();
     expect(session.getExcerpt()?.text).toBe('The restored manuscript.');
     expect(session.getSnapshot().turns.map((turn) => turn.artifact))
       .toEqual(['session_start']);
@@ -350,6 +353,8 @@ describe('WorkshopSessionPersistenceCoordinator', () => {
     expect(current?.workshop.excerpt?.text).toBe('The newer portable excerpt.');
     expect(named[0].workshop.excerpt?.text).toBe('The newer portable excerpt.');
     await coordinator.openNamed('shared-room');
+    expect(coordinator.takeHighlightRestoreOpening()?.roomRevision).toBe(session.readRoomRevision());
+    expect(coordinator.takeHighlightRestoreOpening()).toBeUndefined();
 
     expect(session.getExcerpt()?.text).toBe('The newer portable excerpt.');
     expect(current?.workshop.excerpt?.text).toBe('The newer portable excerpt.');
@@ -391,6 +396,8 @@ describe('WorkshopSessionPersistenceCoordinator', () => {
     named[0] = incoming;
 
     expect(await coordinator.refreshNamedSession()).toBe(true);
+    // A Git refresh replaced the prior initialized room before a webview read its opening.
+    expect(coordinator.takeHighlightRestoreOpening()).toBeUndefined();
 
     expect(session.getExcerpt()?.text).toBe('Incoming excerpt.');
     expect(current?.title).toBe('Incoming');
@@ -1086,6 +1093,7 @@ describe('WorkshopSessionPersistenceCoordinator', () => {
     store.writeCurrent.mockRejectedValueOnce(new Error('promotion failed'));
 
     await expect(coordinator.openNamed('other-room')).rejects.toThrow('promotion failed');
+    expect(coordinator.takeHighlightRestoreOpening()).toBeUndefined();
 
     expect(session.getExcerpt()?.text).toBe('The live room.');
     expect(session.getHostConversationId()).toBe('old-host');

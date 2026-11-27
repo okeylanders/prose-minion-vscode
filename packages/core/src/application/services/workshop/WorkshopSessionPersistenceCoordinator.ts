@@ -288,6 +288,10 @@ export class WorkshopSessionPersistenceCoordinator {
   private sessionOperationQueue: Promise<void> = Promise.resolve();
   private pendingSessionOperations = 0;
   private resumePending = false;
+  private highlightRestoreOpening?: {
+    roomRevision: number; excerptVersion: number;
+    candidates: ReturnType<WorkshopSessionService['readHighlightPromptCandidates']>;
+  };
   private localWorkPending = false;
   private dirtyRevision = 0;
   private writtenRevision = 0;
@@ -377,6 +381,22 @@ export class WorkshopSessionPersistenceCoordinator {
   openRoomInstance: WorkshopOpenRoomInstancePort['openRoomInstance'] = () => this.roomInstance.current();
   onRoomReplaced: WorkshopOpenRoomInstancePort['onRoomReplaced'] = (listener) => this.roomInstance.subscribe(listener);
   runSavedSessionOperation = <T>(operation: () => Promise<T>): Promise<T> => this.serializeNamedOperation(operation);
+
+  // The pane can mount after hydration or named Open completed. Ordinary snapshots, refreshes,
+  // rollback, branch and rewind never create an opening. Only turns present on disk are eligible.
+  private recordHighlightRestoreOpening(): void {
+    this.highlightRestoreOpening = {
+      roomRevision: this.session.readRoomRevision(),
+      excerptVersion: this.session.getExcerptVersion(),
+      candidates: this.session.readHighlightPromptCandidates()
+    };
+  }
+
+  takeHighlightRestoreOpening() {
+    const opening = this.highlightRestoreOpening;
+    this.highlightRestoreOpening = undefined;
+    return opening?.roomRevision === this.session.readRoomRevision() ? opening : undefined;
+  }
 
   /** Check inside the shared operation gate immediately before a cross-session write. */
   isNamedSessionOwnedElsewhere(sessionId: string): boolean {
@@ -516,6 +536,7 @@ export class WorkshopSessionPersistenceCoordinator {
             };
             result = await this.hydrate(recovered, true, current);
             await this.store.writeCurrent(recovered);
+            this.recordHighlightRestoreOpening();
             this.initialized = true;
             return result;
           }
@@ -544,6 +565,7 @@ export class WorkshopSessionPersistenceCoordinator {
           } else {
             this.localWorkPending = !cleanRolling;
           }
+          this.recordHighlightRestoreOpening();
         } else {
           const plan = await this.roomSeed.prepare('first');
           this.roomSeed.install(plan, this.session);
@@ -957,6 +979,7 @@ export class WorkshopSessionPersistenceCoordinator {
       }
       const result = await this.promoteNamedSession(persisted);
       await afterLoad?.();
+      this.recordHighlightRestoreOpening();
       return result;
     });
   }
