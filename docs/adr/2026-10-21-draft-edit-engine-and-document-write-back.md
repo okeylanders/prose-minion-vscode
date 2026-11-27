@@ -644,6 +644,22 @@ writes to the manuscript.
 - **Core stays `vscode`-free.** The existing static and dynamic import guard
   covers the new ports.
 
+#### D10 amendment — Workshop persona highlights
+
+Item 39 gives Workshop a narrow door to the annotation port. Only the
+Workshop highlights service may use that door. It reads host-bound excerpt
+documents and uses a dedicated Workshop diagnostic collection. The
+`DocumentEditor` restriction and the widget boundaries still apply. The boundary
+test must name the Workshop service explicitly when the adapter is wired.
+
+A persona may send one highlights set in a reply when the writer has requested
+it and the run has a file-backed excerpt. The set supplies a title and a
+bounded list of notes and quote anchors. The reply scanner strips and redacts
+the frame. Host code binds the set to the run's excerpt and resolves its anchors
+against the live document. Ambiguous, missing, out-of-order and protected
+ranges are omitted. Diagnostic state is transient. The optional reply record
+is the source for Show and survives session reloads.
+
 ### D11. Reserved passes: constraints fixed now, built later
 
 These are designed in Feature: Workshop Apply to Draft and are **not**

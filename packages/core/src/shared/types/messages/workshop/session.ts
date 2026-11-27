@@ -521,6 +521,13 @@ export interface WorkshopTurn {
    * replies only. Apply is the writer's.
    */
   locationsProposal?: WorkshopLocationsProposalCard;
+  /** Host-owned redraw data. The webview receives only highlightSummary. */
+  highlights?: {
+    source: { sourceUri: string; relativePath: string };
+    set: import('../../../../utils/workshopReplyHighlights').WorkshopHighlightsDraft;
+  };
+  /** Display projection of a set. Never persisted. */
+  highlightSummary?: { title: string; count: number };
   /**
    * A persona's passage-search request, settled (ADR 2026-11-20 D17): one
    * card, committed with the reply (optional, additive). Host and guest

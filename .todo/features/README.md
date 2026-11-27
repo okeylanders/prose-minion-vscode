@@ -82,7 +82,7 @@ Nothing is being built right now. 2.17.0 is on `main`, waiting for its release.
 | 35 | Personas run the deterministic measures | Medium | Medium; short ADR. Reuses Passage Search's scopes. | [persona measures](feature-workshop-persona-measures/README.md) |
 | 36 | A long paste becomes a "Pasted text" pill | Medium | Small to medium; P1 (500 characters) and P2 decided. | [long paste pill](feature-workshop-long-paste-pill/README.md) |
 | 38 (rest) | Branch from an unsaved room; "Branch in new tab instead" in Rewind's confirm | Medium | Small. Branch still requires a saved room (ADR 2026-09-30, multi-tab amendment). B1 and B2 open, with leans. | [branch in new tab](feature-workshop-branch-in-new-tab/README.md) |
-| 39 | Personas highlight the excerpt's file: any passages, each with a note (squiggles and Problems-panel notes) | Medium | Medium; short ADR (a second door to the annotator). H0–H2 decided; ready to build. | [persona highlights](feature-workshop-persona-highlights/README.md) |
+| 39 | Personas highlight the excerpt's file: any passages, each with a note (squiggles and Problems-panel notes) | Medium | In development | [persona highlights](../epics/epic-workshop-persona-highlights/README.md) |
 
 ### Follow-ups split from shipped work (Low)
 

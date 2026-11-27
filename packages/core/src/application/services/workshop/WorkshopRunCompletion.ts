@@ -316,7 +316,7 @@ export function completeWorkshopRun(input: WorkshopRunCompletionInput): Workshop
   // A reply of edit offers alone names nothing: it reads "Replied without a message." (ADR 2026-11-10 addendum).
   const hostWritesDisplay = (widgetRecommendation.outcome !== 'absent' || trailers.memory || trailers.fileEdits
     || trailers.reaction !== undefined || controls.editOffers !== undefined || trailers.todos === true
-    || trailers.locations === true || trailers.passageSearch === true) && strippedDisplayContent.trim().length === 0;
+    || trailers.locations === true || trailers.passageSearch === true || controls.highlights !== undefined) && strippedDisplayContent.trim().length === 0;
   const kinds = { memory: trailers.memory, fileEdits: trailers.fileEdits, todos: trailers.todos, locations: trailers.locations, passageSearch: trailers.passageSearch };
   // R1: a reply that was only its reaction is drawn as a slim line; with cards or a widget it is a reply.
   // The ledger's line names only a reaction that lands (PR #247 M1); retention keeps the reply's intent.

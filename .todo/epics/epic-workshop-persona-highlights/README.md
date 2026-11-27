@@ -1,7 +1,7 @@
 # Feature: Personas Highlight the Excerpt's File
 
 **Date Identified:** 2026-11-26
-**Status:** Idea, ready to build: H0–H2 decided. Medium. A short ADR: a new reply trailer, and a second door to the editor's annotations, amending ADR 2026-10-21 D10.
+**Status:** In development on `epic/workshop-persona-highlights`. See the [architecture runway](runway.md).
 **Priority:** Medium
 **Origin:** Okey, 2026-11-26
 
@@ -100,7 +100,7 @@ file.**
 - **"All" means all the persona found.** It reads the excerpt, and in a
   long chapter it can miss one.
 - **Across many files,** finding every instance is
-  [Passage Search](../feature-passage-search/README.md)'s job. Showing a
+  [Passage Search](../../features/feature-passage-search/README.md)'s job. Showing a
   search's results as highlights would be a natural follow-up.
 
 ## Completion Criteria
@@ -130,7 +130,7 @@ file.**
 - [Persona File Edits](../../../docs/adr/2026-11-05-workshop-persona-file-edits.md)
   and [reply edit actions](../../archive/features/feature-workshop-reply-edit-actions/README.md):
   the one write path.
-- [Passage Search](../feature-passage-search/README.md) (#29).
+- [Passage Search](../../features/feature-passage-search/README.md) (#29).
 
 ## Related Files
 

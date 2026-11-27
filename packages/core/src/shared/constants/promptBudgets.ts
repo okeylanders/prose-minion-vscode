@@ -330,6 +330,12 @@ export interface PromptBudgets {
    * A persona's passage-search request and the delivery of its results
    * (ADR 2026-11-20 D16, D21). The search's own bounds are `passageSearch`.
    */
+  readonly workshopHighlights: Readonly<{
+    placesPerSet: number;
+    quoteCharacters: number;
+    titleCharacters: number;
+    noteCharacters: number;
+  }>;
   readonly workshopPassageSearch: Readonly<{
     /** Places one request may name: groups, files and the excerpt together. */
     scopes: number;
@@ -1007,6 +1013,7 @@ export const PROMPT_BUDGETS: PromptBudgets = {
   workshopThread: { pageTurns: 100, pageBytes: 1024 * 1024, jumpPages: 3 },
   workshopTodos: { items: 12, characters: 12_000, headerAllowanceCharacters: 600 },
   workshopTodoStatus: { changesPerReply: 20, savedSessionsPerReply: 10, noteCharacters: 160 },
+  workshopHighlights: { placesPerSet: 24, quoteCharacters: 400, titleCharacters: 80, noteCharacters: 300 },
   workshopPassageSearch: { scopes: 8, questionCharacters: 300, resultsTokens: 6_000, heldResults: 4 },
   guestJoinSnapshot: {
     turns: 100,

@@ -122,6 +122,12 @@ import {
   WORKSHOP_PASSAGE_SEARCH_TAG,
   type WorkshopReplyPassageSearchControl
 } from '@/utils/workshopReplyPassageSearch';
+import {
+  judgeWorkshopReplyHighlights,
+  WORKSHOP_HIGHLIGHTS_REDACTION,
+  WORKSHOP_HIGHLIGHTS_TAG,
+  type WorkshopReplyHighlightsControl
+} from '@/utils/workshopReplyHighlights';
 import { workshopReaction, type WorkshopReactionId } from '@shared/constants/workshopReactions';
 import { sanitizeWorkshopWidgetRecommendationForRetention } from '@/utils/workshopWidgetRecommendationProtocol';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
@@ -248,6 +254,7 @@ export interface WorkshopReplyControls {
   readonly locations?: WorkshopReplyLocationsControl;
   /** The reply's passage-search request frames, judged (ADR 2026-11-20 D16); absent when it held none. */
   readonly passageSearch?: WorkshopReplyPassageSearchControl;
+  readonly highlights?: WorkshopReplyHighlightsControl;
   /** The trailer kinds it held, for the host's line (R1). */
   readonly trailers: WorkshopTrailerKinds;
 }
@@ -272,7 +279,8 @@ const TRAILER_TAGS = [
   WORKSHOP_REACTION_TAG,
   WORKSHOP_TODO_STATUS_TAG,
   WORKSHOP_LOCATIONS_PROPOSAL_TAG,
-  WORKSHOP_PASSAGE_SEARCH_TAG
+  WORKSHOP_PASSAGE_SEARCH_TAG,
+  WORKSHOP_HIGHLIGHTS_TAG
 ] as const;
 
 const NO_TRAILERS: WorkshopTrailerKinds = { memory: false, fileEdits: false };
@@ -285,7 +293,8 @@ const REDACTIONS: Readonly<Record<string, string>> = {
   [WORKSHOP_REACTION_TAG]: WORKSHOP_REACTION_REDACTION,
   [WORKSHOP_TODO_STATUS_TAG]: WORKSHOP_TODO_STATUS_REDACTION,
   [WORKSHOP_LOCATIONS_PROPOSAL_TAG]: WORKSHOP_LOCATIONS_PROPOSAL_REDACTION,
-  [WORKSHOP_PASSAGE_SEARCH_TAG]: WORKSHOP_PASSAGE_SEARCH_REDACTION
+  [WORKSHOP_PASSAGE_SEARCH_TAG]: WORKSHOP_PASSAGE_SEARCH_REDACTION,
+  [WORKSHOP_HIGHLIGHTS_TAG]: WORKSHOP_HIGHLIGHTS_REDACTION
 };
 
 type Frame = WorkshopReplyTrailerFrame;
@@ -309,6 +318,7 @@ export function extractWorkshopReplyControls(
   const todoStatusFrames = placed.filter(({ frame }) => frame.tag === WORKSHOP_TODO_STATUS_TAG);
   const locationsFrames = placed.filter(({ frame }) => frame.tag === WORKSHOP_LOCATIONS_PROPOSAL_TAG);
   const passageSearchFrames = placed.filter(({ frame }) => frame.tag === WORKSHOP_PASSAGE_SEARCH_TAG);
+  const highlightsFrames = placed.filter(({ frame }) => frame.tag === WORKSHOP_HIGHLIGHTS_TAG);
   // The first well-formed known id: the one the judge keeps whenever it keeps one, read from the text alone.
   const named = reactionFrames
     .map(({ frame, atTail: tail }) => workshopReplyTrailerStructureRejection(frame, tail) || frame.inner === undefined
@@ -338,6 +348,7 @@ export function extractWorkshopReplyControls(
     ...(todoStatusFrames.length > 0 ? { todoStatus: judgeWorkshopReplyTodoStatus(todoStatusFrames, options.todoStatus) } : {}),
     ...(locationsFrames.length > 0 ? { locations: judgeWorkshopReplyLocations(locationsFrames) } : {}),
     ...(passageSearchFrames.length > 0 ? { passageSearch: judgeWorkshopReplyPassageSearch(passageSearchFrames) } : {}),
+    ...(highlightsFrames.length > 0 ? { highlights: judgeWorkshopReplyHighlights(highlightsFrames) } : {}),
     trailers: {
       memory: memoryFrames.length > 0,
       fileEdits: fileEditFrames.length > 0,
@@ -392,7 +403,7 @@ function retainedWithoutTrailers(reply: string): { readonly text: string; readon
   const { trailers } = controls;
   // An offer-only reply names nothing, so its line is "Replied without a message." (ADR 2026-11-10 addendum).
   if ((trailers.memory || trailers.fileEdits || trailers.reaction !== undefined || controls.editOffers !== undefined || trailers.todos
-    || trailers.locations || trailers.passageSearch)
+    || trailers.locations || trailers.passageSearch || controls.highlights)
     && controls.rest.trim().length === 0) {
     return { text: workshopTrailersOnlyReplyLine(trailers), hostLine: true };
   }
