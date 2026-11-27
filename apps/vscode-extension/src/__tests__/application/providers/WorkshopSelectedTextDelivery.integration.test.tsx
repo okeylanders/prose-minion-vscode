@@ -391,10 +391,10 @@ describe('Selected Text from the Workshop panel provider to the Workshop compose
 
   describe('the toggle', () => {
     const toggle = () => screen.getByRole('switch', { name: 'Include selected text' });
+    const composer = () => screen.getAllByRole('textbox').find((element) => element.tagName === 'TEXTAREA') as HTMLTextAreaElement;
     const typeAndSend = (text: string) => {
-      const composer = screen.getAllByRole('textbox').find((element) => element.tagName === 'TEXTAREA') as HTMLTextAreaElement;
-      fireEvent.change(composer, { target: { value: text } });
-      fireEvent.keyDown(composer, { key: 'Enter' });
+      fireEvent.change(composer(), { target: { value: text } });
+      fireEvent.keyDown(composer(), { key: 'Enter' });
     };
 
     it('is off by default: nothing is watched, pushed or sent with a message', async () => {
@@ -465,7 +465,10 @@ describe('Selected Text from the Workshop panel provider to the Workshop compose
         panel.outbox.push(readySession(shared.session!.getSnapshot().pendingMessageAttachments));
       };
 
-      it('a send that races the replacement names the room the pill was drawn in, and the host refuses it whole', async () => {
+      it.each([
+        ['', 'Is the silence doing enough here?'],
+        ['A newer thought.', 'Is the silence doing enough here?\n\nA newer thought.']
+      ])('recovers the refused room-A send after replacement with later typing %j', async (laterTyping, expectedDraft) => {
         const { panel, roomA } = await pillShownInRoomA();
         replaceRoom(panel);
         expect(shared.session!.readRoomRevision()).not.toBe(roomA);
@@ -480,6 +483,14 @@ describe('Selected Text from the Workshop panel provider to the Workshop compose
           }
         ]);
         expect(shared.sends).toEqual([expect.objectContaining({ ok: false, reason: 'room-changed' })]);
+        expect(staged()).toEqual([]);
+
+        // The room replacement reaches this panel before the old send's refusal.
+        await release(panel, 1);
+        expect(composer().value).toBe('');
+        fireEvent.change(composer(), { target: { value: laterTyping } });
+        await drain(panel);
+        expect(composer().value).toBe(expectedDraft);
         expect(staged()).toEqual([]);
       });
 

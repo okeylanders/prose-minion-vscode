@@ -359,7 +359,9 @@ export const useWorkshopRoom = (): UseWorkshopRoomReturn => {
     keepDraft?: boolean;
   }>();
   const composerDraftTokenRef = React.useRef(0);
-  const pendingSend = React.useRef<{ id: string; room: number; text: string }>();
+  const activeSubmissionId = React.useRef<string>();
+  // A room change unlocks this panel's composer. Its submitted text stays here until the host settles that send.
+  const submittedDrafts = React.useRef(new Map<string, { room: number; text: string }>());
   const submissionIds = React.useRef({ prefix: `send-${Math.random().toString(36).slice(2)}`, next: 0 });
   const [submissionPending, setSubmissionPending] = React.useState(false);
   const currentRoom = React.useRef(0);
@@ -547,12 +549,13 @@ export const useWorkshopRoom = (): UseWorkshopRoomReturn => {
   const sendMessage = React.useCallback(
     (text: string, selectedText?: { snapshotId: string; roomRevision: number }, attachmentRoomRevision?: number) => {
       // The ref closes the gap before React rerenders or the host announces the running turn.
-      if (pendingSend.current || liveRunRef.current?.phase === 'streaming') {
+      if (activeSubmissionId.current || liveRunRef.current?.phase === 'streaming') {
         return false;
       }
       const room = selectedText?.roomRevision ?? attachmentRoomRevision ?? currentRoom.current;
       const id = `${submissionIds.current.prefix}-${++submissionIds.current.next}`;
-      pendingSend.current = { id, room, text };
+      submittedDrafts.current.set(id, { room, text });
+      activeSubmissionId.current = id;
       setSubmissionPending(true);
       setErrorMessage('');
       try {
@@ -561,7 +564,8 @@ export const useWorkshopRoom = (): UseWorkshopRoomReturn => {
         });
         return true;
       } catch {
-        pendingSend.current = undefined;
+        submittedDrafts.current.delete(id);
+        activeSubmissionId.current = undefined;
         setSubmissionPending(false);
         setErrorMessage('The message could not be sent to the Workshop.');
         return false;
@@ -576,12 +580,15 @@ export const useWorkshopRoom = (): UseWorkshopRoomReturn => {
   }, []);
 
   const handleSendAcknowledged = React.useCallback(({ payload }: WorkshopSendAcknowledgedMessage) => {
-    const submission = pendingSend.current;
-    if (!submission || payload.submissionId !== submission.id || payload.roomRevision !== submission.room) {
+    const submission = submittedDrafts.current.get(payload.submissionId);
+    if (!submission || payload.roomRevision !== submission.room) {
       return;
     }
-    pendingSend.current = undefined;
-    setSubmissionPending(false);
+    submittedDrafts.current.delete(payload.submissionId);
+    if (activeSubmissionId.current === payload.submissionId) {
+      activeSubmissionId.current = undefined;
+      setSubmissionPending(false);
+    }
     if (!payload.accepted && submission.text) {
       seedComposerDraft(submission.text, true);
     }
@@ -726,12 +733,13 @@ export const useWorkshopRoom = (): UseWorkshopRoomReturn => {
       setShelvedExcerpt(session.shelvedExcerpt ?? null);
       setRoomHasMemory(session.roomHasMemory);
       setContextAttachments(session.contextAttachments ?? []);
-      currentRoom.current = session.roomRevision ?? 0;
-      if (pendingSend.current && pendingSend.current.room !== currentRoom.current) {
-        pendingSend.current = undefined;
+      const nextRoom = session.roomRevision ?? 0;
+      if (currentRoom.current !== nextRoom) {
+        activeSubmissionId.current = undefined;
         setSubmissionPending(false);
       }
-      setRoomRevision(currentRoom.current);
+      currentRoom.current = nextRoom;
+      setRoomRevision(nextRoom);
       setContextRevision(session.contextRevision ?? 0);
       setPendingMessageAttachments(session.pendingMessageAttachments ?? []);
       setStandingDirectives(session.standingDirectives ?? []);

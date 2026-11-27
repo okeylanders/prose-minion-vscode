@@ -1273,7 +1273,7 @@ describe('useWorkshopRoom + useWorkshopSessions', () => {
     });
   });
 
-  it('binds a pending submission to its room and ignores old receipts after a rewind or retry', () => {
+  it.each([true, false])('settles a draft from a replaced room once without unlocking a new submission (accepted=%s)', (accepted) => {
     const { result } = renderHook(() => useWorkshop());
     const acknowledge = (submissionId: string, roomRevision: number, accepted: boolean) =>
       act(() => result.current.handleSendAcknowledged({
@@ -1282,15 +1282,26 @@ describe('useWorkshopRoom + useWorkshopSessions', () => {
       }));
     act(() => {
       result.current.handleSessionState(sessionState({ roomRevision: 7 }));
-      expect(result.current.sendMessage('', undefined, 7)).toBe(true);
+      expect(result.current.sendMessage('Draft in the first room.', undefined, 7)).toBe(true);
       expect(result.current.sendMessage('duplicate', undefined, 7)).toBe(false);
     });
     const first = posted(MessageType.WORKSHOP_SEND_MESSAGE)[0].payload;
-    expect(first).toMatchObject({ text: '', roomRevision: 7 });
+    expect(first).toMatchObject({ text: 'Draft in the first room.', roomRevision: 7 });
     act(() => result.current.handleSessionState(sessionState({ roomRevision: 8 })));
     act(() => { result.current.sendMessage('Read this.', undefined, 8); });
     const second = posted(MessageType.WORKSHOP_SEND_MESSAGE)[1].payload;
+    acknowledge(first.submissionId, 8, false);
+    expect(result.current.composerDraftSeed).toBeUndefined();
+    acknowledge(first.submissionId, 7, accepted);
+    const restored = result.current.composerDraftSeed;
+    if (accepted) {
+      expect(restored).toBeUndefined();
+    } else {
+      expect(restored).toMatchObject({ text: 'Draft in the first room.', keepDraft: true });
+    }
     acknowledge(first.submissionId, 7, false);
+    expect(result.current.composerDraftSeed).toBe(restored);
+    act(() => { expect(result.current.sendMessage('Duplicate in second room')).toBe(false); });
     expect(result.current.submissionPending).toBe(true);
     acknowledge(second.submissionId, 7, false);
     expect(result.current.submissionPending).toBe(true);
