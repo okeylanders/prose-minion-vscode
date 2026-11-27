@@ -74,6 +74,7 @@ export const LIGHTBOX_WORKSHOP_REFUSALS: Readonly<Record<LightboxWorkshopHandoff
   busy: LIGHTBOX_HANDOFF_REFUSALS.workshopBusy,
   closed: LIGHTBOX_HANDOFF_REFUSALS.workshopClosed,
   replaced: LIGHTBOX_HANDOFF_REFUSALS.workshopReplaced,
+  'room-changed': 'The Workshop room changed before it could confirm the field. Build it again in the intended room.',
   timeout: LIGHTBOX_HANDOFF_REFUSALS.workshopSilent,
   reset: LIGHTBOX_HANDOFF_REFUSALS.workshopReset,
   full: LIGHTBOX_HANDOFF_REFUSALS.workshopFull,

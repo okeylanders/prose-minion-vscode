@@ -137,18 +137,18 @@ export function shouldStartOpenRouterPromptCacheEstimate(model: string, usage: T
 export function prepareOpenRouterPromptCacheRequest(
   model: string,
   messages: readonly OpenRouterMessage[],
-  conversationId?: string,
+  routingKey?: string,
   claudeCacheTtl?: ClaudeCacheTtl
 ): OpenRouterPreparedMessages {
-  if (!conversationId) {
+  if (!routingKey) {
     return { messages };
   }
 
   const policy = resolvePromptCachePolicy(model);
 
   return {
-    // Bound the routing key without exposing tool names from runtime ids.
-    session_id: `prose-minion:${createHash('sha256').update(conversationId).digest('hex')}`,
+    // Bound the opaque routing hint without exposing its stored value.
+    session_id: `prose-minion:${createHash('sha256').update(routingKey).digest('hex')}`,
     ...policy.prepare(messages, coerceClaudeCacheTtl(claudeCacheTtl))
   };
 }

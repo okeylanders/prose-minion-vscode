@@ -22,6 +22,8 @@ describe('SettingsOverlay', () => {
 
     render(
       <SettingsOverlay
+        unsavedSessions={{ rows: [], busy: false, error: undefined, refresh: jest.fn(), open: jest.fn(), remove: jest.fn(), receive: jest.fn() }}
+        focusUnsavedSessions={false}
         supportCopyStatus="idle"
         onCopySupportEmail={jest.fn()}
         visible

@@ -11,6 +11,8 @@ import { LoadingIndicator } from '../shared/LoadingIndicator';
 import { WordCounter } from '../shared/WordCounter';
 import { StreamingContent } from '../shared/StreamingContent';
 import { Icon } from '../shared/Icon';
+import { WorkshopLauncher } from './WorkshopLauncher';
+import type { RecentWorkshopSessions, UnsavedWorkshopSessions } from '../../hooks/domain/useWorkshopSessions';
 import { AllToolsModal } from './AllToolsModal';
 import { formatAnalysisAsMarkdown } from '../../utils/formatters';
 import { VSCodeAPI } from '../../types/vscode';
@@ -28,6 +30,9 @@ interface AnalysisTabProps {
   selection: UseSelectionReturn;
   modelsSettings: UseModelsSettingsReturn;
   settings: UseSettingsReturn;
+  recentSessions: RecentWorkshopSessions;
+  unsavedSessions: UnsavedWorkshopSessions;
+  onManageUnsavedSessions: () => void;
 }
 
 export const AnalysisTab = React.memo<AnalysisTabProps>(({
@@ -36,7 +41,10 @@ export const AnalysisTab = React.memo<AnalysisTabProps>(({
   context,
   selection,
   modelsSettings,
-  settings
+  settings,
+  recentSessions,
+  unsavedSessions,
+  onManageUnsavedSessions
 }) => {
   const [text, setText] = React.useState(selection.selectedText);
   const [showContextPreview, setShowContextPreview] = React.useState(false);
@@ -171,11 +179,11 @@ export const AnalysisTab = React.memo<AnalysisTabProps>(({
     });
   };
 
-  const handleOpenWorkshop = () => {
+  const handleOpenWorkshop = (newTab = false) => {
     vscode.postMessage({
       type: MessageType.OPEN_WORKSHOP,
       source: 'webview.analysis.tab',
-      payload: {},
+      payload: newTab ? { newTab: true } : {},
       timestamp: Date.now()
     });
   };
@@ -311,13 +319,7 @@ export const AnalysisTab = React.memo<AnalysisTabProps>(({
       <div className="assistant-title-row">
         <h2 className="text-lg font-semibold mb-4">Prose Excerpt Assistant</h2>
         <div className="surface-launch-buttons">
-          <button
-            className="btn btn-secondary surface-launch-button"
-            onClick={handleOpenWorkshop}
-            title="Open the Workshop editor tab"
-          >
-            <Icon name="panelRight" size={14} /> Workshop
-          </button>
+          <WorkshopLauncher recentSessions={recentSessions} unsavedSessions={unsavedSessions} launch={handleOpenWorkshop} manage={onManageUnsavedSessions} />
           <button
             className="btn btn-secondary surface-launch-button"
             onClick={handleOpenLightbox}

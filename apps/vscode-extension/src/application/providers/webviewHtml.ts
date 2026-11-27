@@ -21,6 +21,7 @@ import * as vscode from 'vscode';
 // the same symbols the webview entry point reads, so the stamp can't drift.
 import {
   MessageType,
+  PRIMARY_WORKSHOP_ROOM_ID,
   PM_FRAME_ATTR,
   PM_FRAME_FULLTAB,
   PM_SURFACE_ATTR,
@@ -68,7 +69,8 @@ const SURFACE_DOCUMENTS: Record<WebviewSurface, SurfaceDocument> = {
 export function getWebviewHtml(
   webview: vscode.Webview,
   extensionUri: vscode.Uri,
-  surface: WebviewSurface
+  surface: WebviewSurface,
+  workshopRoomId?: string
 ): string {
   const scriptUri = webview.asWebviewUri(
     vscode.Uri.joinPath(extensionUri, 'dist', 'webview.js')
@@ -95,6 +97,18 @@ export function getWebviewHtml(
   const nonce = getNonce();
 
   const { title, rootDiv } = SURFACE_DOCUMENTS[surface];
+
+  // Stamp the host-selected slot before React mounts. A reassigned restore must drop the old room's UI draft.
+  const roomState = surface === SURFACE_WORKSHOP && workshopRoomId
+    ? `
+    if (window.__pmVsCodeApi) {
+      const api = window.__pmVsCodeApi;
+      const previous = api.getState() || {};
+      const roomId = ${JSON.stringify(workshopRoomId).replace(/</g, '\\u003c')};
+      const sameRoom = previous.workshopRoomId === roomId || (previous.workshopRoomId === undefined && roomId === ${JSON.stringify(PRIMARY_WORKSHOP_ROOM_ID)});
+      api.setState({ ...(sameRoom ? previous : {}), workshopRoomId: roomId });
+    }`
+    : '';
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -136,7 +150,7 @@ export function getWebviewHtml(
     // prefers this handle instead of acquiring a second time (which throws).
     // Without this the handlers below silently stopped forwarding the moment the
     // React app acquired the API — their try/catch swallowed the throw.
-    window.__pmVsCodeApi = (function () { try { return acquireVsCodeApi(); } catch { return undefined; } })();
+    window.__pmVsCodeApi = (function () { try { return acquireVsCodeApi(); } catch { return undefined; } })();${roomState}
     function pmPostWebviewError(message) {
       try {
         const api = window.__pmVsCodeApi;

@@ -2327,7 +2327,7 @@ describe('architectural boundaries', () => {
     const extension = fs.readFileSync(path.resolve(SRC_ROOT, '../../../apps/vscode-extension/src/extension.ts'), 'utf8');
     // Slice 2b passes the pinned-context seed; the no-op is no longer the extension's.
     expect(extension).not.toMatch(/\bWORKSHOP_NO_ROOM_SEED\b/);
-    expect(extension).toMatch(/workshopSessionStore,\s*workshopPinnedContextRoomSeed,\s*outputChannel/);
+    expect(extension).toMatch(/workshopSessionStore,\s*workshopPinnedContextRoomSeed,\s*sessionLog/);
   });
 
   it('tells a value import of a module from a type-only one', () => {
@@ -3441,9 +3441,10 @@ describe('Workshop named-session storage (ADR 2026-11-19 D6a, D6e)', () => {
       }
       return [...found].sort();
     };
-    // The store renames and deletes only staged temporaries (`writeJsonAtomically`) and derived search indexes;
-    // a named session file is replaced or removed only by the lock.
-    expect(callersOf(RENAME_OR_DELETE)).toEqual(['deleteSearchIndexIfPresent', 'writeJsonAtomically']);
+    // The store can also remove a closed secondary's rolling checkpoint under its write claim.
+    // Named session files are still replaced or removed only by the named-session lock.
+    expect(callersOf(RENAME_OR_DELETE)).toEqual(['deleteSearchIndexIfPresent', 'deleteUnsavedRoom', 'writeJsonAtomically']);
+    expect(callersOf(/this\.fileSystem\.delete\(paths\.currentPath\b/)).toEqual(['deleteUnsavedRoom']);
     expect(callersOf(/\bthis\.writeJsonAtomically\(/)).toEqual(['writeAtomically', 'writeSearchIndex']);
     expect(callersOf(/\bthis\.writeAtomically\(/)).toEqual(['writeSnapshotWithSearchIndex']);
     // A snapshot written over an existing file is only ever current.json; a named file is created, never overwritten.

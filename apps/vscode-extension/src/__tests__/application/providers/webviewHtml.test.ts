@@ -39,6 +39,7 @@ jest.mock('crypto', () => {
   };
 });
 
+import { runInNewContext } from 'vm';
 import * as fs from 'fs';
 import * as path from 'path';
 import type * as vscode from 'vscode';
@@ -81,6 +82,20 @@ describe('getWebviewHtml', () => {
     }
     expect(sidebar).not.toContain(PM_SURFACE_ATTR);
     expect(sidebar).not.toContain(PM_FRAME_ATTR);
+  });
+
+  it('binds restore state before React, preserves a matching draft and clears a reassigned one', () => {
+    const boot = (roomId: string, state?: object) => {
+      const html = getWebviewHtml(fakeWebview, extensionUri, 'workshop', roomId);
+      const scripts = [...html.matchAll(/<script nonce="[^"]+">([\s\S]*?)<\/script>/g)];
+      const api = { getState: () => state, setState: jest.fn() };
+      runInNewContext(scripts[1][1], { window: { addEventListener: jest.fn() }, acquireVsCodeApi: () => api });
+      return api.setState.mock.calls[0][0];
+    };
+    expect(boot('legacy', { draft: 'old' })).toEqual({ draft: 'old', workshopRoomId: 'legacy' });
+    const id = '11111111-1111-1111-1111-111111111111';
+    expect(boot(id, { workshopRoomId: id, draft: 'mine' })).toEqual({ workshopRoomId: id, draft: 'mine' });
+    expect(boot(id, { workshopRoomId: 'legacy', draft: 'someone else' })).toEqual({ workshopRoomId: id });
   });
 
   it('titles each surface for its tab', () => {

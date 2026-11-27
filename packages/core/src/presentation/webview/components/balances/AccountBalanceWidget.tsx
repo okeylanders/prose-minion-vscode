@@ -66,7 +66,7 @@ export const AccountBalancePill: React.FC<AccountBalancePillProps> = ({
         </span>
         {typeof lastRequestCostUsd === 'number' && (
           <span className="pm-balance-sub">
-            Last request <b>{fmtUsdPrecise(lastRequestCostUsd)}</b>
+            Last request in this window <b>{fmtUsdPrecise(lastRequestCostUsd)}</b>
           </span>
         )}
       </span>

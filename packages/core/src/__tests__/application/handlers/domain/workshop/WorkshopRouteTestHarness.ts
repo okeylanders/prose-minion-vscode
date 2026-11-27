@@ -97,6 +97,7 @@ const widgetRuntime = (
 export interface WorkshopRouteTestHarness {
   session: WorkshopSessionService;
   postMessage: jest.Mock;
+  openWorkshopBranch: jest.Mock;
   log: LogSink;
   service: jest.Mocked<AssistantToolService>;
   contextAssistant: { generateContext: jest.Mock; };
@@ -172,6 +173,7 @@ export const createWorkshopRouteTestHarness = (options: WorkshopRouteTestHarness
   // boundary reads it exactly once per commit (ADR 2026-09-30 §3).
   const retainedHistory = new Map<string, number>();
   const postMessage = jest.fn().mockResolvedValue(undefined);
+  const openWorkshopBranch = jest.fn().mockResolvedValue(undefined);
   const log = { appendLine: jest.fn() } as unknown as LogSink;
   const disposeStatusListener = jest.fn();
   const disposeSessionSaveStatusListener = jest.fn();
@@ -204,6 +206,7 @@ export const createWorkshopRouteTestHarness = (options: WorkshopRouteTestHarness
       retainedHistory.set(conversationId, messageCount);
       return { messageCount, contextSourceCount: 0 };
     }),
+    getConversationCacheEstimate: jest.fn(),
     getConversationContextBudget: jest.fn((conversationId: string | undefined) =>
       conversationId ? contextBudgets.get(conversationId) : undefined
     ),
@@ -405,7 +408,9 @@ export const createWorkshopRouteTestHarness = (options: WorkshopRouteTestHarness
     options.selectedText ?? unusedSelectedText(),
     undefined,
     undefined,
-    options.passageSearch
+    options.passageSearch,
+    undefined,
+    openWorkshopBranch
   );
   const router = new MessageRouter();
   handler.registerRoutes(router);
@@ -441,6 +446,7 @@ export const createWorkshopRouteTestHarness = (options: WorkshopRouteTestHarness
   return {
     session,
     postMessage,
+    openWorkshopBranch,
     log,
     service,
     contextAssistant,

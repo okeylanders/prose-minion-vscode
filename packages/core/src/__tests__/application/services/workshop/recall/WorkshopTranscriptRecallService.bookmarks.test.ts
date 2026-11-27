@@ -178,7 +178,8 @@ describe('one bookmark in full (PR #214 F-07)', () => {
     expect(b.bookmarkId).toBe(a.bookmarkId);
     // Open A, branch it at its first reply, rename the branch's bookmark, and save the branch.
     await room.coordinator.openNamed('saved-a');
-    await room.coordinator.branchFrom(after(a.replies[0].id), { title: 'Tea party branch' });
+    const saved = await room.coordinator.branchFrom(after(a.replies[0].id), { title: 'Tea party branch' });
+    await room.coordinator.openNamed(saved.branch.sessionId);
     const branchBookmark = room.session.getSnapshot().bookmarks[0];
     expect(branchBookmark.id).toBe(a.bookmarkId);
     room.session.renameBookmark(branchBookmark.id, 'The branch\'s cup');
@@ -201,7 +202,8 @@ describe('one bookmark in full (PR #214 F-07)', () => {
     room.session.renameBookmark(bookmark.id, 'Alice\'s cup');
     // Saved, then branched: the saved session and the open branch hold the same bookmark id.
     const saved = await room.coordinator.saveNamed('Tea party');
-    await room.coordinator.branchFrom(after(turn.id));
+    const branch = await room.coordinator.branchFrom(after(turn.id));
+    await room.coordinator.openNamed(branch.branch.sessionId);
     const scope = room.coordinator.recallScope();
     const liveSessionId = scope.available ? scope.liveSessionId : '';
     expect(liveSessionId).not.toBe(saved.sessionId);

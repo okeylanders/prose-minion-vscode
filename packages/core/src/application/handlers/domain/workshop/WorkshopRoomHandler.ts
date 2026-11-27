@@ -152,7 +152,7 @@ import {
   workshopMessageAttachmentKind
 } from '@shared/constants/workshopThreadArtifactKinds';
 import { WORKSHOP_SEND_WITHOUT_ATTACHMENT_REFUSALS } from '@handlers/domain/workshop/WorkshopMessageAttachmentReads';
-import { MessageTransport } from '@handlers/MessageHandlerContracts';
+import type { MessageTransport, WorkshopUiActions } from '@handlers/MessageHandlerContracts';
 import { MessageRouter } from '@handlers/MessageRouter';
 import type {
   WorkshopDirectedRun,
@@ -280,6 +280,7 @@ export class WorkshopRoomHandler {
     provisional?: boolean;
   };
 
+  private disposed = false;
   private readonly disposeStatusListener: () => void;
   private readonly disposeSessionSaveStatusListener: () => void;
   private readonly sliceComposition: WorkshopSliceComposition;
@@ -350,7 +351,9 @@ export class WorkshopRoomHandler {
     /** A persona's context-paths card (ADR 2026-11-19 D27): C1's checker and settings, built in `extension.ts`. */
     private readonly locationsProposals?: WorkshopLocationsProposalPorts,
     /** A persona's passage search (ADR 2026-11-20 D20): the engine, the listing and the report file, built in `extension.ts`. */
-    passageSearch?: WorkshopPassageSearchPorts
+    passageSearch?: WorkshopPassageSearchPorts,
+    revealWorkshopRoom?: (roomId: string) => boolean,
+    openWorkshopBranch?: WorkshopUiActions['openWorkshopBranch']
   ) {
     // Guide-loading status is forwarded only while a Workshop run is in
     // flight — the service is shared with the sidebar's AnalysisHandler, and
@@ -387,7 +390,7 @@ export class WorkshopRoomHandler {
         bookmarkBrowser,
         fileEditApply,
         memoryDrafts,
-        selectedText, savedSessionTodos, locationsProposals, passageSearch,
+        selectedText, savedSessionTodos, locationsProposals, passageSearch, revealWorkshopRoom, openWorkshopBranch,
         outputChannel: this.outputChannel
       },
       {
@@ -466,6 +469,7 @@ export class WorkshopRoomHandler {
    * the session aggregate and retained conversation survive this webview.
    */
   dispose(): void {
+    this.disposed = true;
     this.sliceComposition.dispose();
   }
 
@@ -606,7 +610,7 @@ export class WorkshopRoomHandler {
       return;
     }
 
-    if (!(await this.pickedAttachmentsStaged(text))) {
+    if (!(await this.pickedAttachmentsStaged(text)) || this.disposed) {
       return;
     }
 
@@ -648,12 +652,15 @@ export class WorkshopRoomHandler {
    * unseen.
    */
   private async pickedAttachmentsStaged(text: string): Promise<boolean> {
-    if (!this.sliceComposition.messageAttachmentReadsPending()) {
+    const room = this.session.readRoomRevision();
+    if (!this.sliceComposition.messageAttachmentReadsPending(room)) {
       return true;
     }
-    const room = this.session.readRoomRevision();
     this.sendStatus('Attaching the picked file before sending…');
-    const reads = await this.sliceComposition.settleMessageAttachmentReads();
+    const reads = await this.sliceComposition.settleMessageAttachmentReads(room);
+    if (this.disposed) {
+      return false;
+    }
     const fault = room !== this.session.readRoomRevision() || this.sessionPersistence.isSessionOperationPending()
       ? 'room-changed'
       : reads.kind === 'staged' ? undefined : reads.kind;

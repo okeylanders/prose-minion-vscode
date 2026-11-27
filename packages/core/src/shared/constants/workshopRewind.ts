@@ -33,12 +33,8 @@ export function workshopRewindUnavailableReason(
 }
 
 /**
- * Why the host refused a Branch (ADR 2026-09-30 §7, D2). Opening the branch
- * replaces the live room and current.json, and Branch never writes the source
- * itself, so the source must already be saved in its own named file with
- * nothing newer waiting to be written. That file must also still hold this
- * room when Branch reads it back: Git or another process may have deleted,
- * corrupted or replaced it since the room was saved.
+ * Branch requires an up-to-date named source. The coordinator verifies its
+ * file before saving the cut as an independent named session.
  */
 export type WorkshopBranchRefusalReason = 'unsaved-session' | 'unsaved-changes' | 'source-changed';
 

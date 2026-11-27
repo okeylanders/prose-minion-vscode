@@ -68,7 +68,7 @@ describe('estimated cache window', () => {
           choices: [{ message: { content: 'Reply' }, finish_reason: 'stop' }] }) } as Response;
     }) as typeof fetch;
     const client = new OpenRouterClient('key', 'anthropic/claude-sonnet-5');
-    const options = { conversationId: 'room', claudeCacheTtl: '1h' as const };
+    const options = { routingKey: 'room', claudeCacheTtl: '1h' as const };
     let observation;
     if (streaming) {
       for await (const chunk of client.createStreamingChatCompletion([], options)) {
@@ -96,7 +96,7 @@ describe('estimated cache window', () => {
           choices: [{ message: { content: 'Reply' }, finish_reason: 'stop' }] }) } as Response;
     }) as typeof fetch;
     const client = new OpenRouterClient('key', '~openai/gpt-5.6-terra:nitro');
-    const options = { conversationId: 'room', claudeCacheTtl: '1h' as const };
+    const options = { routingKey: 'room', claudeCacheTtl: '1h' as const };
     let observation;
     if (streaming) {
       for await (const chunk of client.createStreamingChatCompletion([], options)) {
@@ -125,7 +125,7 @@ describe('estimated cache window', () => {
           choices: [{ message: { content: 'Reply' }, finish_reason: 'stop' }] }) } as Response;
     }) as typeof fetch;
     const client = new OpenRouterClient('key', '~meta/muse-wonder:nitro');
-    const options = { conversationId: 'room', claudeCacheTtl: '1h' as const };
+    const options = { routingKey: 'room', claudeCacheTtl: '1h' as const };
     let observation;
     let reportedUsage;
     if (streaming) {
@@ -164,14 +164,14 @@ describe('estimated cache window', () => {
     ['openai/gpt-5.6-terra', 'room', 0, 0, undefined],
     ['openai/gpt-5.6-terra', undefined, 40, 0, undefined],
     ['openai/gpt-5.4', 'room', 40, 0, undefined]
-  ])('gates estimates by known policy and evidence (%s, %s, %s, %s)', async (model, conversationId, reads, writes, expiresAt) => {
+  ])('gates estimates by known policy and evidence (%s, %s, %s, %s)', async (model, routingKey, reads, writes, expiresAt) => {
     jest.spyOn(Date, 'now').mockReturnValue(0);
     global.fetch = jest.fn(async () => ({ ok: true, json: async () => ({ model,
       choices: [{ message: { content: 'Reply' }, finish_reason: 'stop' }],
       usage: { prompt_tokens: 100, completion_tokens: 10, total_tokens: 110,
         prompt_tokens_details: { cached_tokens: reads, cache_write_tokens: writes } }
     }) })) as unknown as typeof fetch;
-    const result = await new OpenRouterClient('key', model).createChatCompletion([], { conversationId });
+    const result = await new OpenRouterClient('key', model).createChatCompletion([], { routingKey });
     expect(result.observation?.estimatedCacheExpiresAt).toBe(expiresAt);
   });
 });
@@ -207,11 +207,11 @@ describe('OpenRouterClient conversation prompt caching', () => {
   const send = async (
     client: OpenRouterClient,
     streaming: boolean,
-    conversationId?: string,
+    routingKey?: string,
     messages: OpenRouterMessage[] = [{ role: 'user', content: 'Hello' }]
   ) => {
     const options = {
-      conversationId,
+      routingKey,
       maxTokens: 512,
       reasoning: { effort: 'low' as const },
       signal: new AbortController().signal
@@ -249,6 +249,7 @@ describe('OpenRouterClient conversation prompt caching', () => {
         session_id: expect.stringMatching(/^prose-minion:[a-f0-9]{64}$/)
       });
       expect(body.cache_control).toEqual(explicitCaching ? { type: 'ephemeral' } : undefined);
+      expect(body).not.toHaveProperty('routingKey');
       expect(body).not.toHaveProperty('conversationId');
       expect(body).not.toHaveProperty('provider');
       expect(fetchMock.mock.calls.at(-1)![1].signal).toBeInstanceOf(AbortSignal);
@@ -334,7 +335,7 @@ describe('OpenRouterClient conversation prompt caching', () => {
       });
     });
 
-    it('bounds opaque routing keys even when runtime conversation ids contain long tool names', async () => {
+    it('hashes the routing key without transmitting its raw value', async () => {
       const body = await send(new OpenRouterClient('key', 'anthropic/claude-sonnet-4.6'), streaming, 'tool-name'.repeat(100));
       expect(body.session_id.length).toBeLessThanOrEqual(256);
       expect(body.session_id).not.toContain('tool-name');

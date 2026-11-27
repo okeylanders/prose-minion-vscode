@@ -26,7 +26,7 @@ type ContextBudgetSession = Pick<
 
 type ContextBudgetAssistant = Pick<
   AssistantToolService,
-  'getConversationContextBudget' | 'getConversationContextSources' | 'measureWorkshopConversation'
+  'getConversationCacheEstimate' | 'getConversationContextBudget' | 'getConversationContextSources' | 'measureWorkshopConversation'
 >;
 
 /** The chat target's manifest name and retained conversation; the id never leaves the host. */
@@ -65,12 +65,16 @@ export function projectWorkshopContextBudget(
   const readIn = assistant.getConversationContextSources(conversationId);
   const sources = [...session.collectWriterSources(target), ...readIn].map(projectContextSource);
   const snapshot = assistant.getConversationContextBudget(conversationId);
+  const estimate = assistant.getConversationCacheEstimate(conversationId);
   // Known parts show without a fresh total (after Open, Rewind or a behavior change); the webview
   // then withholds shares and Conversation's remainder (PR #285 F-01).
   const measure = target.kind !== 'tool' ? assistant.measureWorkshopConversation(conversationId) : undefined;
   return {
     label,
     snapshot,
+    ...(estimate && { cacheEstimate: {
+      estimatedCacheExpiresAt: estimate.estimatedCacheExpiresAt, cacheRequestModelId: estimate.cacheRequestModelId
+    } }),
     sources: sources.length > 0 ? sources : undefined,
     ...(measure ? { breakdown: buildWorkshopContextBreakdown(measure, readIn.map(projectContextSource)) } : {})
   };

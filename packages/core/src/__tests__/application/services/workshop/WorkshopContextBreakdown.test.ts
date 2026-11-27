@@ -162,6 +162,7 @@ describe('the panel projection is display-safe (D8, D9)', () => {
   manager.addMessages(held, [{ role: 'user', content: `${SECRET} message` }, { role: 'assistant', content: `${SECRET} reply` }]);
   manager.appendContextTally(held, { messageIndex: 0, pieces: { 'memory.start': 10 } });
   const assistant = {
+    getConversationCacheEstimate: jest.fn(),
     getConversationContextBudget: () => ({ contextTokens: 20_000 }) as never,
     getConversationContextSources: () => [row({ label: 'chapters/alice-01.md', sourceFingerprint: 'f'.repeat(64) } as never)],
     measureWorkshopConversation: jest.fn(() => new WorkshopSystemPromptMeasures().measure(manager.getContextAccount(held)))
@@ -189,6 +190,7 @@ describe('the panel projection is display-safe (D8, D9)', () => {
     const [outcome] = reopened.importConversations([{ entry: host, systemMessage: 'Rebuilt host prompt' }]);
     const id = (outcome as { conversationId: string }).conversationId;
     const facade = {
+      getConversationCacheEstimate: (conversationId: string | undefined) => reopened.getConversationCacheEstimate(conversationId),
       getConversationContextBudget: (conversationId: string | undefined) => reopened.getContextBudget(conversationId),
       getConversationContextSources: (conversationId: string | undefined) => reopened.getContextSources(conversationId),
       measureWorkshopConversation: (conversationId: string | undefined) =>
@@ -199,6 +201,20 @@ describe('the panel projection is display-safe (D8, D9)', () => {
     expect(projected.snapshot).toBeUndefined();
     expect(projected.breakdown?.untalliedMessages).toBe(true);
     expect(part(projected.breakdown!, 'persona').tokens).toBe(estimateTextTokens('Rebuilt host prompt'));
+  });
+
+  it('projects only the restored cache clock for the targeted participant, without a token reading', () => {
+    const clock = { estimatedCacheExpiresAt: Date.now() + 60_000, cacheRequestModelId: 'anthropic/claude-sonnet-4.5' };
+    const getConversationCacheEstimate = jest.fn(() => ({ ...clock, routingKey: SECRET }));
+    const view = projectWorkshopContextBudget(session('host'), {
+      ...assistant,
+      getConversationContextBudget: () => undefined,
+      getConversationCacheEstimate
+    } as never);
+    expect(getConversationCacheEstimate).toHaveBeenCalledWith('conversation-host-secret-id');
+    expect(view.snapshot).toBeUndefined();
+    expect(view.cacheEstimate).toEqual(clock);
+    expect(JSON.stringify(view)).not.toContain(SECRET);
   });
 
   it('shows no breakdown for a tool sidecar', () => {

@@ -4,7 +4,7 @@
 
 Reference version: 2.16.0
 
-Open Prose Minion in the VS Code activity bar for the Assistant, Search, Metrics and Dictionary. Open Workshop for an ongoing conversation about a draft, or Lightbox for a board of measurements and readings about one chapter. For proofreading and line notes, right-click a Markdown or plain-text editor and open the Prose Minion submenu.
+Open Prose Minion in the VS Code activity bar for the Assistant, Search, Metrics and Dictionary. Open Workshop for an ongoing conversation about a draft. Use **New Workshop Tab** to keep a second room open beside it. Open Lightbox for a board of measurements and readings about one chapter. For proofreading and line notes, right-click a Markdown or plain-text editor and open the Prose Minion submenu.
 
 Any Workshop host or guest can look up a product question with help.search and read the matching section with help.read. Ask for the section behind an answer. See the [Prose Minion README](https://github.com/okeylanders/prose-minion-vscode/blob/main/apps/vscode-extension/README.md) for the latest release highlights and the [extension changelog](https://github.com/okeylanders/prose-minion-vscode/blob/main/apps/vscode-extension/CHANGELOG.md) for every release.
 
@@ -22,11 +22,11 @@ Open Settings from the Prose Minion sidebar header, or run Prose Minion: Setting
 
 Choose the assistant model for the Assistant and Workshop personas. Dictionary, Context, Category Search, conversation widgets and Proofread have separate model choices. Lightbox readings and Craft Flags follow the assistant model while their own model settings are empty. Passage Search follows Category Search until you choose a separate Passage Search model. Memory drafts and context-path suggestions use the helper model, which follows Proofread until you choose one. The model picker and Model Explorer let you inspect choices. Each reply's header identifies the model used.
 
-Temperature controls variation in generation. Max tokens limits response length. Context window trimming sizes the input for supported analysis tools. Include craft guides adds writing guidance at the cost of input tokens. Retained Claude conversations can reuse cached input. Choose a five-minute or one-hour cache in General settings. The Workshop clock estimates the window, and the cached count on a reply shows the reuse actually reported.
+Temperature controls variation in generation. Max tokens limits response length. Context window trimming sizes the input for supported analysis tools. Include craft guides adds writing guidance at the cost of input tokens. Retained Claude conversations can reuse cached input. Choose a five-minute or one-hour cache in General settings. When you reopen a saved Workshop conversation, it keeps its OpenRouter routing key. If its estimated cache window is still open on the selected model, the Workshop clock shows the remaining time. A branch or rewind can reuse the shared prompt prefix within that window. The cached count on a reply shows the reuse the provider actually reported.
 
 ## Sidebar appearance and diagnostics
 
-Use the sidebar header to switch its palette, or set Sidebar Theme to follow VS Code. Show Token Widget controls the header's session usage and optional cost display. Show Debug Output in the sidebar title bar opens the extension's Output channel. The Debug Logging setting may include rejected model replies containing manuscript text in that channel.
+Use the sidebar header to switch its palette, or set Sidebar Theme to follow VS Code. Show Token Widget controls the header’s usage display. Its cumulative token count and last-request cost cover all Prose Minion activity in the current VS Code window. Show Debug Output in the sidebar title bar opens the extension's Output channel. The Debug Logging setting may include rejected model replies containing manuscript text in that channel.
 
 ## Project files and context paths
 

@@ -220,6 +220,8 @@ export type AgentFinalReplyCheck = (
 ) => string | typeof AGENT_FINAL_REPLY_REFUSED | undefined;
 
 export interface AgentRunOptions {
+  /** The initiating room receives capability progress throughout this run. */
+  readonly onCapabilityStatus?: (message: string, tickerMessage?: string) => void;
   readonly temperature?: number;
   readonly maxTokens?: number;
   readonly signal?: AbortSignal;

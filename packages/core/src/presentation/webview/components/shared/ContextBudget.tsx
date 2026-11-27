@@ -242,7 +242,7 @@ export const ContextBudget: React.FC<ContextBudgetProps> = ({
             <dt>This turn</dt>
             <dd>{snapshot.callsThisTurn} {snapshot.callsThisTurn === 1 ? 'call' : 'calls'} · {snapshot.turnProcessedTokens.toLocaleString()} processed</dd>
           </div>
-          <div><dt>Cumulative</dt><dd>{cumulativeProcessedTokens.toLocaleString()} processed</dd></div>
+          <div><dt>This window</dt><dd>{cumulativeProcessedTokens.toLocaleString()} processed</dd></div>
           <div>
             <dt>Compression</dt>
             <dd className={compressionValueClass(snapshot.contextCompression)}>{compressionLabel(snapshot.contextCompression)}</dd>

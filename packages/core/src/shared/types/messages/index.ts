@@ -86,6 +86,7 @@ import {
   UpdateSettingMessage,
   SettingsDataMessage,
   TokenUsageUpdateMessage,
+  RequestTokenUsageMessage,
   ResetTokenUsageMessage,
   RequestApiKeyMessage,
   ApiKeyStatusMessage,
@@ -125,6 +126,10 @@ import {
   OpenSettingsMessage,
   OpenSettingsToggleMessage,
   OpenWorkshopMessage,
+  RecentWorkshopSessionsRequest,
+  RecentWorkshopSessionsResultMessage,
+  UnsavedWorkshopSessionsRequest,
+  UnsavedWorkshopSessionsResultMessage,
   OpenLightboxMessage,
   OpenAssistantSettingsMessage,
   RequestStartupNoticeMessage,
@@ -344,6 +349,7 @@ export type WebviewToExtensionMessage =
   | RequestActiveFileMessage
   | RequestManuscriptGlobsMessage
   | RequestChapterGlobsMessage
+  | RequestTokenUsageMessage
   | ResetTokenUsageMessage
   | RequestAccountBalanceMessage
   | RequestApiKeyMessage
@@ -354,6 +360,8 @@ export type WebviewToExtensionMessage =
   | DeleteApiKeyMessage
   | WebviewErrorMessage
   | OpenWorkshopMessage
+  | RecentWorkshopSessionsRequest
+  | UnsavedWorkshopSessionsRequest
   | OpenLightboxMessage
   | OpenAssistantSettingsMessage
   | FastGenerateDictionaryMessage
@@ -490,6 +498,8 @@ export type ExtensionToWebviewMessage =
   | ContextPathsStatusMessage
   | OpenSettingsToggleMessage
   | SelectionDataMessage
+  | RecentWorkshopSessionsResultMessage
+  | UnsavedWorkshopSessionsResultMessage
   | StartupNoticeDataMessage
   | ErrorMessage
   | StatusMessage

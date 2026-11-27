@@ -1285,8 +1285,8 @@ const PAGES: readonly NoticePage[] = [
         point, and everything after it is removed. On a message you sent, <b>Edit from here</b>{' '}
         removes it and everything after it, then puts it back in the composer (or reopens its
         widget) so you can change it and send it again. <b>Branch from here</b> leaves this
-        conversation as it is and opens a new saved session that starts from that point, so you
-        can try another direction. Save the session before you branch. Your excerpt and context
+        tab open and opens the saved branch in a new Workshop tab. Branch from a writer message
+        to edit it in the new tab’s composer, or reopen its widget there. Save the session before you branch. Your excerpt and context
         always stay as they are now.
       </>
     ),
@@ -1313,7 +1313,7 @@ const PAGES: readonly NoticePage[] = [
     legend: [
       { label: '1', term: 'Rewind to here', detail: 'keep this reply; remove everything after it.' },
       { label: '2', term: 'Edit from here', detail: 'your message comes back to edit and send again.' },
-      { label: '3', term: 'Branch from here', detail: 'a new saved session from this point; this one stays.' }
+      { label: '3', term: 'Branch from here', detail: 'open a saved branch in a new Workshop tab.' }
     ]
   },
   {

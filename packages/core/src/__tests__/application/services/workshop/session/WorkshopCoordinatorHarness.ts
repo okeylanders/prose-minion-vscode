@@ -65,16 +65,19 @@ export function setupCoordinator(
     workspace?: 'single' | 'none';
     roomSeed?: WorkshopRoomSeed;
     fileSystem?: MemoryFileSystem;
+    roomId?: string;
+    log?: LogSink;
     /** The aggregate the coordinator owns, when a test shares it with a handler; a fresh one by default. */
     session?: WorkshopSessionService;
   } = {}
 ) {
   const fs = options.fileSystem ?? new MemoryFileSystem();
-  const log: LogSink = { appendLine: jest.fn(), clear: jest.fn(), show: jest.fn() };
+  const log: LogSink = options.log ?? { appendLine: jest.fn(), clear: jest.fn(), show: jest.fn() };
   const workspace = workspaceWith(
     options.workspace === 'none' ? [] : [{ name: 'novel', path: HARNESS_ROOT }]
   );
-  const store = new WorkshopSessionStore(fs, workspace, log, harnessNow);
+  const baseStore = new WorkshopSessionStore(fs, workspace, log, harnessNow);
+  const store = options.roomId ? baseStore.forRoom(options.roomId) : baseStore;
   const session = options.session ?? new WorkshopSessionService(() => harnessNow().getTime());
   const manager = new ConversationManager();
   const assistant = {
@@ -104,7 +107,7 @@ export function setupCoordinator(
     store,
     options.roomSeed ?? WORKSHOP_NO_ROOM_SEED,
     log,
-    { now: harnessNow, idFactory: () => `room-${++nextId}`, ensureAssistantReady: async () => undefined }
+    { now: harnessNow, idFactory: () => `room-${++nextId}`, ensureAssistantReady: async () => undefined, roomId: options.roomId }
   );
   return { fs, store, session, manager, assistant, time, coordinator, log };
 }

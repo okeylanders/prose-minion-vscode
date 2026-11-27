@@ -31,6 +31,7 @@ import { useDictionaryHistory } from './hooks/domain/useDictionaryHistory';
 import { useContext } from './hooks/domain/useContext';
 import { useSearch } from './hooks/domain/useSearch';
 import { usePassageSearch } from './hooks/domain/usePassageSearch';
+import { useRecentWorkshopSessions, useUnsavedWorkshopSessions } from './hooks/domain/useWorkshopSessions';
 import { useSettings } from './hooks/domain/useSettings';
 import { useSelection } from './hooks/domain/useSelection';
 import { usePublishingSettings } from './hooks/domain/usePublishingSettings';
@@ -59,6 +60,15 @@ export const App: React.FC = () => {
   const search = useSearch();
   const passageSearch = usePassageSearch();
   const settings = useSettings();
+  const recentSessions = useRecentWorkshopSessions();
+  const unsavedSessions = useUnsavedWorkshopSessions();
+  const [focusUnsavedSessions, setFocusUnsavedSessions] = React.useState(false);
+  React.useEffect(() => {
+    if (!settings.showSettings && focusUnsavedSessions) {
+      setFocusUnsavedSessions(false);
+      document.getElementById('workshop-unsaved-sessions-toggle')?.focus();
+    }
+  }, [focusUnsavedSessions, settings.showSettings]);
   const selection = useSelection();
   const publishingSettings = usePublishingSettings();
   const wordSearchSettings = useWordSearchSettings();
@@ -106,6 +116,8 @@ export const App: React.FC = () => {
     context,
     search,
     passageSearch,
+    recentSessions,
+    unsavedSessions,
     settings,
     selection,
     publishingSettings,
@@ -247,6 +259,8 @@ export const App: React.FC = () => {
           supportCopyStatus={settings.supportCopyStatus}
           onCopySupportEmail={settings.copySupportEmail}
           visible={settings.showSettings}
+          focusUnsavedSessions={focusUnsavedSessions}
+          unsavedSessions={unsavedSessions}
           onClose={settings.close}
           vscode={vscode}
           modelsSettings={modelsSettings}
@@ -298,6 +312,9 @@ export const App: React.FC = () => {
           >
             <AnalysisTab
               vscode={vscode}
+              recentSessions={recentSessions}
+              unsavedSessions={unsavedSessions}
+              onManageUnsavedSessions={() => { setFocusUnsavedSessions(true); settings.open(); }}
               analysis={analysis}
               context={context}
               selection={selection}

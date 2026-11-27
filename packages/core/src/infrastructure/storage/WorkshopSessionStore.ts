@@ -9,16 +9,21 @@
  */
 
 import * as path from 'path';
+import { createHash, randomUUID } from 'crypto';
+import { PRIMARY_WORKSHOP_ROOM_ID, isNamedSessionFileName, roomIdFromWorkshopFile, workshopRoomFileName } from '@/application/services/workshop/WorkshopRoomSlot';
+import { hasSameWorkshopRecoveryContent } from '@/application/services/workshop/WorkshopSessionRecoveryEquality';
+import { hasWorkshopRoomWork, workshopUnsavedRoomPreview, type WorkshopUnsavedRoomStatus } from '@/application/services/workshop/WorkshopUnsavedRoom';
 import { withoutRollingProvenance } from '@/application/services/workshop/WorkshopRollingCheckpoint';
 import {
   decodeWorkshopPersistedSessionCheckpoint,
   WorkshopPersistedSessionCheckpointDecodeResult,
   WorkshopPersistedSessionV2,
-  parseWorkshopPersistedSession
+  parseWorkshopPersistedSession,
+  workshopArchiveContent
 } from '@/application/services/workshop/WorkshopPersistedSession';
-import { FileSystem, FileType, LogSink, Workspace } from '@/platform';
+import { FileSystem, FileType, type LocalRollingClaim, LogSink, Workspace } from '@/platform';
 import { isPathWithinRoot } from '@/infrastructure/storage/pathContainment';
-import { formatByteLimit, WorkshopNamedSessionLock } from '@/infrastructure/storage/WorkshopNamedSessionLock';
+import { formatByteLimit, WorkshopNamedSessionBusyError, WorkshopNamedSessionLock, WorkshopNamedSessionRecoveryRequiredError } from '@/infrastructure/storage/WorkshopNamedSessionLock';
 import { recoverWorkshopNamedSession, type WorkshopNamedSessionRecoveryOutcome } from '@/infrastructure/storage/WorkshopNamedSessionRecovery';
 import { withWorkshopNamedSessionLocks } from '@/infrastructure/storage/WorkshopNamedSessionLockRows';
 import { isRecord } from '@/application/services/workshop/persistedValidation';
@@ -128,6 +133,40 @@ export class WorkshopNamedSessionChangedError extends Error {
   }
 }
 
+export class WorkshopRollingCheckpointConflictError extends Error {
+  constructor(message = 'Another window changed this tab’s rolling checkpoint. The existing file was kept.') {
+    super(message);
+    this.name = 'WorkshopRollingCheckpointConflictError';
+  }
+}
+
+export class WorkshopRollingCheckpointBusyError extends WorkshopRollingCheckpointConflictError {
+  constructor() {
+    super('Another window is writing this rolling checkpoint. The existing file was kept. Try again in a moment.');
+    this.name = 'WorkshopRollingCheckpointBusyError';
+  }
+}
+
+export class WorkshopRollingCheckpointRecoveryRequiredError extends WorkshopRollingCheckpointConflictError {
+  constructor() {
+    super('The rolling checkpoint has an expired write claim. The existing file was kept. Use Reopen Closed Workshop Room… to open a recovery copy.');
+    this.name = 'WorkshopRollingCheckpointRecoveryRequiredError';
+  }
+}
+
+interface WorkshopRoomCheckpointRow {
+  roomId: string;
+  title: string;
+  updatedAt: string;
+  recoveryToken?: string;
+}
+
+/** A revision is bound to one slot and workspace. Unreadable/claimed files have no deletion authority. */
+export interface WorkshopUnsavedRoomRow extends WorkshopRoomCheckpointRow {
+  revision: string;
+  preview: string;
+}
+
 export class WorkshopSessionFileReadError extends Error {
   constructor(
     readonly fileName: string,
@@ -183,15 +222,9 @@ interface CachedNamedSessionPath {
  * filename generation out of UI code.
  */
 export class WorkshopSessionStore {
-  private temporaryWriteCounter = 0;
-  private readonly ensuredStorageDirectories = new Set<string>();
-  /**
-   * A named file's path is immutable after allocation. Cache only paths this
-   * store has created or resolved authoritatively so live-room autosave does
-   * not reparse every saved transcript after each committed mutation.
-   */
-  private readonly namedSessionPaths = new Map<string, CachedNamedSessionPath>();
-
+  private readonly currentFileName: string;
+  /** Exact revisions accepted by this view. Browser previews and read-back checks never advance them. */
+  private readonly rollingRevisions = new Map<string, string>();
   constructor(
     private readonly fileSystem: FileSystem,
     private readonly workspace: Workspace,
@@ -199,8 +232,220 @@ export class WorkshopSessionStore {
     private readonly now: () => Date = () => new Date(),
     private readonly limits: WorkshopSessionStoreLimits = WORKSHOP_SESSION_STORE_LIMITS,
     /** The Bookmarks screen's page bounds (ADR 2026-11-05 D8). */
-    private readonly pageLimits: WorkshopBookmarkBrowserLimits = WORKSHOP_BOOKMARK_BROWSER_LIMITS
-  ) {}
+    private readonly pageLimits: WorkshopBookmarkBrowserLimits = WORKSHOP_BOOKMARK_BROWSER_LIMITS,
+    roomId = PRIMARY_WORKSHOP_ROOM_ID,
+    /** Room views share immutable named paths resolved by this store. */
+    private readonly namedSessionPaths = new Map<string, CachedNamedSessionPath>(),
+    private readonly ensuredStorageDirectories = new Set<string>(),
+    private readonly roomWorkspace?: WorkshopSessionStoreAvailability
+  ) {
+    this.currentFileName = workshopRoomFileName(roomId);
+  }
+
+  /** Room views share the named catalog and retain their own rolling path. */
+  forRoom(roomId: string): WorkshopSessionStore {
+    return new WorkshopSessionStore(this.fileSystem, this.workspace, this.log, this.now, this.limits,
+      this.pageLimits, roomId, this.namedSessionPaths, this.ensuredStorageDirectories, this.roomWorkspace ?? this.availability());
+  }
+
+  /** Only rolling files can select a restore slot. A damaged or large file remains available for recovery. */
+  async listRoomCheckpoints(): Promise<WorkshopRoomCheckpointRow[]> {
+    const paths = this.availability();
+    if (!paths.available) { return []; }
+    let entries: Array<[string, FileType]>;
+    try {
+      entries = await this.fileSystem.readDirectory(paths.sessionsDirectory);
+    } catch (error) {
+      if (isMissingFileError(error)) { return []; }
+      throw error;
+    }
+    const directories = new Set(entries.filter(([, type]) => type === FileType.Directory).map(([name]) => name));
+    const rooms: WorkshopRoomCheckpointRow[] = [];
+    for (const [name, type] of entries) {
+      const roomId = roomIdFromWorkshopFile(name);
+      if (type !== FileType.File || !roomId) { continue; }
+      const currentPath = path.join(paths.sessionsDirectory, name);
+      // Keep every file reopenable while limiting how many previews one picker can parse.
+      const summary = rooms.length < this.limits.maximumFiles
+        ? (await this.readCurrentForBrowser({ ...paths, currentPath }, undefined)).summary
+        : undefined;
+      const claim = directories.has(`.${name}.lock`) ? await this.named.rollingClaim(currentPath) : undefined;
+      rooms.push({
+        roomId, title: summary?.title ?? name, updatedAt: summary?.updatedAt ?? '',
+        ...(claim?.state === 'recovery-required' && { recoveryToken: claim.token })
+      });
+    }
+    return rooms.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt) || a.roomId.localeCompare(b.roomId));
+  }
+
+  /** Enumerate rolling files directly, including index-less files from previous versions. */
+  async listUnsavedRooms(): Promise<WorkshopUnsavedRoomRow[]> {
+    if (!this.availability().available) { return []; }
+    const paths = this.requireAvailability();
+    let entries: Array<[string, FileType]>;
+    try {
+      entries = await this.fileSystem.readDirectory(paths.sessionsDirectory);
+    } catch (error) {
+      if (isMissingFileError(error)) { return []; }
+      throw error;
+    }
+    const rolling = entries.filter(([name, type]) => {
+      const roomId = roomIdFromWorkshopFile(name);
+      return type === FileType.File && roomId && roomId !== PRIMARY_WORKSHOP_ROOM_ID;
+    });
+    if (!rolling.length) { return []; }
+    // A bounded sidecar can locate a named candidate, but only the complete named contents prove a match.
+    // Index once per listing so a library of unsaved sessions does not rescan every named file per row.
+    const named = new Map<string, string | null>();
+    for (const [name, type] of entries) {
+      if (type !== FileType.File || !isNamedSessionFileName(name)) { continue; }
+      const indexName = workshopSessionSearchIndexFileName(name);
+      const index = await this.readSearchIndexForBrowser(path.join(paths.sessionsDirectory, indexName), indexName, name);
+      let id = index?.sessionId;
+      if (!id) {
+        try { id = (await this.readSessionFileExact(path.join(paths.sessionsDirectory, name), name))?.session.sessionId; }
+        catch (error) { this.skip(name, errorMessage(error)); }
+      }
+      if (id) { named.set(id, named.has(id) ? null : name); }
+    }
+    const locks = new Set(entries.filter(([, type]) => type === FileType.Directory).map(([name]) => name));
+    const rows: WorkshopUnsavedRoomRow[] = [];
+    for (const [name] of rolling) {
+      const roomId = roomIdFromWorkshopFile(name)!;
+      const filePath = path.join(paths.sessionsDirectory, name);
+      const claim = locks.has(`.${name}.lock`) ? await this.named.rollingClaim(filePath) : undefined;
+      let row: WorkshopUnsavedRoomRow = { roomId, title: name, updatedAt: '', preview: '', revision: '' };
+      try {
+        const observed = await this.observeRolling(filePath, name);
+        if (!observed) { continue; }
+        const { decoded, revision } = observed;
+        const session = decoded.session;
+        const protectedFile = (claim && claim.state !== 'none') || needsCheckpointRecovery(decoded);
+        row = { roomId, title: session.title, updatedAt: session.updatedAt, preview: workshopUnsavedRoomPreview(session.workshop),
+          revision: protectedFile ? '' : revision };
+        if (!protectedFile) {
+          if (!hasWorkshopRoomWork(session)) { continue; }
+          const candidate = named.get(session.sessionId);
+          if (candidate && !locks.has(`.${candidate}.lock`)) {
+            const saved = await this.readSessionFileExact(path.join(paths.sessionsDirectory, candidate), candidate);
+            if (saved && !needsCheckpointRecovery(saved) && hasSameWorkshopRecoveryContent(session, saved.session)) { continue; }
+          }
+        }
+      } catch (error) {
+        this.skip(name, errorMessage(error));
+      }
+      if (claim?.state === 'recovery-required') { row.recoveryToken = claim.token; }
+      rows.push(row);
+    }
+    return rows.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt) || a.roomId.localeCompare(b.roomId));
+  }
+
+  /** The same content test for a retained in-memory room and a closed disk checkpoint. */
+  async classifyRoomContents(session: WorkshopPersistedSessionV2): Promise<WorkshopUnsavedRoomStatus> {
+    if (!hasWorkshopRoomWork(session)) { return 'empty'; }
+    if (!this.availability().available) { return 'unsaved'; }
+    try {
+      const named = await this.findNamedSession(session.sessionId, this.requireAvailability(), { ignoreUnreadable: true });
+      if (named && !needsCheckpointRecovery(named) && hasSameWorkshopRecoveryContent(session, named.session)) {
+        const claim = await this.named.rollingClaim(named.filePath);
+        if (claim.state === 'none') { return 'saved'; }
+      }
+    } catch (error) { this.skip(session.title, errorMessage(error)); }
+    return 'unsaved';
+  }
+
+  async roomCheckpointStatus(roomId: string): Promise<{ status: WorkshopUnsavedRoomStatus; revision: string } | undefined> {
+    const slot = this.forRoom(roomId);
+    const paths = slot.requireAvailability();
+    if ((await this.named.rollingClaim(paths.currentPath)).state !== 'none') {
+      throw new WorkshopRollingCheckpointConflictError();
+    }
+    const observed = await this.observeRolling(paths.currentPath, slot.currentFileName);
+    if (!observed) { return undefined; }
+    if (needsCheckpointRecovery(observed.decoded)) { throw new Error('The checkpoint requires recovery.'); }
+    return { status: await slot.classifyRoomContents(observed.decoded.session), revision: observed.revision };
+  }
+
+  private async observeRolling(filePath: string, fileName: string) {
+    let revision = '';
+    const decoded = await this.readSessionFileExact(filePath, fileName, bytes => {
+      if (bytes) { revision = createHash('sha256').update(filePath).update('\0').update(bytes).digest('hex'); }
+    });
+    return decoded && { decoded, revision };
+  }
+
+  /** Final mutation checks belong inside the rolling write claim, including the live-room generation guard. */
+  async deleteUnsavedRoom(roomId: string, revision: string, stillClosed: () => boolean,
+    expectedStatus?: 'empty' | 'saved'): Promise<void> {
+    if (roomId === PRIMARY_WORKSHOP_ROOM_ID || !revision) { throw new Error('This Workshop checkpoint is protected.'); }
+    const slot = this.forRoom(roomId);
+    const paths = slot.requireAvailability();
+    const changed = () => new Error('The Workshop checkpoint changed. Refresh the unsaved sessions list.');
+    await this.named.withRollingLock(paths.currentPath, roomId, async () => {
+      const observed = await this.observeRolling(paths.currentPath, slot.currentFileName);
+      if (!observed || observed.revision !== revision || needsCheckpointRecovery(observed.decoded)) { throw changed(); }
+      const session = observed.decoded.session;
+      const remove = async () => {
+        const final = await this.observeRolling(paths.currentPath, slot.currentFileName);
+        slot.requireAvailability();
+        if (final?.revision !== revision || !stillClosed()) { throw changed(); }
+        await this.fileSystem.delete(paths.currentPath, { useTrash: expectedStatus === undefined });
+        try {
+          await this.deleteSearchIndexIfPresent(paths, slot.currentFileName);
+        } catch (error) {
+          // Only the authoritative snapshot owns the row. An orphaned search index cannot reopen it.
+          this.skip(slot.currentFileName, `checkpoint removed; could not remove search index: ${errorMessage(error)}`);
+        }
+      };
+      if (expectedStatus === 'saved') {
+        const found = await this.requireNamedSession(session.sessionId, paths);
+        await this.named.withCheckpointLock(found.filePath, session.sessionId, async () => {
+          const latest = await this.readSessionFileExact(found.filePath, found.fileName);
+          if (!latest || needsCheckpointRecovery(latest) || !hasSameWorkshopRecoveryContent(session, latest.session)) { throw changed(); }
+          await remove();
+        });
+      } else {
+        const status = await slot.classifyRoomContents(session);
+        if (status !== (expectedStatus ?? 'unsaved')) { throw changed(); }
+        await remove();
+      }
+    });
+  }
+
+  /** The writer chose to recover this expired claim into a new independent room. The source is read-only. */
+  async recoverRollingRoom(roomId: string, recoveryToken: string, stillClosed: () => boolean = () => true): Promise<string> {
+    const source = this.forRoom(roomId);
+    const paths = source.requireAvailability();
+    const checkClaim = async () => {
+      const claim = await this.named.rollingClaim(paths.currentPath);
+      if (claim.state === 'busy') {
+        throw new WorkshopRollingCheckpointBusyError();
+      }
+      if (claim.state !== 'recovery-required' || claim.token !== recoveryToken || this.requireAvailability().rootPath !== paths.rootPath) {
+        throw new Error('The Workshop checkpoint or workspace changed. Reopen the closed-room picker.');
+      }
+    };
+    await checkClaim();
+    let baseline: string | undefined;
+    const decoded = await this.readSessionFileExact(paths.currentPath, source.currentFileName, bytes => { baseline = rollingRevision(bytes); });
+    if (!decoded) {
+      throw new Error('The rolling checkpoint is no longer available to copy.');
+    }
+    const newRoomId = randomUUID();
+    const replacement = this.forRoom(newRoomId);
+    const snapshot = { ...withoutRollingProvenance(decoded.session), sessionId: randomUUID() };
+    await checkClaim();
+    await replacement.writeCurrent(snapshot, {
+      canCommit: stillClosed,
+      beforeCommit: async () => {
+        await checkClaim();
+        if (await this.readRollingRevision(paths.currentPath) !== baseline || !stillClosed()) {
+          throw new Error('The Workshop checkpoint changed during recovery. Reopen the closed-room picker.');
+        }
+      }
+    });
+    return newRoomId;
+  }
 
   /** Every replace or remove of a named file holds its lock (ADR 2026-11-19 D6a, D6b). */
   private readonly named = new WorkshopNamedSessionLock(this.fileSystem, this.log, this.now, this.limits.maximumExactFileBytes,
@@ -220,7 +465,7 @@ export class WorkshopSessionStore {
       available: true,
       rootPath,
       sessionsDirectory,
-      currentPath: path.join(sessionsDirectory, 'current.json')
+      currentPath: path.join(sessionsDirectory, this.currentFileName)
     };
   }
 
@@ -232,7 +477,11 @@ export class WorkshopSessionStore {
     WorkshopPersistedSessionCheckpointDecodeResult | undefined
   > {
     const paths = this.requireAvailability();
-    return this.readSessionFileExact(paths.currentPath, 'current.json');
+    return this.readSessionFileExact(paths.currentPath, this.currentFileName, bytes => {
+      if (!this.rollingRevisions.has(paths.currentPath)) {
+        this.rollingRevisions.set(paths.currentPath, rollingRevision(bytes));
+      }
+    });
   }
 
   /**
@@ -242,18 +491,48 @@ export class WorkshopSessionStore {
    */
   async writeCurrent(
     session: WorkshopPersistedSessionV2,
-    options: { beforeCommit?: () => Promise<void> } = {}
+    options: { beforeCommit?: () => Promise<void>; canCommit?: () => boolean } = {}
   ): Promise<void> {
     const paths = this.requireAvailability();
     const decoded = this.validateSessionForWrite(session);
-    await this.writeSnapshotWithSearchIndex(
-      paths,
-      paths.currentPath,
-      'current.json',
-      decoded,
-      true,
-      options.beforeCommit
-    );
+    const expected = this.rollingRevisions.get(paths.currentPath) ?? 'absent';
+    try {
+      await this.named.withRollingLock(paths.currentPath, session.sessionId, async replace => {
+        const verify = async () => {
+          await options.beforeCommit?.();
+          const latest = await this.readRollingRevision(paths.currentPath);
+          if (latest !== expected || options.canCommit?.() === false) { throw new WorkshopRollingCheckpointConflictError(); }
+        };
+        const written = await this.writeSnapshotWithSearchIndex(
+          paths, paths.currentPath, this.currentFileName, decoded, expected !== 'absent', verify, replace
+        );
+        this.rollingRevisions.set(paths.currentPath, rollingRevision(written));
+      });
+    } catch (error) {
+      if (error instanceof WorkshopNamedSessionBusyError) {
+        throw new WorkshopRollingCheckpointBusyError();
+      }
+      if (error instanceof WorkshopNamedSessionRecoveryRequiredError) {
+        throw new WorkshopRollingCheckpointRecoveryRequiredError();
+      }
+      if (isDestinationExistsError(error)) {
+        throw new WorkshopRollingCheckpointConflictError();
+      }
+      throw error;
+    }
+  }
+
+  private async readRollingRevision(filePath: string): Promise<string> {
+    try {
+      const stat = await this.fileSystem.stat(filePath);
+      if (stat.size > this.limits.maximumExactFileBytes) { throw new WorkshopRollingCheckpointConflictError(); }
+      const bytes = await this.fileSystem.readFile(filePath);
+      if (bytes.length > this.limits.maximumExactFileBytes) { throw new WorkshopRollingCheckpointConflictError(); }
+      return rollingRevision(bytes);
+    } catch (error) {
+      if (isMissingFileError(error)) { return 'absent'; }
+      throw error;
+    }
   }
 
   /** Allocate a named file with immutable identity/path. The caller supplies a fresh id. */
@@ -340,6 +619,40 @@ export class WorkshopSessionStore {
       truncated: entries.truncated,
       searchTruncated: entries.searchTruncated || current.searchTruncated
     };
+  }
+
+  /** Saved filenames retain their creation date, so the three most recently updated rooms can be anywhere in the directory. */
+  async listRecentNamed(signal?: AbortSignal): Promise<WorkshopStoredSessionSummary[]> {
+    if (!this.availability().available) { return []; }
+    const paths = this.requireAvailability();
+    throwIfAborted(signal);
+    let entries: Array<[string, FileType]>;
+    try {
+      entries = await this.fileSystem.readDirectory(paths.sessionsDirectory);
+    } catch (error) {
+      if (isMissingFileError(error)) { return []; }
+      throw error;
+    }
+    const recent: WorkshopStoredSessionSummary[] = [];
+    for (const [name, type] of entries) {
+      if (type !== FileType.File || !isNamedSessionFileName(name)) { continue; }
+      throwIfAborted(signal);
+      // This reader prefers a bounded index, supports legacy files, and never sets the authoritative path for an id.
+      const entry = await this.readPageEntry(paths, name, signal);
+      if (entry.kind !== 'read' || !entry.summary) { continue; }
+      const candidate = entry.summary;
+      const previous = recent.findIndex(row => row.sessionId === candidate.sessionId);
+      if (previous >= 0) {
+        if (compareSummariesNewestFirst(candidate, recent[previous]) >= 0) { continue; }
+        recent.splice(previous, 1);
+      }
+      recent.push(candidate);
+      recent.sort(compareSummariesNewestFirst);
+      if (recent.length > 3) { recent.pop(); }
+    }
+    throwIfAborted(signal);
+    const current = this.availability();
+    return current.available && current.rootPath === paths.rootPath ? recent : [];
   }
 
   /**
@@ -444,6 +757,12 @@ export class WorkshopSessionStore {
 
   private requireAvailability(): Extract<WorkshopSessionStoreAvailability, { available: true }> {
     const availability = this.availability();
+    const bound = this.roomWorkspace;
+    if (bound && (bound.available
+      ? !availability.available || bound.rootPath !== availability.rootPath
+      : availability.available || bound.reason !== availability.reason)) {
+      throw new Error('The Workshop workspace changed after this room was attached.');
+    }
     if (!availability.available) {
       throw new WorkshopSessionStoreUnavailableError(availability.reason);
     }
@@ -689,7 +1008,7 @@ export class WorkshopSessionStore {
       // An orphan current searchIndex must never invent a live session.
       return { searchTruncated: false };
     }
-    const fileName = 'current.json';
+    const fileName = path.basename(fullPath);
     const searchIndex = await this.readSearchIndexForBrowser(
       this.namedPath(paths, workshopSessionSearchIndexFileName(fileName)),
       workshopSessionSearchIndexFileName(fileName),
@@ -750,13 +1069,15 @@ export class WorkshopSessionStore {
    */
   private async readSessionFileExact(
     filePath: string,
-    displayName: string
+    displayName: string,
+    observed?: (bytes: Uint8Array | undefined) => void
   ): Promise<WorkshopPersistedSessionCheckpointDecodeResult | undefined> {
     try {
       const stat = await this.fileSystem.stat(filePath);
       this.assertExactFileSize(stat.size, displayName);
     } catch (error) {
       if (isMissingFileError(error)) {
+        observed?.(undefined);
         return undefined;
       }
       if (error instanceof WorkshopSessionFileReadError) {
@@ -769,12 +1090,14 @@ export class WorkshopSessionStore {
       bytes = await this.fileSystem.readFile(filePath);
     } catch (error) {
       if (isMissingFileError(error)) {
+        observed?.(undefined);
         return undefined;
       }
       throw new WorkshopSessionFileReadError(displayName, errorMessage(error));
     }
     try {
       this.assertExactFileSize(bytes.byteLength, displayName);
+      observed?.(bytes);
       const text = decoder.decode(bytes);
       assertPersistedJsonNestingDepth(text, `Workshop session ${displayName}`);
       return decodeWorkshopPersistedSessionCheckpoint(JSON.parse(text));
@@ -897,11 +1220,13 @@ export class WorkshopSessionStore {
     fileName: string,
     session: WorkshopPersistedSessionV2,
     overwrite: boolean,
-    beforeCommit?: () => Promise<void>
-  ): Promise<void> {
+    beforeCommit?: () => Promise<void>,
+    replace?: LocalRollingClaim['replace']
+  ): Promise<Uint8Array> {
     await this.ensureStorageDirectory(paths);
-    await this.writeAtomically(targetPath, session, overwrite, beforeCommit);
+    const bytes = await this.writeAtomically(targetPath, session, overwrite, beforeCommit, replace);
     await this.writeSearchIndexAfterCommit(paths, fileName, session);
+    return bytes;
   }
 
   private async writeSearchIndexAfterCommit(
@@ -947,15 +1272,17 @@ export class WorkshopSessionStore {
     targetPath: string,
     session: WorkshopPersistedSessionV2,
     overwrite: boolean,
-    beforeCommit?: () => Promise<void>
-  ): Promise<void> {
-    await this.writeJsonAtomically(
+    beforeCommit?: () => Promise<void>,
+    replace?: LocalRollingClaim['replace']
+  ): Promise<Uint8Array> {
+    return this.writeJsonAtomically(
       targetPath,
       session,
       overwrite,
       this.limits.maximumExactFileBytes,
       'Workshop session',
-      beforeCommit
+      beforeCommit,
+      replace
     );
   }
 
@@ -965,14 +1292,19 @@ export class WorkshopSessionStore {
     overwrite: boolean,
     maximumBytes: number,
     description: string,
-    beforeCommit?: () => Promise<void>
-  ): Promise<void> {
+    beforeCommit?: () => Promise<void>,
+    replace?: LocalRollingClaim['replace']
+  ): Promise<Uint8Array> {
     const bytes = this.named.encode(value, description, maximumBytes);
-    const temporaryPath = `${targetPath}.tmp-${this.now().getTime()}-${++this.temporaryWriteCounter}`;
+    const temporaryPath = `${targetPath}.tmp-${randomUUID()}`;
     try {
       await this.fileSystem.writeFile(temporaryPath, bytes);
       await beforeCommit?.();
-      await this.fileSystem.rename(temporaryPath, targetPath, { overwrite });
+      if (overwrite && replace) {
+        await replace(temporaryPath);
+      } else {
+        await this.fileSystem.rename(temporaryPath, targetPath, { overwrite });
+      }
     } catch (error) {
       try {
         await this.fileSystem.delete(temporaryPath);
@@ -981,6 +1313,7 @@ export class WorkshopSessionStore {
       }
       throw error;
     }
+    return bytes;
   }
 
   private namedPath(
@@ -1070,7 +1403,7 @@ function fullSessionMatches(
   // the bounded amount of text the browser is allowed to inspect instead of
   // serializing the full unbounded session and slicing afterward.
   const bounded = boundedSearchText(
-    [session.workshop, session.conversations],
+    [session.workshop, session.conversations.map(workshopArchiveContent)],
     maximumCharacters
   );
   return {
@@ -1151,12 +1484,6 @@ function formatFilenameTimestamp(date: Date): string {
   return `${date.getUTCFullYear()}${pad(date.getUTCMonth() + 1)}${pad(date.getUTCDate())}-${pad(date.getUTCHours())}${pad(date.getUTCMinutes())}${pad(date.getUTCSeconds())}`;
 }
 
-function isNamedSessionFileName(name: string): boolean {
-  return name.endsWith('.json') &&
-    name !== 'current.json' &&
-    !name.endsWith('.summary.json');
-}
-
 function isMissingFileError(error: unknown): boolean {
   return isMissingFileSystemPathError(error);
 }
@@ -1175,4 +1502,16 @@ function throwIfAborted(signal: AbortSignal | undefined): void {
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+function needsCheckpointRecovery(decoded: WorkshopPersistedSessionCheckpointDecodeResult): boolean {
+  // Routine legacy defaults, migrated room offsets and unverified history marks do not drop
+  // writer content. Never prune a checkpoint whose widget, bookmark, or reaction had to be discarded.
+  return decoded.recoveryNotices.length > 0 || decoded.normalizations.some(change =>
+    change === 'dropped-dangling-bookmarks' || change === 'dropped-dangling-reactions' ||
+    change === 'discarded-nonpersona-widget-recommendation' || change === 'dropped-duplicate-pending-lightbox-tiles');
+}
+
+function rollingRevision(bytes: Uint8Array | undefined): string {
+  return bytes ? createHash('sha256').update(bytes).digest('hex') : 'absent';
 }

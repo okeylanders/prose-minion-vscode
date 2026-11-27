@@ -44,7 +44,21 @@ export interface FileStat {
   size: number;
 }
 
+/** Native operations for a rolling file whose publisher has already acquired its filesystem token. */
+export interface LocalRollingClaim {
+  /** Atomically replace the existing file with its staged sibling, after the store checks its observed revision. */
+  replace(stagedPath: string): Promise<void>;
+  /** False requests ordinary port cleanup. */
+  release(): boolean;
+}
+
 export interface FileSystem {
+  /**
+   * Optional operations bound to the exact local rolling file and acquired writer token.
+   * Keep remote/provider operations on the regular port. Release after publication settles.
+   */
+  prepareRollingClaim?(filePath: string, token: string): LocalRollingClaim | undefined;
+
   /** Read a file's bytes. Throws if missing (mirrors workspace.fs). */
   readFile(path: string): Promise<Uint8Array>;
   /** Write bytes, creating parent directories as needed (workspace.fs semantics). */
@@ -57,9 +71,9 @@ export interface FileSystem {
   rename(fromPath: string, toPath: string, options?: { overwrite?: boolean }): Promise<void>;
   /**
    * Delete a path. `recursive` defaults to false so deleting a directory tree
-   * is always deliberate.
+   * is always deliberate. Explicit writer deletions may request the host trash.
    */
-  delete(path: string, options?: { recursive?: boolean }): Promise<void>;
+  delete(path: string, options?: { recursive?: boolean; useTrash?: boolean }): Promise<void>;
   /** List a directory as [name, type] tuples. */
   readDirectory(path: string): Promise<Array<[string, FileType]>>;
   /** Stat a path. Throws if missing (callers catch for existence checks). */

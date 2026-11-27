@@ -2,7 +2,7 @@
 
 /**
  * The Analysis tab's editor-tab launchers: Workshop and, beside it, Lightbox
- * (launch entry points, 2026-10-20). Each posts its own zero-payload envelope;
+ * (launch entry points, 2026-10-20). The split Workshop control can request a fresh room;
  * UIHandler routes it to the host's open action (see UIHandler.test.ts).
  */
 
@@ -11,6 +11,7 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import { AnalysisTab } from '@components/tabs/AnalysisTab';
 import { useAnalysis } from '@hooks/domain/useAnalysis';
 import { useContext } from '@hooks/domain/useContext';
+import { useRecentWorkshopSessions, useUnsavedWorkshopSessions } from '@hooks/domain/useWorkshopSessions';
 import { useModelsSettings } from '@hooks/domain/useModelsSettings';
 import { useSelection } from '@hooks/domain/useSelection';
 import { useSettings } from '@hooks/domain/useSettings';
@@ -30,6 +31,8 @@ describe('AnalysisTab launch buttons', () => {
     const selection = useSelection();
     const modelsSettings = useModelsSettings();
     const settings = useSettings();
+    const recentSessions = useRecentWorkshopSessions();
+    const unsavedSessions = useUnsavedWorkshopSessions();
     return (
       <AnalysisTab
         vscode={vscode}
@@ -38,6 +41,9 @@ describe('AnalysisTab launch buttons', () => {
         selection={selection}
         modelsSettings={modelsSettings}
         settings={settings}
+        recentSessions={recentSessions}
+        unsavedSessions={unsavedSessions}
+        onManageUnsavedSessions={settings.open}
       />
     );
   }
@@ -56,16 +62,21 @@ describe('AnalysisTab launch buttons', () => {
     jest.clearAllMocks();
   });
 
-  it('shows Lightbox next to Workshop in the title row, with the same style', () => {
+  it('groups the Workshop actions beside Lightbox and requests a fresh tab on each plus click', () => {
     render(<AnalysisHarness />);
-
-    const buttons = within(titleRow()).getAllByRole('button');
-    expect(buttons.map((button) => button.textContent?.trim())).toEqual(['Workshop', 'Lightbox']);
-    expect(buttons.map((button) => button.className)).toEqual([
-      'btn btn-secondary surface-launch-button',
-      'btn btn-secondary surface-launch-button'
+    const row = within(titleRow());
+    const workshop = within(row.getByRole('group', { name: 'Workshop tabs' }));
+    const add = workshop.getByRole('button', { name: 'New Workshop tab' });
+    expect(row.getAllByRole('button')).toEqual([
+      workshop.getByRole('button', { name: 'Workshop' }), add, workshop.getByRole('button', { name: 'Workshop sessions' }),
+      row.getByRole('button', { name: 'Lightbox' })
     ]);
-    expect(buttons[1].getAttribute('title')).toBe('Open the Lightbox editor tab');
+    vscode.postMessage.mockClear();
+    fireEvent.click(add);
+    fireEvent.click(add);
+    expect(vscode.postMessage.mock.calls.map(([message]) => message)).toEqual(
+      Array(2).fill(expect.objectContaining({ type: MessageType.OPEN_WORKSHOP, payload: { newTab: true } }))
+    );
   });
 
   it('posts OPEN_LIGHTBOX from the Analysis tab', () => {

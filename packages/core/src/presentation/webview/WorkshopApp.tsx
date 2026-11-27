@@ -521,7 +521,9 @@ export const WorkshopApp: React.FC = () => {
     handleSaveResultSuccess
   });
 
+  const panelState = usePersistedState<{ workshopRoomId?: string }>();
   usePersistence({
+    workshopRoomId: panelState?.workshopRoomId,
     ...workshop.persistedState,
     ...pinnedContext.persistedState,
     ...workshopSessions.persistedState,
@@ -1238,8 +1240,8 @@ export const WorkshopApp: React.FC = () => {
         <div className="pm-ws-degraded-memory" role="alert">
           <Icon name="save" size={14} />
           <span>
-            Automatic recovery is paused because <code>current.json</code> could not be restored.{' '}
-            This room remains open in memory; save a named checkpoint before replacing it.
+            Automatic recovery is paused because this tab’s checkpoint could not be restored.{' '}
+            Your room remains open in memory. Save a named copy before replacing it.
             {workshop.currentCheckpointError
               ? ` ${workshop.currentCheckpointError}`
               : ' Check the Prose Minion output for details.'}
@@ -1581,11 +1583,11 @@ export const WorkshopApp: React.FC = () => {
           onAddExcerpt={addExcerptByPaste}
           hasConversation={workshop.chatTarget.kind === 'host' ? workshop.hasHostConversation : true}
           recipientLabel={chatTargetLabel}
-          cacheRequestModelId={workshop.contextBudget?.snapshot?.cacheRequestModelId}
+          cacheRequestModelId={workshop.contextBudget?.cacheEstimate?.cacheRequestModelId}
           estimatedCacheExpiresAt={
-            workshop.contextBudget?.snapshot?.cacheRequestModelId
+            workshop.contextBudget?.cacheEstimate?.cacheRequestModelId
               === (modelsSettings.modelSelections.assistant ?? modelsSettings.settings.assistantModel)
-              ? workshop.contextBudget?.snapshot?.estimatedCacheExpiresAt : undefined
+              ? workshop.contextBudget?.cacheEstimate?.estimatedCacheExpiresAt : undefined
           }
           isRunning={workshop.isRunning}
           sessionReady={workshop.sessionReady}

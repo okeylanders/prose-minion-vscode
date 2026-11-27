@@ -4,6 +4,8 @@
   "prose-minion.openSettingsOverlay": "overview#settings-and-models",
   "prose-minion.showOutputChannel": "overview#sidebar-appearance-and-diagnostics",
   "prose-minion.openWorkshop": "workshop#start-a-conversation",
+  "prose-minion.newWorkshopTab": "workshop#multiple-workshop-tabs",
+  "prose-minion.reopenWorkshopRoom": "workshop#multiple-workshop-tabs",
   "prose-minion.workshopSelection": "workshop#excerpts-and-message-attachments",
   "prose-minion.addSelectionToWorkshopMessage": "workshop#excerpts-and-message-attachments",
   "prose-minion.openLightbox": "lightbox#boards",

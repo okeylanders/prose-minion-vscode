@@ -10,7 +10,7 @@
  *
  * The panel gets its own MessageHandler — the ONE sanctioned `new` (the
  * per-webview message seam, as in the sidebar and the Workshop) — built from
- * the SAME injected CoreServices bundle constructed in extension.ts. Nothing
+ * the SAME injected WindowServices bundle constructed in extension.ts. Nothing
  * else is `new`-ed here (ADR 2026-06-18; witnessed in __tests__/architecture).
  * Boards, the standing refusal and source-request ownership live in the
  * shared LightboxService inside that bundle, so closing and reopening the
@@ -24,7 +24,7 @@
 import * as vscode from 'vscode';
 // All core symbols via the public barrel (ADR 2026-06-16 monorepo boundary).
 import {
-  CoreServices,
+  WindowServices,
   LightboxSetSourcePayload,
   LightboxSourceTicket,
   MessageHandler,
@@ -45,7 +45,7 @@ export class LightboxPanelProvider implements vscode.Disposable, vscode.WebviewP
 
   constructor(
     private readonly extensionUri: vscode.Uri,
-    private readonly coreServices: CoreServices,
+    private readonly coreServices: WindowServices,
     private readonly outputChannel: vscode.OutputChannel,
     private readonly platform: Platform,
     private readonly uiActions: WorkshopUiActions = {}
@@ -101,7 +101,7 @@ export class LightboxPanelProvider implements vscode.Disposable, vscode.WebviewP
     panel.iconPath = vscode.Uri.joinPath(this.extensionUri, 'assets', 'prose-minion-book.svg');
     panel.webview.html = getWebviewHtml(panel.webview, this.extensionUri, SURFACE_LIGHTBOX);
 
-    // The per-webview message seam, over the ONE injected CoreServices bundle.
+    // The per-webview message seam, over the ONE injected WindowServices bundle.
     this.messageHandler?.dispose();
     this.messageHandler = new MessageHandler(
       this.coreServices,

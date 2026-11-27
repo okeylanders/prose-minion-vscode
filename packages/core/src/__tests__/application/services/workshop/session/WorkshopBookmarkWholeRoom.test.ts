@@ -108,6 +108,7 @@ describe('bookmarks across whole-room operations (ADR 2026-11-03 D6)', () => {
     const harness = await openBookmarkedRoom();
     const sourceBefore = await textOf(harness.fs, harness.sourcePath);
 
+    const sourceBookmarks = harness.session.getSnapshot().bookmarks;
     const outcome = await harness.coordinator.branchFrom(after(harness.replies[0].id));
 
     const branch = (await harness.store.readNamed(outcome.branch.sessionId))!;
@@ -115,8 +116,7 @@ describe('bookmarks across whole-room operations (ADR 2026-11-03 D6)', () => {
       turnId: harness.replies[0].id,
       label: 'First answer'
     })]);
-    expect(harness.session.getSnapshot().bookmarks.map((bookmark) => bookmark.turnId))
-      .toEqual(markedTurns([harness.replies[0]]));
+    expect(harness.session.getSnapshot().bookmarks).toEqual(sourceBookmarks);
     expect(await textOf(harness.fs, harness.sourcePath)).toBe(sourceBefore);
     const source = (await harness.store.readNamed('bookmarked'))!;
     expect(source.workshop.bookmarks).toHaveLength(4);

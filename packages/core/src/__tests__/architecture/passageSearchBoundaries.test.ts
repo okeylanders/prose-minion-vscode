@@ -148,7 +148,7 @@ describe('Passage Search engine', () => {
     for (const builder of ['ProjectPassageSearchEngine', 'PassageSearchScopeFiles', 'PassageSearchService', 'PassageSearchModelOrganizer']) {
       expect(root.match(new RegExp(`new ${builder}\\(`, 'g'))).toHaveLength(1);
     }
-    expect(root).toMatch(/const coreServices: CoreServices = \{[\s\S]*?\bpassageSearchEngine,/);
+    expect(root).toMatch(/const windowServices: WindowServices = \{[^}]*?\bpassageSearchEngine\b/);
     expect(read(path.join(SRC_ROOT, 'infrastructure/api/orchestration/AIResourceManager.ts')))
       .toMatch(/this\.createResourceBundle\(apiKey!, 'passageSearch', passageSearchModel\)/);
     expect(read(path.join(SERVICE_DIR, 'PassageSearchService.ts'))).toMatch(/PASSAGE_SEARCH_MODEL_SCOPE = 'passageSearch'/);

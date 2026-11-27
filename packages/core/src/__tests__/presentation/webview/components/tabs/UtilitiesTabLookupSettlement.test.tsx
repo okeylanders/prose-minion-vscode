@@ -25,6 +25,7 @@ import {
   DictionaryHistorySummary,
   MessageType
 } from '@messages';
+import { otherUtilitiesRouterDomains } from './utilitiesRouterFixture';
 import { createMockVSCode } from '@/__tests__/mocks/vscode';
 
 jest.mock('@hooks/useVSCodeApi');
@@ -81,13 +82,6 @@ const historyEntry = (entry: DictionaryHistoryEntry): HostMessage => ({
   payload: { status: 'found', entry }
 });
 
-/** Other domains' routes are never delivered here; the builder only reads their properties. */
-const OTHER_DOMAINS = {
-  analysis: {}, metrics: {}, context: {}, search: {}, publishingSettings: {}, wordSearchSettings: {},
-  wordFrequencySettings: {}, tokensSettings: {}, themeSettings: {}, tokenTracking: {},
-  contextPathsSettings: {}, contextPathsSuggestion: {}, modelsSettings: {}, accountBalance: {}
-};
-
 describe('UtilitiesTab lookup settlement', () => {
   let vscode: ReturnType<typeof createMockVSCode>;
   let routes: MessageHandlerMap;
@@ -98,7 +92,7 @@ describe('UtilitiesTab lookup settlement', () => {
     const selection = useSelection();
     const settings = useSettings();
     routes = buildAppMessageRoutes({
-      ...OTHER_DOMAINS,
+      ...otherUtilitiesRouterDomains,
       dictionary,
       dictionaryHistory,
       selection,

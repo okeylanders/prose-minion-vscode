@@ -212,6 +212,102 @@ describe('a send that arrives while a picked file is still being read', () => {
     expect(dropped).not.toMatch(/raven/i);
   });
 
+  it('the replacement room can send while the prior room is still opening its file catalog', async () => {
+    const release = holdCatalog();
+    const picking = pickRaven();
+    await flush();
+    routes.session.reset();
+    await route(MessageType.WORKSHOP_SET_SESSION_SCOPE, { scope: 'open' });
+    const sending = send('Read the new room.');
+    try {
+      await flush();
+      expect(modelCalls()).toHaveLength(1);
+      expect(JSON.stringify(modelCalls()[0])).not.toContain(RAVEN);
+    } finally {
+      release();
+      await Promise.all([picking, sending]);
+    }
+    expect(pending()).toEqual([]);
+    expect(errors()).toEqual([]);
+    expect(restored()).toEqual([]);
+  });
+
+  it.each(['opened', 'failed'])('a stale catalog that %s cannot load a file or report its old error', async outcome => {
+    const loading = deferred();
+    const loadResources = jest.fn();
+    routes.resourceProviderFactory.createProvider.mockImplementationOnce(async () => {
+      await loading.promise;
+      if (outcome === 'failed') {
+        throw new Error('Catalog in the previous room failed');
+      }
+      return { listResources: () => routes.resourceFiles, loadResources };
+    });
+    const picking = pickRaven();
+    routes.session.reset();
+    loading.resolve();
+    await picking;
+    expect(loadResources).not.toHaveBeenCalled();
+    expect(errors()).toEqual([]);
+  });
+
+  it.each([
+    MessageType.WORKSHOP_ADD_CONTEXT_RESOURCES,
+    MessageType.WORKSHOP_ATTACH_MESSAGE_RESOURCES
+  ])('closing the handler withdraws %s while another handler resumes the same room', async type => {
+    const release = holdCatalog();
+    const picking = route(type, { items: [{ group: 'characters', path: 'Characters/raven.md' }] });
+    const sending = type === MessageType.WORKSHOP_ATTACH_MESSAGE_RESOURCES ? send() : undefined;
+    await flush();
+    routes.handler.dispose();
+    const resumed = createWorkshopRouteTestHarness({ session: routes.session });
+    const before = routes.postMessage.mock.calls.length;
+    routes.persistence.markDirty.mockClear();
+    release();
+    await Promise.all([picking, sending]);
+    expect(resumed.session.getContextAttachments()).toEqual([]);
+    expect(pending()).toEqual([]);
+    expect(modelCalls()).toEqual([]);
+    expect(routes.postMessage).toHaveBeenCalledTimes(before);
+    expect(routes.persistence.markDirty).not.toHaveBeenCalled();
+    resumed.handler.dispose();
+  });
+
+  it.each([
+    MessageType.WORKSHOP_ADD_CONTEXT_FILE,
+    MessageType.WORKSHOP_ATTACH_MESSAGE_FILE
+  ])('%s drops a completed disk read after disposal without marking the shared session dirty', async type => {
+    const begun = deferred();
+    const bytes = deferred<Uint8Array>();
+    const file = { fsPath: '/ws/Characters/raven.md', uri: 'file:///ws/Characters/raven.md' };
+    routes.shell.pickFile = jest.fn().mockResolvedValue(file);
+    routes.fileSystem.stat = jest.fn().mockResolvedValue({ type: FileType.File, size: RAVEN.length });
+    routes.fileSystem.readFile = jest.fn(() => {
+      begun.resolve();
+      return bytes.promise;
+    });
+    const picking = route(type, {});
+    await begun.promise;
+    routes.handler.dispose();
+    const before = routes.postMessage.mock.calls.length;
+    routes.persistence.markDirty.mockClear();
+    bytes.resolve(new TextEncoder().encode(RAVEN));
+    await picking;
+    expect(routes.session.getContextAttachments()).toEqual([]);
+    expect(pending()).toEqual([]);
+    expect(routes.postMessage).toHaveBeenCalledTimes(before);
+    expect(routes.persistence.markDirty).not.toHaveBeenCalled();
+  });
+
+  it('hiding a panel while its file is being read still stages the pending attachment', async () => {
+    const release = holdCatalog();
+    const picking = pickRaven();
+    routes.handler.setSurfaceVisible(false);
+    release();
+    await picking;
+    expect(pending()).toEqual(['raven.md']);
+    expect(errors()).toEqual([]);
+  });
+
   it('a read that outlasts the wait refuses the send; the pill still lands, and the next send carries it', async () => {
     jest.useFakeTimers();
     const release = holdCatalog();
