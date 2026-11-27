@@ -11,7 +11,10 @@ interface Props {
 export function WorkshopHighlightPromptModal({ prompt, onAnswer }: Props) {
   const proposal = prompt.kind === 'proposal';
   const close = () => onAnswer(prompt, proposal ? 'skip' : 'not-now');
-  const count = `${prompt.count} highlight${prompt.count === 1 ? '' : 's'}`;
+  const plural = prompt.count === 1 ? '' : 's';
+  const description = proposal
+    ? `“${prompt.title}” has ${prompt.count} highlight${plural} for `
+    : `${prompt.setCount === 1 ? 'An earlier reply' : `${prompt.setCount} earlier replies`} in this conversation highlighted ${prompt.count} passage${plural} in `;
   return (
     <WorkshopModalShell open titleId="workshop-highlight-prompt-title" className="pm-ws-confirm-modal pm-ws-highlight-prompt"
       closeLabel={proposal ? 'Skip proposed highlights' : 'Close restore prompt'} onClose={close}>
@@ -20,10 +23,7 @@ export function WorkshopHighlightPromptModal({ prompt, onAnswer }: Props) {
           <h2 id="workshop-highlight-prompt-title">
             {proposal ? `Apply ${prompt.persona}’s highlights?` : 'Restore saved highlights?'}
           </h2>
-          <p>
-            {proposal ? `“${prompt.title}” has ${count}` : `${count} in ${prompt.setCount} saved set${prompt.setCount === 1 ? '' : 's'}`}
-            {' for '}<strong>{prompt.displayPath}</strong>.
-          </p>
+          <p>{description}<strong>{prompt.displayPath}</strong>.</p>
           {!proposal && <p>You can choose Show on the original reply to restore its highlights, or ask a persona for a fresh set.</p>}
         </div>
         <WorkshopModalShell.CloseButton />

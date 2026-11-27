@@ -142,7 +142,7 @@ describe('WorkshopApp', () => {
       notice(false);
       snapshot(restore);
       const modal = screen.getByRole('dialog', { name: 'Restore saved highlights?' });
-      expect(modal.textContent).toContain('4 highlights in 2 saved sets for chapters/two.md.');
+      expect(modal.textContent).toContain('2 earlier replies in this conversation highlighted 4 passages in chapters/two.md.');
       expect(modal.textContent).toContain('Show on the original reply');
       fireEvent.click(screen.getByRole('button', { name: button }));
       expect(answers().map(message => message.payload)).toEqual([{ promptId: 'r1', roomRevision: 1, choice }]);
@@ -152,7 +152,8 @@ describe('WorkshopApp', () => {
     it('uses the temporary decline on Escape and retires a withdrawn offer without sending a decision', () => {
       render(<WorkshopApp />);
       notice(false);
-      snapshot(restore);
+      snapshot({ ...restore, count: 1, setCount: 1 });
+      expect(screen.getByRole('dialog').textContent).toContain('An earlier reply in this conversation highlighted 1 passage in chapters/two.md.');
       fireEvent.keyDown(document, { key: 'Escape' });
       snapshot(proposal);
       snapshot();
