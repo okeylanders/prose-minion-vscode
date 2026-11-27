@@ -1,7 +1,7 @@
 # Feature: Read Aloud, Measured Cadence for Prose
 
 **Date Identified:** 2026-11-20
-**Status:** Idea. Medium: a deterministic scansion engine with pronunciation data, then the surfaces that use it. ADR first: it adds a sizeable data dependency and a new measure several features would share.
+**Status:** Planned as step 2 of the [Persona Measures epic](../../epics/epic-persona-measures-2026-11-27/README.md) (2026-11-27): it starts once step 1 (#35) is on `main`. Its data dependency is decided in that epic's ADR. Fable writes the model-facing prompts for the Listen reading and the chapter pass.
 **Priority:** Medium
 **Origin:** Okey, 2026-11-20, after a Workshop exchange where reading a line aloud made him add a syllable
 
@@ -112,6 +112,9 @@ trips. Recommended: both, in this order.
 | # | Decision | Notes |
 |---|---|---|
 | R1 | **In the chapter pass, the model chooses what to highlight and how many,** with a warning not to go overboard. Host code doesn't pick the candidates. | Rules can find a twin cadence; only a reading can tell whether the rhythm does the character's work, or fights what's happening. |
+| R2 | **The engine and `measure.cadence` first, then the sidebar tool, then the chapter pass.** | Okey, 2026-11-27 (the note's lean). |
+| R3 | **A per-project pronunciation list for names,** small, like Proofread's word list. | Okey, 2026-11-27 (Ada's lean). |
+| R4 | **Readability keeps its heuristic syllable counter** (`estimateSyllables`). Scansion's dictionary counts are its own; switching readability would be a separate change with before-and-after figures pinned. | Okey, 2026-11-27 (Ada's lean). |
 
 ## The chapter pass (R1)
 
@@ -153,15 +156,10 @@ trips. Recommended: both, in this order.
 
 ## Open questions
 
-- **The name.** "Read Aloud" suggests the extension speaks. Either keep it
-  and add a Play button (below), or call it "Cadence" or "Scansion".
+- **The name** (settled at the epic's B0). "Read Aloud" suggests the
+  extension speaks. Ada's lean: "Cadence", unless a Play button lands.
 - **Actually reading aloud?** The webview's speech synthesis could play the
   passage. Voices vary by platform, so check it in VS Code's webview first.
-- **Names the dictionary lacks.** Fiction is full of them. A per-project
-  pronunciation list (like Proofread's word list: "Hatter: HAT-ter") would
-  give them stress. Leaning: yes, small.
-- **Which comes first:** the persona capability alone, or the sidebar tool
-  with it? Leaning: the engine and the capability first, then the tool.
 - **Where the chapter pass lives:** Craft Flags or the Lightbox, once the
   microscope has proved itself.
 - **"Serves" picks in the editor.** As Craft Flags squiggles, praise may

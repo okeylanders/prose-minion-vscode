@@ -1,7 +1,7 @@
 # Feature: Personas Run the Deterministic Measures
 
 **Date Identified:** 2026-11-23
-**Status:** Idea. Medium: one read-only capability family over services that already exist. A short ADR (a new family); the scope grammar is reused from Passage Search, already built.
+**Status:** Planned as step 1 of the [Persona Measures epic](../../epics/epic-persona-measures-2026-11-27/README.md) (2026-11-27), released before step 2 (#31) starts. Medium: one read-only capability family over services that already exist, plus the groundwork scansion needs (M3).
 **Priority:** Medium
 **Origin:** Okey, 2026-11-23
 
@@ -99,15 +99,17 @@ persona asks for through the same card.
 - **Logs** carry the operation and counts, never a word searched, a quote
   or a path.
 
-## Open questions
+## Decisions (Okey, 2026-11-27)
 
-- **Shared with the room or private?** Measurements are about the writer's
-  text and cost nothing. Leaning: published to the room on commit, as file
-  reads are, so a guest sees the same numbers.
-- **Which publishing standard** `measure.stats` compares against: the one
-  set in Settings, or one the persona names? Leaning: the Settings one.
-- **The ADR.** The scope grammar is already decided in Passage Search's
-  ADR, so `measure.*` needs a short ADR of its own that cites it.
+| # | Decision | Notes |
+|---|---|---|
+| M1 | **Results are published to the room on commit,** as file reads are, so a guest sees the same numbers. | Ada's lean. Measurements are about the writer's text and cost nothing. |
+| M2 | **`measure.stats` compares against the publishing standard set in Settings.** | Ada's lean. |
+| M3 | **This step also builds the groundwork scansion needs:** host-assigned sentence ids and per-sentence tables, a pause splitter, the scope lift, and fitting sized for long tables. | The pronunciation engine stays with #31. See the epic. |
+
+One ADR covers the family. It cites Passage Search's for the scope grammar,
+and also records #31's data dependency and syllable-counter rule, so step 2
+needs no second ADR.
 
 ## Completion Criteria
 
