@@ -108,6 +108,7 @@ import {
   CapabilityFulfillment,
   isAgentRunIncomplete
 } from '@orchestration/AgentRunContracts';
+import { estimateTextTokens } from '@orchestration/RequestContextPreflight';
 import { DictionaryService } from '@services/dictionary/DictionaryService';
 import { workshopTurnModelOf } from '@/application/services/workshop/WorkshopTurnModel';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
@@ -345,7 +346,7 @@ export class WorkshopPersonaCapability implements AgentCapability<
     // never in it, so it cannot reach the evidence the persona reads.
     let model: WorkshopTurnModel | undefined;
     try {
-      result = await this.dispatch(request, window, (runModel) => { model = runModel; });
+      result = await this.dispatch(request, window, (runModel) => { model = runModel; }, unrunNativeCalls);
     } catch (error) {
       const cancelled = this.turn.signal.aborted || this.isAbortError(error);
       const message = cancelled
@@ -374,8 +375,7 @@ export class WorkshopPersonaCapability implements AgentCapability<
       workshopCapabilityResultLogSummary(result)
     );
     return {
-      evidence: this.formatEvidence(result, this.turn.excerptVersion) +
-        (unrunNativeCalls > 0 ? `\n${workshopUnrunNativeCallsNote(unrunNativeCalls)}` : ''),
+      evidence: this.formatEvidence(result, this.turn.excerptVersion, unrunNativeCalls),
       artifacts: completedTurn ? [{
         catalog: this.catalog,
         id: completedTurn.id,
@@ -752,7 +752,8 @@ export class WorkshopPersonaCapability implements AgentCapability<
   private async dispatch(
     request: WorkshopCapabilityRequest,
     window: CapabilityContextWindow | undefined,
-    onRunModel: (model: WorkshopTurnModel | undefined) => void
+    onRunModel: (model: WorkshopTurnModel | undefined) => void,
+    unrunNativeCalls = 0
   ): Promise<WorkshopCapabilityResult> {
     if (this.turn.signal.aborted) throw this.abortError();
     switch (request.capability) {
@@ -809,7 +810,8 @@ export class WorkshopPersonaCapability implements AgentCapability<
       case 'memory.catalog':
       case 'memory.search':
       case 'memory.read':
-        return this.memoryCapability.fulfill(request);
+        return this.memoryCapability.fulfill(request, window, (result) =>
+          estimateTextTokens(this.formatEvidence(result, this.turn.excerptVersion, unrunNativeCalls)));
       case 'lens.catalog':
       case 'lens.read':
         // A read is fitted, by whole sections, to half the room left (ADR 2026-11-17 D18).
@@ -1095,7 +1097,7 @@ export class WorkshopPersonaCapability implements AgentCapability<
     };
   }
 
-  private formatEvidence(result: WorkshopCapabilityResult, excerptVersion: number): string {
+  private formatEvidence(result: WorkshopCapabilityResult, excerptVersion: number, unrunNativeCalls = 0): string {
     const lines = [
       `<workshop-capability-result name="${result.capability}" status="${result.status}" excerpt-version="${excerptVersion}">`,
       `<request-summary>${this.escapeXml(result.requestSummary)}</request-summary>`
@@ -1106,6 +1108,9 @@ export class WorkshopPersonaCapability implements AgentCapability<
     }
     if (result.error) lines.push(`<error>${this.escapeXml(result.error)}</error>`);
     lines.push('</workshop-capability-result>', this.evidenceFraming(result.capability));
+    if (unrunNativeCalls > 0) {
+      lines.push(workshopUnrunNativeCallsNote(unrunNativeCalls));
+    }
     return lines.join('\n');
   }
 

@@ -79,6 +79,36 @@ export function fitWorkshopReadToWindow<Outcome = WorkshopCapabilityResult>(
   return { ...(fit ? { fit } : {}), ...(measuredMinimum ? { minimum: measuredMinimum } : {}), renders };
 }
 
+/**
+ * Whole independent items may skip an earlier one that is too large. Try the
+ * complete read first, then admit items in request order, measuring each
+ * candidate with all its omission notices. At most one render per item
+ * plus the complete read (memory.read names at most five).
+ */
+export function fitWorkshopWholeItemsToWindow<Item, Outcome>(
+  items: readonly Item[],
+  render: (included: ReadonlySet<Item>) => Outcome,
+  tokens: (outcome: Outcome) => number,
+  half: number
+): Outcome | undefined {
+  const whole = render(new Set(items));
+  if (tokens(whole) <= half) {
+    return whole;
+  }
+  const included = new Set<Item>();
+  let fitted: Outcome | undefined;
+  for (const item of items) {
+    included.add(item);
+    const candidate = included.size === items.length ? whole : render(included);
+    if (tokens(candidate) <= half) {
+      fitted = candidate;
+    } else {
+      included.delete(item);
+    }
+  }
+  return fitted;
+}
+
 /** What a result costs as evidence: its text and metadata, escaped as formatEvidence escapes them. */
 export function workshopReadEvidenceTokens(result: WorkshopCapabilityResult): number {
   const escaped = (text: string): string => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
