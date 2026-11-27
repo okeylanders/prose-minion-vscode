@@ -24,10 +24,13 @@ const MUTATION_ROUTES = [
   MessageType.WORKSHOP_ATTACH_MESSAGE_RESOURCES,
   MessageType.WORKSHOP_ATTACH_MESSAGE_FILE,
   MessageType.WORKSHOP_REMOVE_MESSAGE_ATTACHMENT,
+  MessageType.WORKSHOP_STAGE_MESSAGE_TEXT,
   MessageType.WORKSHOP_RUN_CONTEXT_WIZARD
 ] as const;
 
 const READ_ROUTES = [
+  MessageType.WORKSHOP_REQUEST_MESSAGE_ATTACHMENT,
+  MessageType.WORKSHOP_OPEN_MESSAGE_ATTACHMENT_FILE,
   MessageType.WORKSHOP_REQUEST_CONTEXT_ATTACHMENT,
   MessageType.WORKSHOP_OPEN_CONTEXT_ATTACHMENT_FILE,
   MessageType.WORKSHOP_REQUEST_READ_IN_RESOURCE,
@@ -137,12 +140,12 @@ describe('WorkshopContextHandler', () => {
     handler.registerRoutes(router, registerMutation);
   });
 
-  it('owns exactly fifteen routes and keeps reads outside the mutation registrar', () => {
-    expect(router.handlerCount).toBe(15);
+  it('owns its context and message-attachment routes and keeps reads outside the mutation registrar', () => {
+    expect(router.handlerCount).toBe(ALL_ROUTES.length);
     expect(new Set(router.getRegisteredTypes())).toEqual(new Set(ALL_ROUTES));
 
     const mutationRegistrations = registerMutation.mock.calls.map(([type]) => type);
-    expect(registerMutation).toHaveBeenCalledTimes(9);
+    expect(registerMutation).toHaveBeenCalledTimes(MUTATION_ROUTES.length);
     expect(new Set(mutationRegistrations)).toEqual(new Set(MUTATION_ROUTES));
     expect(mutationRegistrations).toEqual(expect.not.arrayContaining(READ_ROUTES));
 

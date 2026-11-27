@@ -45,6 +45,7 @@ import { ProviderPausedBanner } from '@components/fulltab/ProviderPausedBanner';
 import { WorkshopRail, WorkshopRailProps, workshopRailTabId } from './components/workshop/WorkshopRail';
 import { WorkshopRailStrip } from './components/workshop/WorkshopRailStrip';
 import { partitionContextSources } from '@utils/workshop/contextSources';
+import { useWorkshopSentAttachments } from '@hooks/domain/workshop/useWorkshopSentAttachments';
 import { useWorkshopReadIn } from '@hooks/domain/workshop/useWorkshopReadIn';
 import { useWorkshopBookmarks } from '@hooks/domain/workshop/useWorkshopBookmarks';
 import { useWorkshopReactions } from '@hooks/domain/workshop/useWorkshopReactions';
@@ -74,6 +75,8 @@ import { WorkshopMemoryManagerMount } from '@components/workshop/memory/Workshop
 import { WorkshopBookmarkBrowserMount } from '@components/workshop/bookmarks/WorkshopBookmarkBrowserMount';
 import { useWorkshopBookmarkBrowser } from '@hooks/domain/workshop/useWorkshopBookmarkBrowser';
 import { useWorkshopBookmarkOpenAt } from '@hooks/domain/workshop/controllers/useWorkshopBookmarkOpenAt';
+import { useWorkshopPastedText } from '@hooks/domain/workshop/useWorkshopPastedText';
+import { WorkshopPastedTextSheet } from './components/workshop/WorkshopPastedTextSheet';
 import { WorkshopComposer } from './components/workshop/WorkshopComposer';
 import { WorkshopParticipantRail } from './components/workshop/WorkshopParticipantRail';
 import { ContextBudget } from './components/shared/ContextBudget';
@@ -281,6 +284,8 @@ export const WorkshopApp: React.FC = () => {
     [contextSources]
   );
   const readIn = useWorkshopReadIn();
+  const pastedText = useWorkshopPastedText();
+  const sentAttachments = useWorkshopSentAttachments(workshop.sessionReady ? workshop.roomRevision : undefined);
   const bookmarks = useWorkshopBookmarks({ onBeforeChange: workshop.clearError });
   const reactions = useWorkshopReactions({ onBeforeChange: workshop.clearError });
   // The Bookmarks screen (Bookmark Recall Slice 2, ADR 2026-11-05 D8).
@@ -490,6 +495,8 @@ export const WorkshopApp: React.FC = () => {
   );
 
   useWorkshopAppMessageRouter({
+    pastedText,
+    sentAttachments,
     readIn,
     bookmarks,
     reactions,
@@ -786,6 +793,7 @@ export const WorkshopApp: React.FC = () => {
     updateContextText: workshop.updateContextText,
     openExcerptSelector,
     requestShelfReplacement: sessionSurfaces.requestShelfReplacement,
+    sentAttachments,
     readInContent: readIn.readInContent,
     requestReadInResource: readIn.requestReadInResource,
     openReadInResource: readIn.openReadInResource,
@@ -1212,7 +1220,7 @@ export const WorkshopApp: React.FC = () => {
   // keyboard and pointer in the sheet. The banner wrapper is always there,
   // laid out with `display: contents`, so opening a sheet never remounts a
   // banner.
-  const behindTextSheet = textSheet ? { inert: '' } : {};
+  const behindTextSheet = textSheet || pastedText.sheet ? { inert: '' } : {};
   const banners = (
     <div className="pm-ws-banners" {...behindTextSheet}>
       {chrome.providerPaused && (
@@ -1464,6 +1472,7 @@ export const WorkshopApp: React.FC = () => {
             fileEdits={fileEditControls}
             todoReceipt={todoReceiptControls}
             locationsProposal={locationsProposalControls}
+            onOpenSentAttachment={contextSheet.openSentAttachmentSheet}
             onHighlightAction={onHighlightAction}
             passageSearch={passageSearchControls}
             reactions={reactionControls}
@@ -1597,6 +1606,7 @@ export const WorkshopApp: React.FC = () => {
           conversationBehavior={workshop.conversationBehavior}
           writerProfileShared={isWorkshopWriterProfileActive(workshop.writerProfile)}
           messageAttachments={workshop.pendingMessageAttachments}
+          pastedText={pastedText.composer}
           selectedText={{
             includeSelectedText: selectedText.includeSelectedText,
             onIncludeSelectedTextChange: selectedText.setIncludeSelectedText,
@@ -1607,7 +1617,9 @@ export const WorkshopApp: React.FC = () => {
             onRequestCatalog: workshop.requestContextCatalog,
             onAttach: workshop.attachMessageResources
           }}
-          onSend={(text) => workshop.sendMessage(text, selectedText.sendSelection)}
+          submissionPending={workshop.submissionPending}
+          onSend={(text) => workshop.sendMessage(text, selectedText.sendSelection,
+            !text || workshop.pendingMessageAttachments.some((item) => item.pastedText) ? workshop.roomRevision : undefined)}
           onCancel={workshop.cancelRun}
           onOpenContext={openContext}
           onAttachToMessage={openMessageAttachSelector}
@@ -1645,7 +1657,7 @@ export const WorkshopApp: React.FC = () => {
       }}
       main={{ label: 'Session thread', content: mainContent }}
       onBoundaryError={handleBoundaryError}
-      inertBehindOverlay={textSheet !== null}
+      inertBehindOverlay={textSheet !== null || pastedText.sheet !== null}
     >
       {/* Before the text sheet, so a bookmark's preview stacks above the screen. */}
       <WorkshopBookmarkBrowserMount
@@ -1690,6 +1702,7 @@ export const WorkshopApp: React.FC = () => {
           onClose={closeTextSheet}
         />
       )}
+      <WorkshopPastedTextSheet pasted={pastedText} locked={roomMutationLocked} />
       <WorkshopToolsModal
         open={toolsModalOpen}
         activeToolId={workshop.selectedToolId}

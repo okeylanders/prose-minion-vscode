@@ -17,10 +17,7 @@
  * selection is drawn after the staged pills as a live "Selected Text" pill,
  * from props (`WorkshopSelectedTextControls`); the composer posts nothing.
  *
- * The draft is deliberately LOCAL state: it's unsent user input, not session
- * truth, so it doesn't belong in WorkshopSessionService (and losing it on a
- * webview reload is acceptable alpha behavior). Staged attachments are HOST
- * state — they survive reloads with the session snapshot.
+ * The local draft belongs to the composer. Staged attachments survive reloads with the host snapshot.
  *
  * Sprint 13A: the composer is SCOPE-AWARE (§9/§10). In an open conversation the
  * placeholder asks what you'd like to brainstorm, an "Add excerpt" affordance
@@ -37,6 +34,10 @@
 
 import * as React from 'react';
 import { Icon } from '@components/shared/Icon';
+import { workshopComposerDraftAfterSeed } from '@utils/workshop/workshopComposerDraft';
+export { workshopComposerDraftAfterSeed };
+import { workshopComposerPasteHandlers } from './workshopComposerPasteHandlers';
+import type { WorkshopComposerPastedText } from '@hooks/domain/workshop/useWorkshopPastedText';
 import { WorkshopComposerAttachments } from '@components/workshop/WorkshopComposerAttachments';
 import { WorkshopCacheIndicator } from '@components/workshop/WorkshopCacheIndicator';
 import { WorkshopComposerMentionList, workshopMentionOptionId } from '@components/workshop/WorkshopComposerMentionList';
@@ -81,7 +82,6 @@ interface WorkshopComposerProps {
    * settled, so the composer's door into the passage path closes.
    */
   roomHasMemory: boolean;
-  /** Prefill requested from outside (an open-chat starter chip); appended once. */
   /**
    * `keepDraft`: a text the host gives back (a refused or rolled-back send, a
    * rewound message) never replaces what the writer has typed since. It goes
@@ -108,9 +108,11 @@ interface WorkshopComposerProps {
   messageAttachments: WorkshopMessageAttachmentSnapshot[];
   /** Selected Text (ADR 2026-11-14 D14): the "Include selected text" toggle and its live pill; absent, neither is drawn. */
   selectedText?: WorkshopComposerSelectedText;
+  pastedText?: WorkshopComposerPastedText;
   /** `@` attaches a project file to this message (item G); absent, `@` is only a character. */
   mentions?: WorkshopComposerMentions;
-  onSend: (text: string) => void;
+  submissionPending?: boolean;
+  onSend: (text: string) => boolean | void;
   onCancel: () => void;
   onOpenContext: () => void;
   onAttachToMessage: () => void;
@@ -118,21 +120,6 @@ interface WorkshopComposerProps {
   onOpenConversationSettings: () => void;
   onOpenTools: () => void;
   onOpenWidgets: () => void;
-}
-
-/**
- * The draft after a seed. A starter replaces it. A text the host gives back
- * (`keepDraft`) fills an empty composer, and otherwise is put ahead of what
- * the writer has typed since: neither text is ever lost (PR #264 P2).
- */
-export function workshopComposerDraftAfterSeed(
-  current: string,
-  seed: { text: string; keepDraft?: boolean }
-): string {
-  if (!seed.keepDraft || current.trim().length === 0) {
-    return seed.text;
-  }
-  return seed.text.trim().length === 0 ? current : `${seed.text}\n\n${current}`;
 }
 
 /**
@@ -167,9 +154,9 @@ export const WorkshopComposer: React.FC<WorkshopComposerProps> = ({
   conversationBehavior,
   writerProfileShared,
   messageAttachments,
-  selectedText,
+  selectedText, pastedText,
   mentions,
-  onSend,
+  onSend, submissionPending,
   onCancel,
   onOpenContext,
   onAttachToMessage,
@@ -183,8 +170,7 @@ export const WorkshopComposer: React.FC<WorkshopComposerProps> = ({
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
   const addMenuRef = React.useRef<HTMLDivElement>(null);
   const mentionListId = React.useId();
-  /** Where the caret goes once a picked token is in the draft. */
-  const mentionCaretRef = React.useRef<number | null>(null);
+  const composerCaretRef = React.useRef<number | null>(null);
   const mention = useWorkshopComposerMentions({
     catalog: mentions?.catalog ?? null,
     staged: messageAttachments,
@@ -194,22 +180,27 @@ export const WorkshopComposer: React.FC<WorkshopComposerProps> = ({
     onBrowse: onAttachToMessage
   });
   const { syncDraft: syncMentionDraft } = mention;
-  const applyMentionEdit = (edit: WorkshopMentionEdit | undefined) => {
+  const applyComposerEdit = (edit: WorkshopMentionEdit | undefined) => {
     if (edit) {
-      mentionCaretRef.current = edit.caret;
+      composerCaretRef.current = edit.caret;
       setDraft(edit.text);
     }
   };
 
   const trimmed = draft.trim();
-  const canSend = canMessage && trimmed.length > 0;
+  const liveSelection = selectedText?.includeSelectedText && selectedText.livePill && !selectedText.livePill.disabledReason;
+  const canSend = canMessage && !submissionPending && !pastedText?.mutating()
+    && (trimmed.length > 0 || messageAttachments.length > 0 || !!liveSelection);
+
+  const { paste, insertPaste } = workshopComposerPasteHandlers(pastedText, textareaRef, applyComposerEdit, canMessage && sessionReady);
 
   const sendDraft = () => {
-    if (!canSend) {
+    if (!canSend || pastedText?.mutating()) {
       return;
     }
-    onSend(trimmed);
-    setDraft('');
+    if (onSend(trimmed) !== false) {
+      setDraft('');
+    }
   };
 
   const submit = (event: React.FormEvent) => {
@@ -227,7 +218,7 @@ export const WorkshopComposer: React.FC<WorkshopComposerProps> = ({
     if (taken.handled) {
       event.preventDefault();
       event.stopPropagation();
-      applyMentionEdit(taken.edit);
+      applyComposerEdit(taken.edit);
       return;
     }
     // Enter sends; Shift+Enter remains native textarea behavior so writers can
@@ -245,9 +236,9 @@ export const WorkshopComposer: React.FC<WorkshopComposerProps> = ({
     }
     textarea.style.height = 'auto';
     textarea.style.height = `${Math.min(textarea.scrollHeight, 240)}px`;
-    if (mentionCaretRef.current !== null) {
-      textarea.setSelectionRange(mentionCaretRef.current, mentionCaretRef.current);
-      mentionCaretRef.current = null;
+    if (composerCaretRef.current !== null) {
+      textarea.setSelectionRange(composerCaretRef.current, composerCaretRef.current);
+      composerCaretRef.current = null;
     }
     syncMentionDraft(draft, textarea.selectionStart);
   }, [draft, syncMentionDraft]);
@@ -309,6 +300,10 @@ export const WorkshopComposer: React.FC<WorkshopComposerProps> = ({
     <div className="pm-ws-composer-wrap">
       <WorkshopComposerAttachments
         attachments={messageAttachments}
+        pastedText={pastedText}
+        locked={!canMessage || !sessionReady}
+        onInsert={insertPaste}
+        focusDraft={() => textareaRef.current?.focus()}
         livePill={selectedText?.livePill ?? null}
         onRemove={onRemoveMessageAttachment}
       />
@@ -319,7 +314,7 @@ export const WorkshopComposer: React.FC<WorkshopComposerProps> = ({
         <WorkshopComposerMentionList
           listId={mentionListId}
           mentions={mention}
-          onPick={(index) => applyMentionEdit(mention.pickOption(index, draft))}
+          onPick={(index) => applyComposerEdit(mention.pickOption(index, draft))}
           onActivate={mention.setActiveIndex}
         />
         <textarea
@@ -328,6 +323,7 @@ export const WorkshopComposer: React.FC<WorkshopComposerProps> = ({
           rows={2}
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
+          onPaste={paste}
           onKeyDown={handleKeyDown}
           onSelect={(event) => syncMentionDraft(event.currentTarget.value, event.currentTarget.selectionStart)}
           onBlur={mention.close}

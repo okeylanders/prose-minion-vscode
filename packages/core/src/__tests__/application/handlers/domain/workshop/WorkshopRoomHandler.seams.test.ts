@@ -72,6 +72,7 @@ describe('WorkshopRoomHandler routing — cross-owner seams', () => {
     expect(router.hasHandler(MessageType.WORKSHOP_ATTACH_MESSAGE_RESOURCES)).toBe(true);
     expect(router.hasHandler(MessageType.WORKSHOP_ATTACH_MESSAGE_FILE)).toBe(true);
     expect(router.hasHandler(MessageType.WORKSHOP_REMOVE_MESSAGE_ATTACHMENT)).toBe(true);
+    expect(router.hasHandler(MessageType.WORKSHOP_STAGE_MESSAGE_TEXT)).toBe(true);
     expect(router.hasHandler(MessageType.WORKSHOP_SET_CONVERSATION_SETTINGS)).toBe(true);
     // Conversation Widgets (ADR 2026-07-22): generate + cancel are free
     // preview routes; commit is mutation-gated.
@@ -118,7 +119,7 @@ describe('WorkshopRoomHandler routing — cross-owner seams', () => {
     expect(router.hasHandler(MessageType.WORKSHOP_PASSAGE_SEARCH_RUN)).toBe(true);
     expect(router.hasHandler(MessageType.WORKSHOP_SHOW_HIGHLIGHTS)).toBe(true);
     expect(router.hasHandler(MessageType.WORKSHOP_CLEAR_HIGHLIGHTS)).toBe(true);
-    expect(router.handlerCount).toBe(110);
+    expect(router.handlerCount).toBe(113);
   });
 
   it('refuses a live non-one-shot wire id through the real closed generation adapter', async () => {

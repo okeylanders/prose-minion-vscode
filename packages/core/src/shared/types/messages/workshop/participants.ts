@@ -98,6 +98,8 @@ export interface WorkshopQuickActionMessage extends MessageEnvelope<WorkshopQuic
 
 /** Free-text follow-up: continues the session's retained conversation. */
 export interface WorkshopSendMessagePayload {
+  /** A composer submission's lifetime, distinct from the host's provider run ID. */
+  submissionId?: string;
   text: string;
   /**
    * The Selected Text snapshot the composer's live pill showed (ADR
@@ -106,14 +108,22 @@ export interface WorkshopSendMessagePayload {
    */
   selectedTextSnapshotId?: string;
   /**
-   * With `selectedTextSnapshotId`: the room the webview was showing when it
-   * drew the pill. A send that lands in another room is refused whole.
+   * The room where the composer submitted the text and displayed its attachments.
+   * With a live selection this is the room where that particular pill was drawn.
    */
   roomRevision?: number;
 }
 
 export interface WorkshopSendMessageMessage extends MessageEnvelope<WorkshopSendMessagePayload> {
   type: MessageType.WORKSHOP_SEND_MESSAGE;
+}
+
+export interface WorkshopSendAcknowledgedMessage extends MessageEnvelope<{
+  submissionId: string;
+  roomRevision: number;
+  accepted: boolean;
+}> {
+  type: MessageType.WORKSHOP_SEND_ACKNOWLEDGED;
 }
 
 /** Explicit writer action: invite a second persona into a retained guest sidecar. */

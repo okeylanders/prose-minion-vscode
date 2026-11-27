@@ -24,6 +24,7 @@ const makeDeps = (): WorkshopAppMessageRouterDeps => ({
     handleSessionContextScan: jest.fn(),
     handleSessionRecoveryNotice: jest.fn()
   } as never,
+  sentAttachments: { receive: jest.fn() },
   readIn: {
     handleReadInResourceContent: jest.fn()
   } as never,
