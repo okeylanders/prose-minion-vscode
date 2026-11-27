@@ -1,3 +1,4 @@
+import * as fileIdentity from '@/application/services/fileEdits/fileEditIdentity';
 import { MessageRouter } from '@handlers/MessageRouter';
 import { WorkshopHighlightProposal } from '@handlers/domain/workshop/WorkshopHighlightProposal';
 import { WorkshopHighlightRestore } from '@handlers/domain/workshop/WorkshopHighlightRestore';
@@ -207,6 +208,31 @@ describe('The restore offer belongs to the room opening', () => {
     expect(r.editor.show).not.toHaveBeenCalled();
     await r.send(SHOW);
     expect(r.editor.show).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(['win32', 'linux'] as const)('uses %s path identity in matching and in fresh redraw authorizations', async platform => {
+    const samePath = fileIdentity.samePath;
+    const compare = jest.spyOn(fileIdentity, 'samePath').mockImplementation((a, b) => samePath(a, b, platform));
+    try {
+      const r = rig();
+      const primaryPath = 'C:/Book/Chapter.md';
+      const alternateCase = 'C:/book/chapter.md';
+      const second = { ...source, sourceUri: 'file:///earlier/chapter.md' };
+      const turn = r.turns.get('turn-3')!;
+      r.turns.set(turn.id, { ...turn, highlights: { source: second, set } });
+      r.authorizeExcerptReread.mockImplementation(async file => ({
+        ...authorized, fsPath: file.sourceUri === second.sourceUri ? alternateCase : primaryPath
+      }));
+      r.startOpening(); await tick();
+      const offer = currentPrompt(r);
+      expect(offer.setCount).toBe(platform === 'win32' ? 2 : 1);
+      r.authorizeExcerptReread.mockResolvedValue({ ...authorized, fsPath: alternateCase });
+      await r.answer({ promptId: offer.promptId, roomRevision: 9, choice: 'restore' });
+      expect(r.editor.show).toHaveBeenCalledTimes(platform === 'win32' ? 2 : 0);
+      if (platform === 'win32') {
+        expect(r.editor.show.mock.calls.map(call => call[1])).toEqual([primaryPath, primaryPath]);
+      }
+    } finally { compare.mockRestore(); }
   });
 
   it('waits behind a real proposal; Not now is transient and a fresh opening rejects the prior answer', async () => {

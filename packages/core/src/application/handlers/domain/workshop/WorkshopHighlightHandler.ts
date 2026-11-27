@@ -1,3 +1,4 @@
+import { samePath } from '@/application/services/fileEdits/fileEditIdentity';
 import type { MessageRouter } from '@handlers/MessageRouter';
 import {
   MessageType, type WorkshopAnswerHighlightPromptMessage, type WorkshopHighlightIdentity,
@@ -113,7 +114,7 @@ export class WorkshopHighlightHandler {
       const scope = plan.freshScope();
       const file = await this.intake.authorizeExcerptReread({ kind: 'file', ...plan.source }, scope);
       if (!current()) { return; }
-      if (file.kind !== 'authorized' || file.fsPath !== plan.fsPath) {
+      if (file.kind !== 'authorized' || !samePath(file.fsPath, plan.fsPath)) {
         this.status('The excerpt file is no longer available for highlights.');
         return;
       }
@@ -153,8 +154,8 @@ export class WorkshopHighlightHandler {
       const auth = batch ? await this.intake.authorizeExcerptReread(saved, batch.scope) : await this.intake.authorizeExcerptReread(saved);
       if (auth.kind === 'authorized') { authorizedPath = auth.fsPath; }
       if (!current()) { return; }
-      if (auth.kind !== 'authorized' || (batch && batch.path !== auth.fsPath)) { return 'unavailable'; }
-      const result = await this.editor.show(turn.id, auth.fsPath, turn.personaLabel ?? 'Persona', set, current);
+      if (auth.kind !== 'authorized' || (batch && !samePath(batch.path, auth.fsPath))) { return 'unavailable'; }
+      const result = await this.editor.show(turn.id, batch?.path ?? auth.fsPath, turn.personaLabel ?? 'Persona', set, current);
       if (!current()) { return; }
       return result ? { placed: result.placed, skipped: set.places.length - result.placed } : 'open-failed';
     } catch {

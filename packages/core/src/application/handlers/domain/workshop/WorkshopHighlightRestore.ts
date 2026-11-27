@@ -1,3 +1,4 @@
+import { samePath } from '@/application/services/fileEdits/fileEditIdentity';
 import { randomUUID } from 'crypto';
 import type { WorkshopHighlightPrompt, WorkshopHighlightPromptAnswer } from '@messages';
 import type { WorkshopSessionPersistenceCoordinator } from '@/application/services/workshop/WorkshopSessionPersistenceCoordinator';
@@ -69,7 +70,7 @@ export class WorkshopHighlightRestore {
           const resolved = await this.intake.authorizeExcerptReread({ kind: 'file', ...candidate.source }, scope)
             .catch(() => undefined);
           if (!current()) { return; }
-          matches.set(id, resolved?.kind === 'authorized' && resolved.fsPath === file.fsPath);
+          matches.set(id, resolved?.kind === 'authorized' && samePath(resolved.fsPath, file.fsPath));
         }
         if (matches.get(id)) { turnIds.push(candidate.turnId); count += candidate.count; }
       }

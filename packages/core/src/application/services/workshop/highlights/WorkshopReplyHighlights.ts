@@ -1,3 +1,4 @@
+import { samePath } from '@/application/services/fileEdits/fileEditIdentity';
 import type { WorkshopSessionService } from '../WorkshopSessionService';
 import { extractWorkshopReplyControls } from '@/utils/workshopReplyControls';
 import type { WorkshopExcerpt, WorkshopHighlightPrompt, WorkshopTurn } from '@messages';
@@ -73,7 +74,7 @@ export async function authorizeWorkshopReplyHighlights(request: WorkshopHighligh
     }
     // The writer may have been away while the question was open. Recheck the exact authorized file.
     const checked = await intake.authorizeExcerptReread(auth.source);
-    if (checked.kind === 'authorized' && checked.fsPath === auth.fsPath && current()) {
+    if (checked.kind === 'authorized' && samePath(checked.fsPath, auth.fsPath) && current()) {
       return { ...run, kind: 'approved', editor, fsPath: checked.fsPath,
         source: { sourceUri: checked.source.sourceUri, relativePath: checked.source.relativePath } };
     }
