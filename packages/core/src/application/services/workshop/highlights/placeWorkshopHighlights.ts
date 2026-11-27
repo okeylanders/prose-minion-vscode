@@ -1,5 +1,5 @@
 import type { TextRange } from '@/domain/models/DraftEdit';
-import { anchorQuote } from '@/utils/draftEdit/anchorEdits';
+import { createQuoteLocator } from '@/utils/draftEdit/anchorEdits';
 import { findProtectedRegions } from '@/utils/draftEdit/protectedRegions';
 import type { WorkshopHighlightsDraft, WorkshopHighlightPlace } from '@/utils/workshopReplyHighlights';
 
@@ -10,15 +10,15 @@ export interface WorkshopHighlightPlacement {
   readonly dropped: Readonly<Record<HighlightDrop, number>>;
 }
 
-function locate(text: string, place: WorkshopHighlightPlace): TextRange | HighlightDrop {
-  const start = anchorQuote(text, place.start);
+function locate(anchor: ReturnType<typeof createQuoteLocator>, place: WorkshopHighlightPlace): TextRange | HighlightDrop {
+  const start = anchor(place.start);
   if (start.kind !== 'anchored') {
     return start.kind;
   }
   if (!place.end) {
     return { start: start.start, end: start.end };
   }
-  const end = anchorQuote(text, place.end);
+  const end = anchor(place.end);
   if (end.kind !== 'anchored') {
     return end.kind;
   }
@@ -30,11 +30,12 @@ export function placeWorkshopHighlights(
   languageId: string,
   set: WorkshopHighlightsDraft
 ): WorkshopHighlightPlacement {
+  const anchor = createQuoteLocator(text);
   const regions = findProtectedRegions(text, languageId);
   const placed: Array<TextRange & { note: string }> = [];
   const dropped = { unanchored: 0, ambiguous: 0, unordered: 0, protected: 0 };
   for (const place of set.places) {
-    const range = locate(text, place);
+    const range = locate(anchor, place);
     if (typeof range === 'string') {
       dropped[range] += 1;
     } else if (regions.some((region) => region.start < range.end && range.start < region.end)) {

@@ -462,6 +462,19 @@ describe('app-shell provider assembly', () => {
     expect(built).not.toMatch(/Applier/);
   });
 
+  it('provides each room with its own highlights port over one window collection and read-only buffer adapter', () => {
+    const [window, rooms] = fs.readFileSync(EXTENSION_ENTRY, 'utf8').split('const createRoomServices =');
+    expect(window).toContain('new VsCodeIssueAnnotator(workshopHighlightCommands, WORKSHOP_HIGHLIGHTS)');
+    expect(window).toContain('new WorkshopHighlightService(new VsCodeWorkshopHighlightDocuments(), workshopAnnotator)');
+    expect(rooms).toContain('workshopHighlights: workshopHighlights.forRoom()');
+    expect(rooms).toContain('registerCommand(workshopHighlightCommands.clear, () => workshopHighlights.clearAll())');
+    expect(paletteCommands(readManifest())).toContainEqual({
+      command: 'prose-minion.clearWorkshopHighlights', title: 'Prose Minion: Clear All Workshop Highlights'
+    });
+    const adapter = path.join(path.dirname(EXTENSION_ENTRY), 'platform', 'vscode', 'VsCodeWorkshopHighlightDocuments.ts');
+    expect(fs.readFileSync(adapter, 'utf8')).not.toMatch(/\b(?:WorkspaceEdit|applyEdit|applyEdits|DocumentEditor)\b|\.(?:writeFile|edit|save)\(/);
+  });
+
   it('declares the Craft Flags model, empty so it follows the Workshop\'s until picked (Draft Edit Slice 3c)', () => {
     const manifest = JSON.parse(fs.readFileSync(EXTENSION_MANIFEST, 'utf8')) as {
       contributes: { configuration: { properties: Record<string, { type?: string; default?: unknown }> } };

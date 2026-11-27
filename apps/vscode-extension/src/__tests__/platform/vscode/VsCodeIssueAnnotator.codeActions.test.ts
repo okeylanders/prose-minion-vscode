@@ -45,7 +45,8 @@ jest.mock('vscode', () => {
     constructor(readonly title: string, readonly kind: string) {}
   }
   return {
-    workspace: { textDocuments: [] as unknown[], onDidChangeTextDocument: changes.event, onDidCloseTextDocument: closes.event },
+    window: { showTextDocument: jest.fn() },
+    workspace: { openTextDocument: jest.fn(), textDocuments: [] as unknown[], onDidChangeTextDocument: changes.event, onDidCloseTextDocument: closes.event },
     languages: {
       createDiagnosticCollection: (name: string) => {
         const own = collections.get(name) ?? new Map<string, unknown[]>();
@@ -59,7 +60,7 @@ jest.mock('vscode', () => {
       },
       registerCodeActionsProvider: () => ({ dispose: () => undefined })
     },
-    Uri: { parse: (value: string) => ({ toString: () => value }) },
+    Uri: { file: (path: string) => ({ toString: () => `file://${path}` }), parse: (value: string) => ({ toString: () => value }) },
     Range,
     Diagnostic,
     Location,
@@ -67,25 +68,30 @@ jest.mock('vscode', () => {
     CodeAction,
     DiagnosticSeverity: { Warning: 1, Information: 2 },
     CodeActionKind: { QuickFix: 'quickfix' },
-    mockHost: { changes, diagnostics, collections }
+    mockHost: { changes, closes, diagnostics, collections }
   };
 }, { virtual: true });
 
 jest.mock('@prose-minion/core', () => ({
   DRAFT_EDIT_LANGUAGE_IDS: jest.requireActual('@/domain/models/DraftEdit').DRAFT_EDIT_LANGUAGE_IDS,
+  WorkshopHighlightService: jest.requireActual('@/application/services/workshop/highlights/WorkshopHighlightService').WorkshopHighlightService,
   shiftRanges: jest.requireActual('@/utils/draftEdit/shiftRanges').shiftRanges
 }));
 
 import * as vscode from 'vscode';
-import type { DocumentAnnotation } from '@prose-minion/core';
-import { CRAFT_FLAGS, DRAFT_EDIT_DIAGNOSTIC_SOURCE, VsCodeIssueAnnotator } from '@app/platform/vscode/VsCodeIssueAnnotator';
+import { WorkshopHighlightService, type DocumentAnnotation } from '@prose-minion/core';
+import { VsCodeWorkshopHighlightDocuments } from '@app/platform/vscode/VsCodeWorkshopHighlightDocuments';
+import { CRAFT_FLAGS, WORKSHOP_HIGHLIGHTS, DRAFT_EDIT_DIAGNOSTIC_SOURCE, VsCodeIssueAnnotator } from '@app/platform/vscode/VsCodeIssueAnnotator';
 
 interface MockHost {
   changes: { fire(event: unknown): void };
+  closes: { fire(event: unknown): void };
   diagnostics: Map<string, Diagnostic[]>;
   collections: Map<string, Map<string, Diagnostic[]>>;
 }
 interface Diagnostic {
+  severity: number;
+  message: string;
   range: { start: { offset: number }; end: { offset: number } };
   source?: string;
   code?: unknown;
@@ -315,5 +321,175 @@ describe('VsCodeIssueAnnotator: related places', () => {
     craft.show(URI, 3, [annotation('craft-2', 'vrey', undefined, 'craft.cliche')]);
 
     expect(shown()[0].relatedInformation).toBeUndefined();
+  });
+});
+
+describe('Workshop highlights in the live editor', () => {
+  const path = '/workspace/chapter-01.md';
+  const draft = (title: string, ...quotes: string[]) => ({
+    title, places: quotes.map(quote => ({ start: { quote }, note: 'Look here.' }))
+  });
+  const highlights = () => host.collections.get(WORKSHOP_HIGHLIGHTS.collection)?.get(URI) ?? [];
+  const openDocument = vscode.workspace.openTextDocument as jest.Mock;
+  const showDocument = vscode.window.showTextDocument as jest.Mock;
+  let text: string;
+  const doc = { ...document, languageId: 'markdown', getText: () => text };
+  let annotator: VsCodeIssueAnnotator;
+  let service: WorkshopHighlightService;
+  let room: ReturnType<WorkshopHighlightService['forRoom']>;
+  let secondRoom: typeof room;
+
+  beforeEach(() => {
+    text = TEXT;
+    doc.version = 3;
+    workspace.textDocuments = [doc];
+    host.collections.forEach(collection => collection.clear());
+    openDocument.mockReset().mockImplementation(async () => {
+      workspace.textDocuments = [doc];
+      return doc;
+    });
+    showDocument.mockReset().mockResolvedValue(undefined);
+    annotator = new VsCodeIssueAnnotator({ dismiss: 'dismissHighlight', clear: 'clearHighlights' }, WORKSHOP_HIGHLIGHTS);
+    service = new WorkshopHighlightService(new VsCodeWorkshopHighlightDocuments(), annotator);
+    room = service.forRoom();
+    secondRoom = service.forRoom();
+  });
+
+  afterEach(() => annotator.dispose());
+
+  it('stacks sets with the same turn id and range across rooms, with independent Dismiss and room cleanup', () => {
+    room.showOpen('turn', path, 'Jill', draft('Signature', 'Alice', 'sister'));
+    secondRoom.showOpen('turn', path, 'Cat', draft('Names', 'Alice'));
+    room.showOpen('another', path, 'Jill', draft('Voice', 'reading'));
+    expect(highlights().map(d => [d.source, d.severity, d.message])).toEqual([
+      ['Prose Minion Workshop', 2, 'Jill · Signature: Look here.'],
+      ['Prose Minion Workshop', 2, 'Jill · Signature: Look here.'],
+      ['Prose Minion Workshop', 2, 'Cat · Names: Look here.'],
+      ['Prose Minion Workshop', 2, 'Jill · Voice: Look here.']
+    ]);
+    const actions = annotator.provideCodeActions(doc as never, {} as never, { diagnostics: [highlights()[2]] } as never);
+    expect(actions.map(a => a.title)).toEqual(['Dismiss this Workshop highlight', 'Clear all Workshop highlights']);
+    expect(actions[1].command?.arguments).toEqual([]);
+    const [uri, id] = actions[0].command!.arguments!;
+    service.dismiss(uri, id);
+    expect(highlights().map(d => d.message)).not.toContain('Cat · Names: Look here.');
+    secondRoom.showOpen('turn', path, 'Cat', draft('Names', 'Alice'));
+    room.clear('turn');
+    room.clear('turn');
+    expect(highlights().map(d => d.message)).toEqual(['Jill · Voice: Look here.', 'Cat · Names: Look here.']);
+    room.retain(new Set());
+    expect(highlights().map(d => d.message)).toEqual(['Cat · Names: Look here.']);
+    service.clearAll();
+    service.clearAll();
+    expect(highlights()).toEqual([]);
+  });
+
+  it('retains the updated offsets and withdrawals of earlier sets as new sets arrive', () => {
+    room.showOpen('a', path, 'Jill', draft('First', 'Alice', 'sister', 'reading'));
+    const mark = annotator.current(URI)!.annotations[1];
+    service.dismiss(URI, mark.id);
+    text = text.replace('Alice', 'Alicia');
+    doc.version++;
+    host.changes.fire({ document: doc, contentChanges: [{ rangeOffset: 0, rangeLength: 5, text: 'Alicia' }] });
+    secondRoom.showOpen('b', path, 'Cat', draft('Second', 'Alicia'));
+    expect(highlights().map(d => [d.range.start.offset, d.message])).toEqual([
+      [text.indexOf('reading'), 'Jill · First: Look here.'], [0, 'Cat · Second: Look here.']
+    ]);
+  });
+
+  it('clears on close and re-anchors the chosen set after reopening or Clear', async () => {
+    const set = draft('Names', 'Alice', 'sister');
+    room.showOpen('a', path, 'Jill', set);
+    host.closes.fire(doc);
+    workspace.textDocuments = [];
+    expect(highlights()).toEqual([]);
+    expect(room.showOpen('b', path, 'Cat', set)).toBeUndefined();
+    expect(openDocument).not.toHaveBeenCalled();
+    text = 'Her sister spoke.';
+    doc.version = 1;
+    const counts = await room.show('a', path, 'Jill', set, () => true);
+    expect(counts).toMatchObject({ placed: 1, dropped: { unanchored: 1 } });
+    expect(highlights().map(d => d.range.start.offset)).toEqual([4]);
+    room.clear('a');
+    expect(await room.show('a', path, 'Jill', set, () => true)).toEqual(counts);
+    expect(highlights()).toHaveLength(1);
+  });
+
+  it('reads and places again when the annotation host rejects a stale document version', () => {
+    jest.spyOn(annotator, 'show').mockImplementationOnce(() => {
+      text = 'Hello ' + TEXT;
+      doc.version++;
+      return false;
+    });
+    expect(room.showOpen('a', path, 'Jill', draft('Names', 'Alice'))?.placed).toBe(1);
+    expect(highlights()[0].range.start.offset).toBe(6);
+  });
+
+  it('reports a display failure when both versions are stale', () => {
+    jest.spyOn(annotator, 'show').mockReturnValue(false);
+    expect(() => room.showOpen('a', path, 'Jill', draft('Names', 'Alice'))).toThrow('document changed');
+    expect(highlights()).toEqual([]);
+  });
+
+  it.each(['clear', 'all', 'retain', 'room change', 'newer show'])('cancels a Show pending at %s', async action => {
+    let current = true;
+    const pending = room.show('a', path, 'Jill', draft('Old', 'Alice'), () => current);
+    switch (action) {
+      case 'clear': room.clear('a'); break;
+      case 'all': service.clearAll(); expect(room.clearGeneration).toBe(1); break;
+      case 'retain': room.retain(new Set()); break;
+      case 'room change': current = false; break;
+      case 'newer show': room.showOpen('a', path, 'Jill', draft('New', 'sister')); break;
+    }
+    expect(await pending).toBeUndefined();
+    expect(showDocument).not.toHaveBeenCalled();
+    expect(highlights().map(d => d.message)).toEqual(action === 'newer show' ? ['Jill · New: Look here.'] : []);
+  });
+
+  it('drops a Show cleared while VS Code is revealing the opened document', async () => {
+    showDocument.mockImplementationOnce(async () => service.clearAll());
+    expect(await room.show('turn', path, 'Jill', draft('Set', 'Alice'), () => true)).toBeUndefined();
+    expect(showDocument).toHaveBeenCalledTimes(1);
+    expect(highlights()).toEqual([]);
+  });
+
+  it('clears across files and draws a saved set again in a new window service after reload', async () => {
+    const otherPath = '/workspace/chapter-02.md';
+    const otherUri = vscode.Uri.file(otherPath);
+    workspace.textDocuments = [doc, { ...doc, uri: otherUri }];
+    const saved = draft('Names', 'Alice');
+    room.showOpen('one', path, 'Jill', saved);
+    secondRoom.showOpen('two', otherPath, 'Cat', draft('First line', 'Alice'));
+    const collection = host.collections.get(WORKSHOP_HIGHLIGHTS.collection)!;
+    expect(collection.get(otherUri.toString())).toHaveLength(1);
+    service.clearAll();
+    expect(collection.size).toBe(0);
+    annotator.dispose();
+    annotator = new VsCodeIssueAnnotator({ dismiss: 'dismissHighlight', clear: 'clearHighlights' }, WORKSHOP_HIGHLIGHTS);
+    const restored = new WorkshopHighlightService(new VsCodeWorkshopHighlightDocuments(), annotator).forRoom();
+    text = 'Restored: ' + TEXT;
+    expect((await restored.show('one', path, 'Jill', saved, () => true))?.placed).toBe(1);
+    expect(highlights()[0].range.start.offset).toBe(10);
+  });
+
+  it('keeps Proofread, Craft and Workshop Clear confined to their own collections', () => {
+    const proofread = new VsCodeIssueAnnotator(COMMANDS);
+    const craft = new VsCodeIssueAnnotator(COMMANDS, CRAFT_FLAGS);
+    try {
+      const flag = annotation('one', 'Alice');
+      proofread.show(URI, doc.version, [flag]);
+      craft.show(URI, doc.version, [flag]);
+      room.showOpen('a', path, 'Jill', draft('Names', 'Alice'));
+      service.clearAll();
+      expect(proofread.current(URI)?.annotations).toEqual([flag]);
+      expect(craft.current(URI)?.annotations).toEqual([flag]);
+      room.showOpen('a', path, 'Jill', draft('Names', 'Alice'));
+      proofread.clear();
+      craft.clear();
+      expect(highlights()).toHaveLength(1);
+    } finally {
+      proofread.dispose();
+      craft.dispose();
+    }
   });
 });

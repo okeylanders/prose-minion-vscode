@@ -48,10 +48,25 @@ export interface VsCodeFlagFamily {
   readonly source: string;
   /** The flags' name in the code actions' titles: "Dismiss this Proofread flag". */
   readonly noun: string;
+  /** Families with different terminology can supply their own action titles. */
+  readonly dismissTitle?: string;
+  /** When supplied, Clear operates window-wide and receives no URI. */
+  readonly clearAllTitle?: string;
+  /** Workshop supports any file-backed excerpt. Draft Edit's passes run in prose languages. */
+  readonly fileSelector?: vscode.DocumentFilter;
 }
 
 export const PROOFREAD_FLAGS: VsCodeFlagFamily = { collection: 'prose-minion.draftEdit', source: 'Prose Minion', noun: 'Proofread' };
 export const CRAFT_FLAGS: VsCodeFlagFamily = { collection: 'prose-minion.craftFlags', source: 'Prose Minion Craft', noun: 'Craft' };
+
+export const WORKSHOP_HIGHLIGHTS: VsCodeFlagFamily = {
+  collection: 'prose-minion.workshopHighlights',
+  source: 'Prose Minion Workshop',
+  noun: 'Workshop',
+  dismissTitle: 'Dismiss this Workshop highlight',
+  clearAllTitle: 'Clear all Workshop highlights',
+  fileSelector: { scheme: 'file' }
+};
 
 export const DRAFT_EDIT_DIAGNOSTIC_SOURCE = PROOFREAD_FLAGS.source;
 
@@ -78,7 +93,7 @@ export class VsCodeIssueAnnotator implements IssueAnnotator, vscode.CodeActionPr
       vscode.workspace.onDidChangeTextDocument((event) => this.follow(event)),
       vscode.workspace.onDidCloseTextDocument((document) => this.clear(document.uri.toString())),
       vscode.languages.registerCodeActionsProvider(
-        DRAFT_EDIT_LANGUAGE_IDS.map((language) => ({ language })),
+        family.fileSelector ?? DRAFT_EDIT_LANGUAGE_IDS.map((language) => ({ language })),
         this,
         { providedCodeActionKinds: [vscode.CodeActionKind.QuickFix] }
       )
@@ -151,7 +166,7 @@ export class VsCodeIssueAnnotator implements IssueAnnotator, vscode.CodeActionPr
         replace.command = { title: replace.title, command: this.commands.replace, arguments: [uri, annotation.id] };
         actions.push(replace);
       }
-      const dismiss = new vscode.CodeAction(`Dismiss this ${this.family.noun} flag`, vscode.CodeActionKind.QuickFix);
+      const dismiss = new vscode.CodeAction(this.family.dismissTitle ?? `Dismiss this ${this.family.noun} flag`, vscode.CodeActionKind.QuickFix);
       dismiss.diagnostics = [diagnostic];
       dismiss.command = { title: dismiss.title, command: this.commands.dismiss, arguments: [uri, annotation.id] };
       actions.push(dismiss);
@@ -162,8 +177,8 @@ export class VsCodeIssueAnnotator implements IssueAnnotator, vscode.CodeActionPr
         fixAll.command = { title: fixAll.title, command: this.commands.fixAll, arguments: [uri] };
         actions.push(fixAll);
       }
-      const clear = new vscode.CodeAction(`Clear all ${this.family.noun} flags in this file`, vscode.CodeActionKind.QuickFix);
-      clear.command = { title: clear.title, command: this.commands.clear, arguments: [uri] };
+      const clear = new vscode.CodeAction(this.family.clearAllTitle ?? `Clear all ${this.family.noun} flags in this file`, vscode.CodeActionKind.QuickFix);
+      clear.command = { title: clear.title, command: this.commands.clear, arguments: this.family.clearAllTitle ? [] : [uri] };
       actions.push(clear);
     }
     return actions;

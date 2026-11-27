@@ -276,6 +276,7 @@ export * from '@/domain/models/FileEditStaging';
 export { workshopExcerptFileEditDocument } from '@/application/services/workshop/WorkshopExcerptFileEditDocument';
 export { workshopHistoryExcerptFile } from '@/application/services/workshop/history/WorkshopHistoryFiles';
 export { WORKSHOP_HISTORY_GIT_READY_MS } from '@/application/services/workshop/history/WorkshopHistoryCapability';
+export { WorkshopHighlightService, type WorkshopHighlightDocuments } from '@/application/services/workshop/highlights/WorkshopHighlightService';
 export { WorkshopHistoryDiffCache } from '@/application/services/workshop/history/WorkshopHistoryDiffCache';
 export { describeDraftEditOutcome, describeQuickFixOutcome, type DraftEditSummary } from '@/application/services/draftEdit/draftEditSummary';
 export {
