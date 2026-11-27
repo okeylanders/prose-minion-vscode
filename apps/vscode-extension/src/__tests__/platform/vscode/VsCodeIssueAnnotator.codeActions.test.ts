@@ -5,7 +5,7 @@
  * controlled double; text is synthetic, around *Alice*.
  */
 
-import './mockIssueAnnotatorHost';
+import { host, type Diagnostic } from './mockIssueAnnotatorHost';
 
 /* eslint-disable @typescript-eslint/naming-convention -- match the core barrel's exports. */
 jest.mock('@prose-minion/core', () => ({
@@ -20,29 +20,12 @@ import { WorkshopHighlightService, type DocumentAnnotation } from '@prose-minion
 import { VsCodeWorkshopHighlightDocuments } from '@app/platform/vscode/VsCodeWorkshopHighlightDocuments';
 import { CRAFT_FLAGS, WORKSHOP_HIGHLIGHTS, DRAFT_EDIT_DIAGNOSTIC_SOURCE, VsCodeIssueAnnotator } from '@app/platform/vscode/VsCodeIssueAnnotator';
 
-interface MockHost {
-  changes: { fire(event: unknown): void };
-  closes: { fire(event: unknown): void };
-  tabsChanged: { fire(event: unknown): void };
-  groupsChanged: { fire(event: unknown): void };
-  diagnostics: Map<string, Diagnostic[]>;
-  collections: Map<string, Map<string, Diagnostic[]>>;
-}
-interface Diagnostic {
-  severity: number;
-  message: string;
-  range: { start: { offset: number }; end: { offset: number } };
-  source?: string;
-  code?: unknown;
-  relatedInformation?: Array<{ location: { range: { start: { offset: number }; end: { offset: number } } }; message: string }>;
-}
 interface Action {
   title: string;
   isPreferred?: boolean;
   command?: { command: string; arguments: unknown[] };
 }
 
-const host = (vscode as unknown as { mockHost: MockHost }).mockHost;
 const workspace = vscode.workspace as unknown as { textDocuments: unknown[] };
 const URI = 'file:///workspace/chapter-01.md';
 const TEXT = 'Alice was begining to get vrey tired; her sister is reading.';
@@ -290,7 +273,10 @@ describe('Workshop highlights in the live editor', () => {
       workspace.textDocuments = [doc];
       return doc;
     });
-    showDocument.mockReset().mockImplementation(async () => { tabGroups.all = [{ tabs: [fileTab()] }]; });
+    showDocument.mockReset().mockImplementation(async () => {
+      tabGroups.all = [{ tabs: [fileTab()] }];
+      host.tabsChanged.fire({});
+    });
     annotator = new VsCodeIssueAnnotator({ dismiss: 'dismissHighlight', clear: 'clearHighlights' }, WORKSHOP_HIGHLIGHTS);
     service = new WorkshopHighlightService(new VsCodeWorkshopHighlightDocuments(), annotator);
     room = service.forRoom();
@@ -326,6 +312,20 @@ describe('Workshop highlights in the live editor', () => {
     expect(highlights()).toEqual([]);
   });
 
+  it('identifies each overlapping Dismiss target in menu order, even with the same range and note', () => {
+    room.showOpen('first', path, 'Jill', draft('Rhythm', 'Alice'));
+    room.showOpen('second', path, 'Cat', draft('Portrait', 'Alice'));
+    secondRoom.showOpen('first', path, 'Jill', draft('Rhythm', 'Alice'));
+    const diagnostics = [...highlights()].reverse();
+    const actions = annotator.provideCodeActions(doc as never, {} as never, { diagnostics } as never).slice(0, 3);
+    expect(actions.map(action => action.title)).toEqual([
+      'Dismiss this Workshop highlight (1 of 3) · Jill · Rhythm: Look here.',
+      'Dismiss this Workshop highlight (2 of 3) · Cat · Portrait: Look here.',
+      'Dismiss this Workshop highlight (3 of 3) · Jill · Rhythm: Look here.'
+    ]);
+    expect(actions.map(action => action.command?.arguments?.[1])).toEqual(diagnostics.map(d => d.code));
+  });
+
   it('retains the updated offsets and withdrawals of earlier sets as new sets arrive', () => {
     room.showOpen('a', path, 'Jill', draft('First', 'Alice', 'sister', 'reading'));
     const mark = annotator.current(URI)!.annotations[1];
@@ -343,13 +343,18 @@ describe('Workshop highlights in the live editor', () => {
     const set = draft('Names', 'Alice', 'sister');
     room.showOpen('a', path, 'Jill', set);
     host.closes.fire(doc);
+    tabGroups.all = [{ tabs: [fileTab('file:///workspace/elsewhere.md')] }];
+    host.tabsChanged.fire({});
     workspace.textDocuments = [];
     expect(highlights()).toEqual([]);
     expect(room.showOpen('b', path, 'Cat', set)).toBeUndefined();
     expect(openDocument).not.toHaveBeenCalled();
     text = 'Her sister spoke.';
     doc.version = 1;
-    const counts = await room.show('a', path, 'Jill', set, () => true);
+    const request = room.show('a', path, 'Jill', set, () => true);
+    tabGroups.all = [{ tabs: [] }]; // A different file closes while Show opens its source.
+    host.tabsChanged.fire({});
+    const counts = await request;
     expect(counts).toMatchObject({ placed: 1, dropped: { unanchored: 1 } });
     expect(highlights().map(d => d.range.start.offset)).toEqual([4]);
     room.clear('a');
@@ -382,6 +387,27 @@ describe('Workshop highlights in the live editor', () => {
     } finally {
       proofread.dispose();
     }
+  });
+
+  it('does not reveal a cached document after the last tab closes while Show is opening it', async () => {
+    const request = room.show('turn', path, 'Jill', draft('Names', 'Alice'), () => true);
+    tabGroups.all = [{ tabs: [] }];
+    host.tabsChanged.fire({});
+    expect(workspace.textDocuments).toContain(doc);
+    expect(await request).toBeUndefined();
+    expect(showDocument).not.toHaveBeenCalled();
+    expect(highlights()).toEqual([]);
+  });
+
+  it('does not draw after the last source tab closes and reopens during reveal', async () => {
+    showDocument.mockImplementationOnce(async () => {
+      tabGroups.all = [{ tabs: [] }];
+      host.tabsChanged.fire({});
+      tabGroups.all = [{ tabs: [fileTab()] }];
+      host.tabsChanged.fire({});
+    });
+    expect(await room.show('turn', path, 'Jill', draft('Names', 'Alice'), () => true)).toBeUndefined();
+    expect(highlights()).toEqual([]);
   });
 
   it('reads and places again when the annotation host rejects a stale document version', () => {

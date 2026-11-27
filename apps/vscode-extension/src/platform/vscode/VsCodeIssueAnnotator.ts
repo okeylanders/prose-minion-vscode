@@ -50,7 +50,7 @@ export interface VsCodeFlagFamily {
   /** The flags' name in the code actions' titles: "Dismiss this Proofread flag". */
   readonly noun: string;
   /** Families with different terminology can supply their own action titles. */
-  readonly dismissTitle?: string;
+  readonly dismissTitle?: (message: string, index: number, count: number) => string;
   /** When supplied, Clear operates window-wide and receives no URI. */
   readonly clearAllTitle?: string;
   /** Workshop supports any file-backed excerpt. Draft Edit's passes run in prose languages. */
@@ -66,7 +66,14 @@ export const WORKSHOP_HIGHLIGHTS: VsCodeFlagFamily = {
   collection: 'prose-minion.workshopHighlights',
   source: 'Prose Minion Workshop',
   noun: 'Workshop',
-  dismissTitle: 'Dismiss this Workshop highlight',
+  dismissTitle: (message, index, count) => {
+    const title = 'Dismiss this Workshop highlight';
+    if (count === 1) { return title; }
+    // The ordinal distinguishes identical notes or labels with the same shortened prefix.
+    const prose = message.replace(/\s+/gu, ' ').trim();
+    const label = prose.length > 80 ? `${prose.slice(0, 79)}…` : prose;
+    return `${title} (${index + 1} of ${count}) · ${label}`;
+  },
   clearAllTitle: 'Clear all Workshop highlights',
   fileSelector: { scheme: 'file' },
   clearOnLastTabClose: true
@@ -163,17 +170,17 @@ export class VsCodeIssueAnnotator implements IssueAnnotator, vscode.CodeActionPr
     const uri = document.uri.toString();
     const current = this.shown.get(uri) ?? [];
     const actions: vscode.CodeAction[] = [];
-    for (const diagnostic of context.diagnostics) {
+    const matches = context.diagnostics.flatMap(diagnostic => {
       if (diagnostic.source !== this.family.source) {
-        continue;
+        return [];
       }
       // Diagnostics come back as copies: match ours by code and place.
       const start = document.offsetAt(diagnostic.range.start);
       const end = document.offsetAt(diagnostic.range.end);
       const annotation = current.find((each) => each.start === start && each.end === end && each.code === diagnosticCode(diagnostic));
-      if (!annotation) {
-        continue;
-      }
+      return annotation ? [{ diagnostic, annotation }] : [];
+    });
+    for (const [index, { diagnostic, annotation }] of matches.entries()) {
       if (annotation.fix && this.commands.replace) {
         const replace = new vscode.CodeAction(replaceTitle(annotation.fix.replacement), vscode.CodeActionKind.QuickFix);
         replace.diagnostics = [diagnostic];
@@ -181,7 +188,8 @@ export class VsCodeIssueAnnotator implements IssueAnnotator, vscode.CodeActionPr
         replace.command = { title: replace.title, command: this.commands.replace, arguments: [uri, annotation.id] };
         actions.push(replace);
       }
-      const dismiss = new vscode.CodeAction(this.family.dismissTitle ?? `Dismiss this ${this.family.noun} flag`, vscode.CodeActionKind.QuickFix);
+      const title = this.family.dismissTitle?.(annotation.message, index, matches.length) ?? `Dismiss this ${this.family.noun} flag`;
+      const dismiss = new vscode.CodeAction(title, vscode.CodeActionKind.QuickFix);
       dismiss.diagnostics = [diagnostic];
       dismiss.command = { title: dismiss.title, command: this.commands.dismiss, arguments: [uri, annotation.id] };
       actions.push(dismiss);

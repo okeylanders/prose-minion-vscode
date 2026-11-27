@@ -78,4 +78,22 @@ jest.mock('vscode', () => {
   };
 }, { virtual: true });
 
-export {};
+import * as vscode from 'vscode';
+
+interface MockHost {
+  changes: { fire(event: unknown): void };
+  closes: { fire(event: unknown): void };
+  tabsChanged: { fire(event: unknown): void };
+  groupsChanged: { fire(event: unknown): void };
+  diagnostics: Map<string, Diagnostic[]>;
+  collections: Map<string, Map<string, Diagnostic[]>>;
+}
+export interface Diagnostic {
+  severity: number;
+  message: string;
+  range: { start: { offset: number }; end: { offset: number } };
+  source?: string;
+  code?: unknown;
+  relatedInformation?: Array<{ location: { range: { start: { offset: number }; end: { offset: number } } }; message: string }>;
+}
+export const host = (vscode as unknown as { mockHost: MockHost }).mockHost;

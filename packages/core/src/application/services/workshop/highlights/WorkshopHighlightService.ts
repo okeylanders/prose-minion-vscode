@@ -5,6 +5,7 @@ import { placeWorkshopHighlights } from './placeWorkshopHighlights';
 
 /** Read the live buffer, including unsaved changes. Only a writer's Show may open it. */
 export interface WorkshopHighlightDocuments {
+  captureTabClosures(): { current(fsPath: string): boolean; dispose(): void };
   readOpen(fsPath: string): { uri: string; version: number; languageId: string; text: string } | undefined;
   reveal(fsPath: string, current: () => boolean): Promise<boolean>;
 }
@@ -45,6 +46,7 @@ export class WorkshopHighlightService {
     };
     return {
       get clearGeneration() { return window.generation; },
+      captureTabClosures: () => this.buffers.captureTabClosures(),
       showOpen: (turnId, fsPath, persona, draft) => {
         const set = begin(turnId);
         try {
@@ -55,14 +57,16 @@ export class WorkshopHighlightService {
       },
       show: async (turnId, fsPath, persona, draft, current) => {
         if (!current()) { return undefined; }
+        const tabs = this.buffers.captureTabClosures();
         const set = begin(turnId);
-        const stillCurrent = () => sets.get(turnId) === set && current();
+        const stillCurrent = () => sets.get(turnId) === set && current() && tabs.current(fsPath);
         try {
           if (await this.buffers.reveal(fsPath, stillCurrent) && stillCurrent()) {
             return this.draw(set, fsPath, persona, draft);
           }
           return undefined;
         } finally {
+          tabs.dispose();
           if (sets.get(turnId) === set && !set.shown) { forget(turnId); }
         }
       },
