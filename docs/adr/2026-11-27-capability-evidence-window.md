@@ -1,7 +1,7 @@
 # ADR — Fit memory reads and withhold oversized capability evidence
 
-**Date** 2026-11-27  
-**Status** Accepted for implementation  
+**Date** 2026-11-27
+**Status** Accepted for implementation
 **Scope** Capability evidence in all four capability-bearing run policies and the Workshop's `memory.read`.
 
 ## Context
