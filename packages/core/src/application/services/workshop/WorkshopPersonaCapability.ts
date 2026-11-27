@@ -1,3 +1,4 @@
+import type { StageWorkshopReadDelivery } from '@/application/services/workshop/reads/WorkshopReadWindowFit';
 import { WorkshopContextTallyRecorder, workshopTalliedContract } from '@services/analysis/WorkshopContextTally';
 import { WorkshopAnalysisSidePass } from '@/application/services/workshop/WorkshopAnalysisSidePass';
 import { extractWorkshopReplyControls } from '@/utils/workshopReplyControls';
@@ -345,13 +346,15 @@ export class WorkshopPersonaCapability implements AgentCapability<
     const startedAt = Date.now();
     const unrunNativeCalls = this.nativeTranslation?.unrun ?? 0;
     this.nativeTranslation = undefined;
+    let recordReadDelivery: (() => void) | undefined;
     let result: WorkshopCapabilityResult;
     // Only a provider run's turn is stamped (ADR 2026-11-03 D7): a persona's
     // analysis or dictionary lookup. The stamp rides beside the result,
     // never in it, so it cannot reach the evidence the persona reads.
     let model: WorkshopTurnModel | undefined;
     try {
-      result = await this.dispatch(request, window, (runModel) => { model = runModel; }, unrunNativeCalls);
+      result = await this.dispatch(request, window, (runModel) => { model = runModel; }, unrunNativeCalls,
+        record => { recordReadDelivery = record; });
     } catch (error) {
       const cancelled = this.turn.signal.aborted || this.isAbortError(error);
       const message = cancelled
@@ -371,6 +374,10 @@ export class WorkshopPersonaCapability implements AgentCapability<
       operation: request.capability,
       indivisible: request.capability === 'analysis.run' || request.capability === 'dictionary.full-entry',
       settle: (notice) => {
+        if (notice === undefined) {
+          recordReadDelivery?.();
+        }
+        recordReadDelivery = undefined;
         const settled: WorkshopCapabilityResult = notice === undefined ? result : {
           capability: request.capability, status: 'rejected', requestSummary: this.requestSummary(request),
           error: notice, metadata: { reason: 'context-window-exceeded' }, usage: result.usage
@@ -776,7 +783,8 @@ export class WorkshopPersonaCapability implements AgentCapability<
     request: WorkshopCapabilityRequest,
     window: CapabilityContextWindow | undefined,
     onRunModel: (model: WorkshopTurnModel | undefined) => void,
-    unrunNativeCalls = 0
+    unrunNativeCalls: number,
+    stageReadDelivery: StageWorkshopReadDelivery
   ): Promise<WorkshopCapabilityResult> {
     if (this.turn.signal.aborted) throw this.abortError();
     switch (request.capability) {
@@ -823,13 +831,13 @@ export class WorkshopPersonaCapability implements AgentCapability<
       case 'resource.search':
       case 'resource.read':
         // A read is fitted to half the room left; catalog and search ignore it (ADR 2026-11-14 D2).
-        return this.resourceCapability.fulfill(request, window);
+        return this.resourceCapability.fulfill(request, window, stageReadDelivery);
       case 'transcript.catalog':
       case 'transcript.search':
       case 'transcript.read':
       case 'transcript.todos':
       case 'transcript.bookmarks':
-        return this.recallCapability.fulfill(request, window);
+        return this.recallCapability.fulfill(request, window, stageReadDelivery);
       case 'memory.catalog':
       case 'memory.search':
       case 'memory.read':

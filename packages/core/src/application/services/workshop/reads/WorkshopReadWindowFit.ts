@@ -20,6 +20,10 @@
 import { estimateTextTokens } from '@orchestration/RequestContextPreflight';
 import type { WorkshopCapabilityResult } from '@shared/types/workshopCapabilities';
 
+/** The persona engine admits read bodies at settlement. Direct consumers accept the result immediately. */
+export type StageWorkshopReadDelivery = (recordDelivery: () => void) => void;
+export const acceptWorkshopReadDelivery: StageWorkshopReadDelivery = recordDelivery => recordDelivery();
+
 /** Renders one read may take to find the largest that fits the window. */
 export const WORKSHOP_READ_FIT_RENDERS = 6;
 /**
