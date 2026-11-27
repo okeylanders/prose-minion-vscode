@@ -1347,6 +1347,16 @@ export class WorkshopSessionService {
     return this.turnLedger.all();
   }
 
+  readRoomTurn(turnId: string): WorkshopTurn | undefined {
+    return this.turnLedger.find(turnId);
+  }
+
+  /** The rewind listener keeps drawn sets belonging to surviving replies, including offscreen turns. */
+  readHighlightTurnIds(): ReadonlySet<string> {
+    return new Set(this.turnLedger.project((turn) => turn.highlights ? turn.id : undefined)
+      .filter((id): id is string => id !== undefined));
+  }
+
   /** The panel closed: even a reader returning before the final flush must drop its result. */
   invalidatePendingRoomReads(): void {
     this.roomRevision = mintRoomRevision();

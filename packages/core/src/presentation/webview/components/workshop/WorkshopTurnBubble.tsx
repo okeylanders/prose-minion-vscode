@@ -11,6 +11,7 @@
  * only the live streaming bubble rides the token clock.
  */
 
+import type { WorkshopHighlightAction } from '@hooks/domain/workshop/useWorkshopHighlightAction';
 import * as React from 'react';
 import { Icon, type IconName } from '@components/shared/Icon';
 import { MarkdownRenderer } from '@components/shared/MarkdownRenderer';
@@ -119,6 +120,7 @@ interface WorkshopTurnBubbleProps {
   locationsProposal?: WorkshopLocationsProposalControls;
   /** A persona's passage-search card: its price, Run and results (ADR 2026-11-20 D19). */
   passageSearch?: WorkshopPassageSearchControls;
+  onHighlightAction?: WorkshopHighlightAction;
   /** The reaction corner: its cluster and the "Add reaction" palette (ADR 2026-11-07 D8). */
   reactions?: WorkshopReactionControls;
   /** The footer's edit-offer chips, and the press's and answer's lines (ADR 2026-11-10 U1–U4). */
@@ -406,7 +408,7 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
   onToggleBookmark,
   modelLabel = workshopRawModelId,
   memory,
-  fileEdits, todoReceipt, locationsProposal, passageSearch,
+  fileEdits, todoReceipt, locationsProposal, passageSearch, onHighlightAction,
   reactions,
   editOffers
 }) => {
@@ -824,6 +826,7 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
           {branchAction}
         </div>
         <WorkshopTurnFoot
+          onHighlightAction={onHighlightAction}
           turn={turn}
           offers={editOffers}
           reactions={reactions}
