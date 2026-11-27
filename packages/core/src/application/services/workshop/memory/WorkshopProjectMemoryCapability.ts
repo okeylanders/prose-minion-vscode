@@ -73,7 +73,10 @@ const LABEL_CHARACTERS = 200;
 export class WorkshopProjectMemoryCapability {
   private reads = 0;
   private noteCharacters = 0;
-  private readonly sources = new WeakMap<WorkshopCapabilityResult, CapabilityDeliveredSource[]>();
+  private readonly pendingReads = new WeakMap<WorkshopCapabilityResult, {
+    noteCharacters: number;
+    sources: CapabilityDeliveredSource[];
+  }>();
 
   constructor(
     private readonly library: WorkshopProjectMemoryPort,
@@ -172,9 +175,15 @@ export class WorkshopProjectMemoryCapability {
     }
   }
 
-  /** Manifest rows for what a result put in context: one per memory a read showed whole. */
-  deliveredSources(result: WorkshopCapabilityResult): readonly CapabilityDeliveredSource[] {
-    return this.sources.get(result) ?? [];
+  /** Charge only notes admitted to context, including when window metadata changes during a read. */
+  recordReadDelivery(result: WorkshopCapabilityResult): readonly CapabilityDeliveredSource[] {
+    const delivery = this.pendingReads.get(result);
+    if (!delivery) {
+      return [];
+    }
+    this.pendingReads.delete(result);
+    this.noteCharacters += delivery.noteCharacters;
+    return delivery.sources;
   }
 
   private async catalog(request: Request<'memory.catalog'>): Promise<WorkshopCapabilityResult> {
@@ -252,13 +261,14 @@ export class WorkshopProjectMemoryCapability {
       fitted = render({ unknownWindow: true }, Math.max(0, budgets.readCharacters - this.noteCharacters));
     }
     const { outcome, rendered } = fitted;
-    this.noteCharacters += rendered.noteCharacters;
-    // Only the result returned to the caller contributes rows and log counts.
-    this.sources.set(outcome, rendered.read.map(({ memory }) => ({
-      kind: 'memory' as const,
-      label: recallLabel(memory.title),
-      sizeChars: memory.body.length + memory.title.length + memory.summary.length
-    })));
+    this.pendingReads.set(outcome, {
+      noteCharacters: rendered.noteCharacters,
+      sources: rendered.read.map(({ memory }) => ({
+        kind: 'memory',
+        label: recallLabel(memory.title),
+        sizeChars: memory.body.length + memory.title.length + memory.summary.length
+      }))
+    });
     this.log(`read named=${request.memories.length} read=${rendered.read.length} characters=${rendered.content.length}`);
     return outcome;
   }

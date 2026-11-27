@@ -34,6 +34,10 @@ import {
   LIVE_SESSION,
   SOURCE_SESSION
 } from '@/__tests__/application/services/workshop/memory/projectMemoryLibraryHost';
+import { AgentRunEngine } from '@orchestration/AgentRunEngine';
+import { AGENT_RUN_POLICIES } from '@orchestration/AgentRunPolicies';
+import { ConversationManager } from '@orchestration/ConversationManager';
+import { OpenRouterModels } from '@providers/OpenRouterModels';
 import { estimateTextTokens } from '@orchestration/RequestContextPreflight';
 import type { CapabilityContextWindow } from '@orchestration/AgentRunContracts';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
@@ -278,6 +282,48 @@ describe('fitting whole memory notes to the room left', () => {
     expect(result.evidence).toContain('mem-abcdef: no note in this project has this id.');
     expect(result.evidence).not.toMatch(/OVERSIZE-/);
     expect(estimateTextTokens(result.evidence)).toBeLessThanOrEqual(800);
+  });
+
+  it('preserves the unknown-window allowance when new model facts withhold a pending read', async () => {
+    const contextLength = jest.spyOn(OpenRouterModels, 'getCachedContextLength').mockReturnValue(undefined);
+    const host = libraryHost();
+    const ids = smallIds.slice(0, 4);
+    ids.forEach(id => host.put(writerMemory({ id, title: id, body: projectMemoryBody('<'.repeat(7_000)) })));
+    const libraryRead = host.library.read.bind(host.library);
+    jest.spyOn(host.library, 'read').mockImplementationOnce(async (...args) => {
+      const result = await libraryRead(...args);
+      // The model catalog becomes available while the first read is in flight.
+      contextLength.mockReturnValue(16_384);
+      return result;
+    });
+    const provider = { createChatCompletion: jest.fn(), createStreamingChatCompletion: jest.fn() };
+    provider.createChatCompletion.mockResolvedValueOnce({ content: read(...ids), finishReason: 'stop' })
+      .mockImplementationOnce(async () => {
+        // Another catalog refresh clears the cached window before the next call.
+        contextLength.mockReturnValue(undefined);
+        return { content: read(...ids), finishReason: 'stop' };
+      })
+      .mockResolvedValueOnce({ content: 'All four notes arrived.', finishReason: 'stop' });
+    const manager = new ConversationManager();
+    const engine = new AgentRunEngine(provider as never, manager);
+    try {
+      const wired = wire(host);
+      const result = await engine.runInitial({ toolName: 'workshop_persona_jill', systemMessage: 'System.',
+        userMessage: 'Read the project notes.', policy: AGENT_RUN_POLICIES.workshopHost,
+        capability: wired.capability, options: { maxTokens: 1_000 } });
+      const [, withheld, delivered] = provider.createChatCompletion.mock.calls;
+      expect(withheld[0].at(-1).content).toContain('did not fit');
+      expect(withheld[0].at(-1).content).not.toContain('end of note');
+      for (const id of ids) {
+        expect(delivered[0].at(-1).content).toContain(`end of note ${id}`);
+      }
+      expect(manager.getContextSources(result.conversationId)).toHaveLength(4);
+      expect(wired.session.readRoomLedger().filter(turn => turn.artifact === 'memory_read').map(turn => turn.capability?.status))
+        .toEqual(['rejected', 'success']);
+    } finally {
+      contextLength.mockRestore();
+      engine.dispose();
+    }
   });
 
   it('shares one read of whole note blocks across unknown-window reads, while allowing a smaller later note and resetting next turn', async () => {

@@ -453,7 +453,7 @@ export class WorkshopPersonaCapability implements AgentCapability<
       case 'memory.catalog':
       case 'memory.search':
       case 'memory.read':
-        return [...this.memoryCapability.deliveredSources(result)];
+        return [...this.memoryCapability.recordReadDelivery(result)];
       case 'lens.catalog':
       case 'lens.read':
       case 'help.search':
