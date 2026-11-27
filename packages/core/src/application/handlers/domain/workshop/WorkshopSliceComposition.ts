@@ -17,6 +17,7 @@ import { WorkshopSessionExportHandler } from '@handlers/domain/workshop/Workshop
 import { WorkshopStandingDirectiveHandler } from '@handlers/domain/workshop/WorkshopStandingDirectiveHandler';
 import { WorkshopTodoHandler } from '@handlers/domain/workshop/WorkshopTodoHandler';
 import { WorkshopLocationsProposalHandler } from '@handlers/domain/workshop/WorkshopLocationsProposalHandler';
+import { WorkshopHighlightHandler } from '@handlers/domain/workshop/WorkshopHighlightHandler';
 import { WorkshopPassageSearchHandler } from '@handlers/domain/workshop/WorkshopPassageSearchHandler';
 import { resolveWorkshopReplyPassageSearch } from '@/application/services/workshop/passageSearch/WorkshopReplyPassageSearch';
 import { WorkshopBookmarkHandler } from '@handlers/domain/workshop/WorkshopBookmarkHandler';
@@ -71,6 +72,7 @@ import type { WorkshopSessionAction, WorkshopTurn } from '@messages';
 import { MessageType } from '@messages';
 
 export class WorkshopSliceComposition {
+  private readonly highlightHandler: WorkshopHighlightHandler;
   private readonly sessionMessageHandler: WorkshopSessionMessageHandler;
   private readonly sessionExportHandler: WorkshopSessionExportHandler;
   private readonly gesturePlaygroundHandler: WorkshopGesturePlaygroundHandler;
@@ -124,6 +126,9 @@ export class WorkshopSliceComposition {
     } = dependencies;
     const markDirty = (reason: string): void => sessionPersistence.markDirty(reason);
 
+    this.highlightHandler = new WorkshopHighlightHandler(
+      session, sessionPersistence, contextIntakeService, dependencies.workshopHighlights, host.sendStatus
+    );
     this.contextHandler = new WorkshopContextHandler(
       contextAssistantService,
       session,
@@ -439,6 +444,7 @@ export class WorkshopSliceComposition {
       this.createMutationRegistrar(router, 'WorkshopSessionMessageHandler')
     );
     this.sessionExportHandler.registerRoutes(router);
+    this.highlightHandler.registerRoutes(router);
     this.gesturePlaygroundHandler.registerRoutes(router);
     this.creativeVariationsHandler.registerRoutes(router);
     this.showVsTellHandler.registerRoutes(router);
@@ -556,6 +562,7 @@ export class WorkshopSliceComposition {
     this.bookmarkBrowserHandler.dispose();
     this.memoryDraftHandler.dispose();
     this.passageSearchHandler.dispose();
+    this.highlightHandler.dispose();
     this.host.disposeRoomSubscriptions();
     this.sessionMessageHandler.dispose();
     this.host.disposeActiveRoomRun();

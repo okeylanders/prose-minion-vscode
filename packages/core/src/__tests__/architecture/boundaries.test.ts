@@ -203,6 +203,11 @@ const WORKSHOP_ROUTE_OWNERS = [
     messageTypes: ['WORKSHOP_APPLY_LOCATIONS_PROPOSAL']
   },
   {
+    owner: 'application/handlers/domain/workshop/WorkshopHighlightHandler.ts',
+    registration: 'direct',
+    messageTypes: ['WORKSHOP_SHOW_HIGHLIGHTS', 'WORKSHOP_CLEAR_HIGHLIGHTS']
+  },
+  {
     // A persona's passage-search card (ADR 2026-11-20 D20): the answers that lead to a room change wait behind the gate.
     owner: 'application/handlers/domain/workshop/WorkshopPassageSearchHandler.ts',
     registration: 'mutation',
@@ -515,6 +520,7 @@ const WORKSHOP_COMPOSED_SLICE_HANDLER_NAMES = [
   'WorkshopEditOfferHandler',
   'WorkshopFileEditHandler',
   'WorkshopGesturePlaygroundHandler',
+  'WorkshopHighlightHandler',
   'WorkshopLexicalGravityHandler',
   'WorkshopLightboxTileHandler',
   'WorkshopLocationsProposalHandler',
@@ -1891,7 +1897,7 @@ describe('architectural boundaries', () => {
     expect(offenders).toEqual([]);
   });
 
-  it('reaches the Draft Edit document ports only through the runs and the applier (ADR 2026-10-21 D10; Slice 3c)', () => {
+  it('limits access to the document ports, with annotation-only access for Workshop highlights (ADR 2026-10-21 D10)', () => {
     // A type name, or a call through Platform's members that never names the type.
     const portReference = /\b(?:DocumentEditor|IssueAnnotator)\b|\.documents\.(?:watch|applyEdits)\(|\.(?:craftA|a)nnotations\.(?:show|remove|clear|current)\(/;
     const allowed = new Set([
@@ -1910,7 +1916,14 @@ describe('architectural boundaries', () => {
     const offenders = collectSourceFiles(SRC_ROOT)
       .map((file) => path.relative(SRC_ROOT, file).split(path.sep).join('/'))
       .filter((file) => !allowed.has(file))
-      .filter((file) => portReference.test(fs.readFileSync(path.join(SRC_ROOT, file), 'utf8')));
+      .filter((file) => {
+        const source = fs.readFileSync(path.join(SRC_ROOT, file), 'utf8');
+        if (file === 'application/services/workshop/highlights/WorkshopHighlightService.ts') {
+          // This service works with one dedicated annotation family and a read-only buffer port.
+          return /\b(?:Platform|DocumentEditor|DraftEditApplier|ProjectFileEditGateway|applyEdits)\b|\.(?:documents|craftAnnotations)\b/.test(source);
+        }
+        return portReference.test(source);
+      });
 
     expect(offenders).toEqual([]);
   });
@@ -2483,11 +2496,11 @@ describe('architectural boundaries', () => {
     // Workshop Persona Tools item C2 added the writer's Apply on a context-paths card (mutation).
     // Passage Search Slice 4 added a persona's card: Run, Cancel and Send (mutation); its price, Stop,
     // Discard and Open report (direct).
-    expect(expectedOwnerPairs).toHaveLength(108);
+    expect(expectedOwnerPairs).toHaveLength(110);
     expect(expectedOwnerPairs.filter(([, , registration]) => registration === 'mutation'))
       .toHaveLength(57);
     expect(expectedOwnerPairs.filter(([, , registration]) => registration === 'direct'))
-      .toHaveLength(51);
+      .toHaveLength(53);
     expect(duplicateLedgerEntries).toEqual([]);
     expect(toOwnerRecord(actualOwnerPairs)).toEqual(toOwnerRecord(expectedOwnerPairs));
   });
@@ -3198,6 +3211,7 @@ describe('architectural boundaries', () => {
       'editOffers.ts',
       'fileEdits.ts',
       'gesturePlayground.ts',
+      'highlights.ts',
       'index.ts',
       'lexicalGravity.ts',
       'lightboxTiles.ts',

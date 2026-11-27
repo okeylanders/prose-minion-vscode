@@ -81,7 +81,7 @@ packages/core/src/
 │           ├── LightboxContextIntake.ts   # Context files by the system picker or the project picker, under the shelf's rules
 │           ├── LightboxPassageHandler.ts  # The inspector's passages: a pinned paragraph's text, a counted item's sentences, by board id and hash (Slice 4E)
 │           ├── LightboxBoardsHandler.ts   # The saved boards' routes: shelf, open, delete, rename (5A.1), open a board file through the host's picker (5A.2), and each committed save pushed (Slice 5A)
-│           └── workshop/                  # Room owner + 26 composed route owners (`WORKSHOP_COMPOSED_SLICE_HANDLER_NAMES` in `boundaries.test.ts` is the list)
+│           └── workshop/                  # Room owner + 27 composed route owners (`WORKSHOP_COMPOSED_SLICE_HANDLER_NAMES` in `boundaries.test.ts` is the list)
 │               ├── WorkshopRoomHandler.ts # Room/run orchestrator + session-state envelope
 │               ├── WorkshopSliceComposition.ts # Sibling construction + guarded route assembly
 │               ├── WorkshopRouteContracts.ts
@@ -100,6 +100,7 @@ packages/core/src/
 │               ├── WorkshopPinnedContextHandler.ts # Pinned context: the settings tab's list, pins, unpin, move, Attach missing, Open (ADR 2026-11-04)
 │               ├── WorkshopEarlierTurnsHandler.ts # A long room's earlier turns, a page before a turn, and a bookmark jump's pages (ADR 2026-11-17 D1–D4, D6 amendment)
 │               ├── WorkshopLocationsProposalHandler.ts # A persona's context-paths card: Apply and Decline, through C1's write (the 25th; ADR 2026-11-19 D24, D27)
+│               ├── WorkshopHighlightHandler.ts # Reply highlight Show, Clear and room-replacement cleanup
 │               ├── WorkshopPassageSearchHandler.ts # A persona's passage-search card: price, Run, Stop, Cancel, Send, Discard, Open report (the 26th; ADR 2026-11-20 D20)
 │               ├── WorkshopPassageSearchDelivery.ts # The results this window holds for its cards, and their delivery as a directed run (ADR 2026-11-20 D19a, D21)
 │               └── widgets/
@@ -183,6 +184,7 @@ packages/core/src/
                 ├── selectedText.ts
                 ├── todoStatus.ts
                 ├── locationsProposal.ts
+                ├── highlights.ts
                 ├── passageSearch.ts
                 ├── sessionRecovery.ts
                 └── settings.ts
@@ -924,7 +926,7 @@ npm run test:tier1
 
 **What's Tested**:
 - ✅ **Tier 1 - Infrastructure Patterns**: MessageRouter (Strategy pattern), domain hooks (Tripartite Interface), message routing
-- ✅ **Tier 2 - Domain Handlers**: Route registration for all 12 flat domain handlers and Workshop's 26 composed route owners (the list is `WORKSHOP_COMPOSED_SLICE_HANDLER_NAMES`)
+- ✅ **Tier 2 - Domain Handlers**: Route registration for all 12 flat domain handlers and Workshop's 27 composed route owners (the list is `WORKSHOP_COMPOSED_SLICE_HANDLER_NAMES`)
 - ✅ **Tier 3 - Business Logic**: Word clustering algorithm, publishing standards lookup, prose statistics calculations
 
 **What's NOT Tested** (intentionally deferred):
