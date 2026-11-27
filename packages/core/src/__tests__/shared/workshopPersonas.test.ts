@@ -16,6 +16,7 @@ import {
   WORKSHOP_HELP_CAPABILITY_PROMPT_PATH,
   WORKSHOP_HIGHLIGHTS_PROMPT_PATH,
   WORKSHOP_LOCATIONS_CAPABILITY_PROMPT_PATH,
+  WORKSHOP_PROBLEMS_CAPABILITY_PROMPT_PATH,
   WORKSHOP_HISTORY_CAPABILITY_PROMPT_PATH,
   WORKSHOP_LENS_CAPABILITY_PROMPT_PATH,
   WORKSHOP_TODO_STATUS_PROMPT_PATH,
@@ -112,6 +113,7 @@ describe('Workshop persona catalog and packaged prompts', () => {
         WORKSHOP_HIGHLIGHTS_PROMPT_PATH,
         WORKSHOP_HELP_CAPABILITY_PROMPT_PATH,
         WORKSHOP_LOCATIONS_CAPABILITY_PROMPT_PATH,
+        WORKSHOP_PROBLEMS_CAPABILITY_PROMPT_PATH,
         WORKSHOP_HISTORY_CAPABILITY_PROMPT_PATH,
         WORKSHOP_LENS_CAPABILITY_PROMPT_PATH,
         WORKSHOP_INTERACTION_CONTRACT_PROMPT_PATH,
@@ -140,6 +142,7 @@ describe('Workshop persona catalog and packaged prompts', () => {
         WORKSHOP_HIGHLIGHTS_PROMPT_PATH,
         WORKSHOP_HELP_CAPABILITY_PROMPT_PATH,
         WORKSHOP_LOCATIONS_CAPABILITY_PROMPT_PATH,
+        WORKSHOP_PROBLEMS_CAPABILITY_PROMPT_PATH,
         WORKSHOP_HISTORY_CAPABILITY_PROMPT_PATH,
         WORKSHOP_LENS_CAPABILITY_PROMPT_PATH,
         WORKSHOP_INTERACTION_CONTRACT_PROMPT_PATH,
@@ -171,6 +174,7 @@ describe('Workshop persona catalog and packaged prompts', () => {
         WORKSHOP_HIGHLIGHTS_PROMPT_PATH,
         WORKSHOP_HELP_CAPABILITY_PROMPT_PATH,
         WORKSHOP_LOCATIONS_CAPABILITY_PROMPT_PATH,
+        WORKSHOP_PROBLEMS_CAPABILITY_PROMPT_PATH,
         WORKSHOP_HISTORY_CAPABILITY_PROMPT_PATH,
         WORKSHOP_LENS_CAPABILITY_PROMPT_PATH,
         WORKSHOP_INTERACTION_CONTRACT_PROMPT_PATH,
@@ -255,6 +259,8 @@ describe('Workshop persona catalog and packaged prompts', () => {
       'and so does a file\'s list of commits, and so does what you read of the project\'s context paths.');
     expect(guestBase).toContain('the project\'s context paths (`locations.*`)');
     expect(guestBase).toContain('a file\'s git history (`history.*`)');
+    expect(guestBase).toContain('current Problems (`problems.read`)');
+    expect(guestBase).toContain('The File Problems tool result stays private to the requesting persona.');
     // The old charter said every result stayed out of the room, which was never true of published evidence.
     expect(guestBase).not.toContain('not to the room');
 
@@ -296,6 +302,7 @@ describe('Workshop persona catalog and packaged prompts', () => {
         case 'locations.current':
         case 'locations.folders':
         case 'locations.check':
+        case 'problems.read':
           return false;
       }
     };
@@ -313,7 +320,7 @@ describe('Workshop persona catalog and packaged prompts', () => {
         expect(sharedList).toContain(phrase);
       } else {
         // Private discovery, or a whole read-only family, which the charter says stays private whole (ADR 2026-11-17 D16).
-        expect(operation).toMatch(/\.(catalog|search)$|^(lens|help)\.|^history\.log$|^locations\./);
+        expect(operation).toMatch(/\.(catalog|search)$|^(lens|help)\.|^history\.log$|^locations\.|^problems\.read$/);
       }
     }
   });

@@ -106,6 +106,12 @@ When Workshop offers the set in a notification, choose **Keep highlights** to sa
 
 Sets from different replies can appear together. Use **Clear** on a reply's chip to remove that set, or run **Prose Minion: Clear All Workshop Highlights** from the Command Palette to clear every Workshop set in the current window. You can use **Show** on the reply again while it remains in the conversation.
 
+## Read file Problems
+
+Ask a Workshop host or guest “What’s marked in the editor for this excerpt?” or “Read the Problems for Chapter Two.” The persona can read the current **Problems** for the excerpt's file or a configured project file, including highlights made in another Workshop tab in the same VS Code window. It can distinguish Workshop highlights, Proofread, Craft Flags, and other publishers by source.
+
+The read uses the diagnostics published for that file. When the file is open, the persona may also see a short quote from the current marked text, including unsaved changes. The **File Problems** card records a count. Ask again for an updated read after editing or clearing marks.
+
 ## Suggested file edits
 
 Under **Conversation settings → Behavior**, **Suggested file edits** controls whether a persona may propose changes to project files. Each card shows changes against a specific file. Inspect the card and choose **Apply**, **Review in editor…**, or **Decline**. Apply makes an undoable change. Saving the document remains your choice. When a reply describes small fixes or offers a rewrite, select its footer chip to ask that author to turn the offer into edit cards.

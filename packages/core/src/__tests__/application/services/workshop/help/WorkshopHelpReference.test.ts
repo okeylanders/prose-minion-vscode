@@ -80,6 +80,20 @@ describe('the shipped help reference', () => {
     expect(result.content).toContain('**Prose Minion: Clear All Workshop Highlights**');
   });
 
+  it('finds and reads how to ask a Workshop persona about current file Problems', async () => {
+    const { reference, capability } = await realReference();
+    const loaded = await reference.load();
+    if (!loaded) {
+      throw new Error('Bundled Workshop help could not be loaded');
+    }
+    const id = 'workshop#read-file-problems';
+    expect(searchWorkshopHelp(loaded.sections, 'read file Problems').hits[0].id).toBe(id);
+    const result = await capability.fulfill({ capability: 'help.read', sections: [id] });
+    expect(result.status).toBe('success');
+    expect(result.content).toContain('another Workshop tab in the same VS Code window');
+    expect(result.content).toContain('a short quote from the current marked text, including unsaved changes');
+  });
+
   it('fits whole sections including the cost of the exact call, and refuses a section when no room remains', async () => {
     const { reference, capability } = await realReference();
     const loaded = (await reference.load())!;
