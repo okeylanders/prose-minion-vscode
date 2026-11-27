@@ -34,6 +34,8 @@ import {
   LIVE_SESSION,
   SOURCE_SESSION
 } from '@/__tests__/application/services/workshop/memory/projectMemoryLibraryHost';
+import { estimateTextTokens } from '@orchestration/RequestContextPreflight';
+import type { CapabilityContextWindow } from '@orchestration/AgentRunContracts';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { noProjectLenses } from '@/__tests__/application/services/workshop/lens/lensLibraryFixtures';
 
@@ -71,12 +73,12 @@ function wire(host: ReturnType<typeof libraryHost>) {
   return { session, capability, controller, log };
 }
 
-async function invoke(wired: ReturnType<typeof wire>, xml: string) {
+async function invoke(wired: ReturnType<typeof wire>, xml: string, window?: CapabilityContextWindow) {
   const inspected = wired.capability.inspectRequest(xml);
   if (inspected.kind !== 'request') {
     throw new Error(`expected a request, got ${JSON.stringify(inspected)}`);
   }
-  return wired.capability.fulfill(inspected.request);
+  return wired.capability.fulfill(inspected.request, window);
 }
 
 /** A folder with the watch (sourced), a pinned preference, an archived and a superseded memory, an unreadable file and a conflict. */
@@ -198,6 +200,108 @@ describe('memory.* through the persona capability', () => {
     expect(await wired.capability.appendContract('First message.')).toContain('<entry id="mem-7f3c2a"');
     expect((await invoke(wired, call('memory.read', '<memory>mem-7f3c2a</memory>'))).evidence)
       .toContain('mem-7f3c2a: being edited in another window; try again.');
+  });
+});
+
+describe('fitting whole memory notes to the room left', () => {
+  const window = (freeInputTokens: number): CapabilityContextWindow => ({
+    contextLength: 128_000, freeInputTokens, requestTokens: 0, outputTokens: 0, headroomTokens: 0
+  });
+  const read = (...ids: string[]) => call('memory.read', ids.map(id => `<memory>${id}</memory>`).join(''));
+  const largeId = 'mem-ffffff';
+  const smallIds = ['mem-000001', 'mem-000002', 'mem-000003', 'mem-000004', 'mem-000005'];
+
+  function notes() {
+    const host = libraryHost();
+    host.put(writerMemory({ id: largeId, title: 'OVERSIZE-TITLE', summary: 'OVERSIZE-SUMMARY',
+      body: projectMemoryBody('OVERSIZE-BODY' + '<&>'.repeat(2_500)) }));
+    smallIds.forEach((id, index) => host.put(writerMemory({ id, title: `Small ${index}`, body: projectMemoryBody(`Complete note ${index}.`) })));
+    return host;
+  }
+
+  it('fits the complete escaped envelope at the exact boundary, including its summary, metadata and trust framing', async () => {
+    const host = notes();
+    const whole = await invoke(wire(host), read(largeId), window(120_000));
+    const tokens = estimateTextTokens(whole.evidence);
+    expect(whole.evidence).toContain('OVERSIZE-BODY&lt;&amp;&gt;');
+    expect((await invoke(wire(host), read(largeId), window(2 * tokens))).evidence).toBe(whole.evidence);
+
+    const wired = wire(host);
+    const tooSmall = await invoke(wired, read(largeId), window(2 * tokens - 1));
+    expect(tooSmall.evidence).toContain('memory-context-window');
+    expect(tooSmall.evidence).toContain((tokens - 1).toLocaleString('en-US'));
+    expect(tooSmall.evidence).toContain(largeId);
+    expect(tooSmall.deliveredSources).toEqual([]);
+    expect(JSON.stringify([tooSmall, wired.session.readRoomLedger(), wired.log.appendLine.mock.calls])).not.toMatch(/OVERSIZE-/);
+
+    const narrower = await invoke(wired, read(...smallIds), window(6_000));
+    expect(narrower.deliveredSources?.map(source => source.label)).toEqual(['Small 0', 'Small 1', 'Small 2', 'Small 3', 'Small 4']);
+  });
+
+  it('reserves room for the translated native-call notice on the wire', async () => {
+    const host = notes();
+    const whole = await invoke(wire(host), read(largeId), window(120_000));
+    const enoughForPlainXml = window(2 * estimateTextTokens(whole.evidence));
+    const wired = wire(host);
+    const native = { name: 'memory.read', arguments: JSON.stringify({ memories: [largeId] }) };
+    const translated = wired.capability.translateNativeToolCalls([native, native]);
+    if (translated.kind !== 'translated') {
+      throw new Error('expected a translated memory.read');
+    }
+    const result = await invoke(wired, translated.content, enoughForPlainXml);
+    expect(result.evidence).toContain('memory-context-window');
+    expect(result.evidence).toContain('Your reply held 1 more tool call');
+    expect(result.deliveredSources).toEqual([]);
+  });
+
+  it('skips a larger first note, keeps later whole notes and the per-id refusal in order, and measures all notices', async () => {
+    const wired = wire(notes());
+    const ids = [largeId, smallIds[2], 'mem-abcdef', smallIds[0], smallIds[3]];
+    const fitted = await invoke(wired, read(...ids), window(2_000));
+    expect(fitted.evidence).toContain('status="partial"');
+    expect(fitted.evidence).toContain('1,000 tokens, half the room left');
+    expect(fitted.evidence).toContain(`${largeId}: did not fit`);
+    expect(fitted.evidence).toContain('mem-abcdef: no note in this project has this id.');
+    expect(estimateTextTokens(fitted.evidence)).toBeLessThanOrEqual(1_000);
+    expect(fitted.deliveredSources?.map(source => source.label)).toEqual(['Small 2', 'Small 0', 'Small 3']);
+    for (const id of [smallIds[2], smallIds[0], smallIds[3]]) {
+      expect(fitted.evidence).toContain(`end of note ${id}`);
+    }
+    expect(JSON.stringify([fitted, wired.session.readRoomLedger(), wired.log.appendLine.mock.calls])).not.toMatch(/OVERSIZE-/);
+  });
+
+  it('keeps the missing-id outcome when every readable note is too large', async () => {
+    const wired = wire(notes());
+    const result = await invoke(wired, read(largeId, 'mem-abcdef'), window(1_600));
+    expect(result.deliveredSources).toEqual([]);
+    expect(result.evidence).toContain(`${largeId}: did not fit`);
+    expect(result.evidence).toContain('mem-abcdef: no note in this project has this id.');
+    expect(result.evidence).not.toMatch(/OVERSIZE-/);
+    expect(estimateTextTokens(result.evidence)).toBeLessThanOrEqual(800);
+  });
+
+  it('shares one read of whole note blocks across unknown-window reads, while allowing a smaller later note and resetting next turn', async () => {
+    const host = notes();
+    const ids = smallIds.map((_, index) => `mem-80000${index}`);
+    ids.forEach((id, index) => host.put(writerMemory({ id, title: `Large ${index}`, body: projectMemoryBody('a'.repeat(7_000)) })));
+    const wired = wire(host);
+    const first = await invoke(wired, read(...ids.slice(0, 4)));
+    expect(first.deliveredSources).toHaveLength(4);
+    const second = await invoke(wired, read(ids[4], ids[0], smallIds[0]));
+    expect(second.deliveredSources?.map(source => source.label)).toEqual(['Large 4', 'Small 0']);
+    expect(second.evidence).toContain('window size is unknown');
+    expect(second.evidence).toContain('share 40,000 characters');
+    expect(second.evidence).toContain(`${ids[0]}: not shown`);
+    const third = await invoke(wired, read(ids[0]));
+    expect(third.deliveredSources).toEqual([]);
+    expect(third.evidence).toContain('in a later turn');
+    expect((await invoke(wired, read(smallIds[1]))).deliveredSources).toHaveLength(1);
+    expect((await invoke(wire(host), read(...ids.slice(0, 4)))).deliveredSources).toHaveLength(4);
+
+    const known = wire(host);
+    for (let index = 0; index < 2; index++) {
+      expect((await invoke(known, read(...ids.slice(0, 4)), window(120_000))).deliveredSources).toHaveLength(4);
+    }
   });
 });
 

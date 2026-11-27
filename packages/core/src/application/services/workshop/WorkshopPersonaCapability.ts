@@ -1,3 +1,4 @@
+import type { StageWorkshopReadDelivery } from '@/application/services/workshop/reads/WorkshopReadWindowFit';
 import { WorkshopContextTallyRecorder, workshopTalliedContract } from '@services/analysis/WorkshopContextTally';
 import { WorkshopAnalysisSidePass } from '@/application/services/workshop/WorkshopAnalysisSidePass';
 import { extractWorkshopReplyControls } from '@/utils/workshopReplyControls';
@@ -106,8 +107,10 @@ import {
   CapabilityContextWindow,
   CapabilityDeliveredSource,
   CapabilityFulfillment,
+  PreparedCapabilityEvidence,
   isAgentRunIncomplete
 } from '@orchestration/AgentRunContracts';
+import { estimateTextTokens } from '@orchestration/RequestContextPreflight';
 import { DictionaryService } from '@services/dictionary/DictionaryService';
 import { workshopTurnModelOf } from '@/application/services/workshop/WorkshopTurnModel';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
@@ -336,16 +339,22 @@ export class WorkshopPersonaCapability implements AgentCapability<
   }
 
   async fulfill(request: WorkshopCapabilityRequest, window?: CapabilityContextWindow): Promise<CapabilityFulfillment> {
+    return (await this.prepareEvidence(request, window)).settle();
+  }
+
+  async prepareEvidence(request: WorkshopCapabilityRequest, window?: CapabilityContextWindow): Promise<PreparedCapabilityEvidence> {
     const startedAt = Date.now();
     const unrunNativeCalls = this.nativeTranslation?.unrun ?? 0;
     this.nativeTranslation = undefined;
+    let recordReadDelivery: (() => void) | undefined;
     let result: WorkshopCapabilityResult;
     // Only a provider run's turn is stamped (ADR 2026-11-03 D7): a persona's
     // analysis or dictionary lookup. The stamp rides beside the result,
     // never in it, so it cannot reach the evidence the persona reads.
     let model: WorkshopTurnModel | undefined;
     try {
-      result = await this.dispatch(request, window, (runModel) => { model = runModel; });
+      result = await this.dispatch(request, window, (runModel) => { model = runModel; }, unrunNativeCalls,
+        record => { recordReadDelivery = record; });
     } catch (error) {
       const cancelled = this.turn.signal.aborted || this.isAbortError(error);
       const message = cancelled
@@ -359,6 +368,31 @@ export class WorkshopPersonaCapability implements AgentCapability<
       };
     }
 
+    const evidence = this.formatEvidence(result, this.turn.excerptVersion, unrunNativeCalls);
+    return {
+      evidence,
+      operation: request.capability,
+      indivisible: request.capability === 'analysis.run' || request.capability === 'dictionary.full-entry',
+      settle: (notice) => {
+        const commitReadDelivery = recordReadDelivery;
+        recordReadDelivery = undefined;
+        if (notice === undefined) {
+          commitReadDelivery?.();
+          return this.recordFulfillment(request, result, model, evidence, startedAt);
+        }
+        const replacement = withUnrunNativeCalls(notice, unrunNativeCalls);
+        const refusal: WorkshopCapabilityResult = {
+          capability: request.capability, status: 'rejected', requestSummary: this.requestSummary(request),
+          error: replacement, metadata: { reason: 'context-window-exceeded' }, usage: result.usage
+        };
+        this.recordFulfillment(request, refusal, model, replacement, startedAt);
+        return { evidence: replacement, artifacts: [], deliveredItems: [], deliveredSources: [], usage: result.usage };
+      }
+    };
+  }
+
+  private recordFulfillment(request: WorkshopCapabilityRequest, result: WorkshopCapabilityResult,
+    model: WorkshopTurnModel | undefined, evidence: string, startedAt: number): CapabilityFulfillment {
     const completedTurn = this.recordCompletedTurn(request, result, model);
     const rows = this.deliveredSourceRows(request, result);
     const duration = Date.now() - startedAt;
@@ -374,8 +408,7 @@ export class WorkshopPersonaCapability implements AgentCapability<
       workshopCapabilityResultLogSummary(result)
     );
     return {
-      evidence: this.formatEvidence(result, this.turn.excerptVersion) +
-        (unrunNativeCalls > 0 ? `\n${workshopUnrunNativeCallsNote(unrunNativeCalls)}` : ''),
+      evidence,
       artifacts: completedTurn ? [{
         catalog: this.catalog,
         id: completedTurn.id,
@@ -430,7 +463,7 @@ export class WorkshopPersonaCapability implements AgentCapability<
       case 'memory.catalog':
       case 'memory.search':
       case 'memory.read':
-        return [...this.memoryCapability.deliveredSources(result)];
+        return [...this.memoryCapability.recordReadDelivery(result)];
       case 'lens.catalog':
       case 'lens.read':
       case 'help.search':
@@ -752,7 +785,9 @@ export class WorkshopPersonaCapability implements AgentCapability<
   private async dispatch(
     request: WorkshopCapabilityRequest,
     window: CapabilityContextWindow | undefined,
-    onRunModel: (model: WorkshopTurnModel | undefined) => void
+    onRunModel: (model: WorkshopTurnModel | undefined) => void,
+    unrunNativeCalls: number,
+    stageReadDelivery: StageWorkshopReadDelivery
   ): Promise<WorkshopCapabilityResult> {
     if (this.turn.signal.aborted) throw this.abortError();
     switch (request.capability) {
@@ -799,17 +834,18 @@ export class WorkshopPersonaCapability implements AgentCapability<
       case 'resource.search':
       case 'resource.read':
         // A read is fitted to half the room left; catalog and search ignore it (ADR 2026-11-14 D2).
-        return this.resourceCapability.fulfill(request, window);
+        return this.resourceCapability.fulfill(request, window, stageReadDelivery);
       case 'transcript.catalog':
       case 'transcript.search':
       case 'transcript.read':
       case 'transcript.todos':
       case 'transcript.bookmarks':
-        return this.recallCapability.fulfill(request, window);
+        return this.recallCapability.fulfill(request, window, stageReadDelivery);
       case 'memory.catalog':
       case 'memory.search':
       case 'memory.read':
-        return this.memoryCapability.fulfill(request);
+        return this.memoryCapability.fulfill(request, window, (result) =>
+          estimateTextTokens(this.formatEvidence(result, this.turn.excerptVersion, unrunNativeCalls)));
       case 'lens.catalog':
       case 'lens.read':
         // A read is fitted, by whole sections, to half the room left (ADR 2026-11-17 D18).
@@ -1095,7 +1131,7 @@ export class WorkshopPersonaCapability implements AgentCapability<
     };
   }
 
-  private formatEvidence(result: WorkshopCapabilityResult, excerptVersion: number): string {
+  private formatEvidence(result: WorkshopCapabilityResult, excerptVersion: number, unrunNativeCalls = 0): string {
     const lines = [
       `<workshop-capability-result name="${result.capability}" status="${result.status}" excerpt-version="${excerptVersion}">`,
       `<request-summary>${this.escapeXml(result.requestSummary)}</request-summary>`
@@ -1106,7 +1142,7 @@ export class WorkshopPersonaCapability implements AgentCapability<
     }
     if (result.error) lines.push(`<error>${this.escapeXml(result.error)}</error>`);
     lines.push('</workshop-capability-result>', this.evidenceFraming(result.capability));
-    return lines.join('\n');
+    return withUnrunNativeCalls(lines.join('\n'), unrunNativeCalls);
   }
 
   /** The trust framing that closes each family's evidence. */
@@ -1168,4 +1204,9 @@ function workshopPerTurnLimitMessage(limit: number, singular: string, plural: st
   return limit === 1
     ? `Only one ${singular} is allowed per user turn.`
     : `Only ${limit} ${plural} are allowed per user turn.`;
+}
+
+/** Unexecuted siblings belong to the provider reply whether its first result is delivered or withheld. */
+function withUnrunNativeCalls(evidence: string, count: number): string {
+  return count > 0 ? `${evidence}\n${workshopUnrunNativeCallsNote(count)}` : evidence;
 }

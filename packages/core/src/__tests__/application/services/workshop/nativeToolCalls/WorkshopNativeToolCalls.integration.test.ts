@@ -6,6 +6,10 @@
  * runs, and the persona answers. Retained history holds the XML.
  */
 
+import { workshopUnrunNativeCallsNote } from '@/application/services/workshop/WorkshopNativeToolCallTranslator';
+import { wrapAgentFetchedArtifactEvidence } from '@/utils/workshopPromptFrames';
+import { estimateRequestTokens, exceedsContextWindow, measureContextWindow } from '@orchestration/RequestContextPreflight';
+import { OpenRouterModels } from '@providers/OpenRouterModels';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { createNativeToolCallHarness, native, WEB_RESEARCH_TOOLS, type WireReply } from './nativeToolCallHarness';
 
@@ -154,6 +158,61 @@ describe.each([['whole replies', false], ['streamed replies', true]])('a native 
       expect.stringContaining('1 native tool call(s) not translated: reason=unknown-name.')
     ]));
   });
+});
+
+it('keeps skipped siblings on a withheld result and refuses a follow-up that only fits the bare notice', async () => {
+  const reply: WireReply = { calls: [
+    { name: 'dictionary.lookup', arguments: { word: 'curious', context: 'The rabbit hole.', purpose: 'Check tone.' } },
+    { name: 'transcript.catalog', arguments: {} }
+  ] };
+  const warning = workshopUnrunNativeCallsNote(1);
+  const ask = async (harness: Harness) => {
+    await harness.coordinator.initialize();
+    harness.session.setSessionScope('open');
+    harness.dictionary.lookupWordStreaming.mockResolvedValueOnce({
+      toolName: 'dictionary_lookup', content: 'WITHHELD_DICTIONARY_TEXT '.repeat(4_000)
+    });
+    return harness.hostTurn('Help.', [reply, 'Answered.']);
+  };
+  const window = jest.spyOn(OpenRouterModels, 'getCachedContextLength').mockReturnValue(12_000);
+  try {
+    const { result } = await ask(room);
+    expect(result.content).toBe('Answered.');
+    expect(room.cards()).toEqual(['dictionary.lookup:rejected']);
+    const card = room.session.readRoomLedger().find(turn => turn.capability)!;
+    expect(card.content).toContain('dictionary.lookup result did not fit');
+    expect(card.content.split(warning)).toHaveLength(2);
+    const history = room.sent[1].messages.slice(0, -1);
+    const followUp = (evidence: string) => [
+      ...history, { role: 'user' as const, content: wrapAgentFetchedArtifactEvidence('art-1', evidence) }
+    ];
+    expect(room.sent[1].messages).toEqual(followUp(card.content));
+    expect(JSON.stringify(room.manager.getMessages(result.conversationId!))).not.toContain('WITHHELD_DICTIONARY_TEXT');
+
+    // Size a fresh model window for the same conversation, with just a few tokens above the bare notice.
+    const bare = (body: string) => body.replace(`\n${warning}`, '');
+    const { defaultOutputTokens, headroomFraction } = PROMPT_BUDGETS.inferenceContext;
+    const bareTokens = estimateRequestTokens(followUp(bare(card.content)), WEB_RESEARCH_TOOLS);
+    const narrowWindow = Math.ceil((bareTokens + defaultOutputTokens + 3) / (1 - headroomFraction));
+    window.mockReturnValue(narrowWindow);
+    const narrow = createNativeToolCallHarness();
+    try {
+      await expect(ask(narrow)).rejects.toMatchObject({ reason: 'context-window-exceeded' });
+      expect(narrow.sent).toHaveLength(1);
+      expect(narrow.cards()).toEqual(['dictionary.lookup:rejected']);
+      const replacement = narrow.session.readRoomLedger().find(turn => turn.capability)!.content;
+      expect(replacement).toContain(warning);
+      const overflows = (body: string) => exceedsContextWindow(
+        measureContextWindow(followUp(body), narrowWindow, undefined, WEB_RESEARCH_TOOLS)
+      );
+      expect(overflows(bare(replacement))).toBe(false);
+      expect(overflows(replacement)).toBe(true);
+    } finally {
+      narrow.dispose();
+    }
+  } finally {
+    window.mockRestore();
+  }
 });
 
 describe('one translated native call from every capability family', () => {
