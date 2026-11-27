@@ -10,26 +10,27 @@ export function cutWorkshopAttachmentText(text: string, bounds: { words: number;
   if (totalWords <= bounds.words && text.length <= bounds.characters) {
     return { text, words: totalWords };
   }
-  if (totalWords === 0) {
-    return { text: text.slice(0, bounds.characters), words: 0, truncation: { keptWords: 0, totalWords: 0 } };
-  }
   const word = /\S+/g;
   let end = 0;
-  let keptWords = 0;
+  let wholeWords = 0;
   for (let match = word.exec(text); match !== null; match = word.exec(text)) {
     const wordEnd = match.index + match[0].length;
-    if (keptWords >= bounds.words || wordEnd > bounds.characters) {
+    if (wholeWords >= bounds.words || wordEnd > bounds.characters) {
       break;
     }
     end = wordEnd;
-    keptWords += 1;
+    wholeWords += 1;
   }
-  if (keptWords === 0) {
-    // One unbroken run longer than the character bound: cut inside it, never inside a surrogate pair.
-    const head = text.trimStart().slice(0, bounds.characters);
-    const last = head.charCodeAt(head.length - 1);
-    const kept = last >= 0xd800 && last <= 0xdbff ? head.slice(0, -1) : head;
-    return { text: kept, words: 1, truncation: { keptWords: 1, totalWords } };
+  if (wholeWords === 0) {
+    // Leading whitespace can occupy the entire prefix, or the first word can straddle the cutoff.
+    end = Math.min(text.length, bounds.characters);
+    const last = text.charCodeAt(end - 1);
+    const next = text.charCodeAt(end);
+    if (last >= 0xd800 && last <= 0xdbff && next >= 0xdc00 && next <= 0xdfff) {
+      end -= 1;
+    }
   }
-  return { text: text.slice(0, end), words: keptWords, truncation: { keptWords, totalWords } };
+  const kept = text.slice(0, end);
+  const keptWords = countWords(kept);
+  return { text: kept, words: keptWords, truncation: { keptWords, totalWords } };
 }

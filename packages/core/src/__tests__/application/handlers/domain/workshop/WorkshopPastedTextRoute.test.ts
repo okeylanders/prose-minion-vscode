@@ -125,6 +125,32 @@ describe('the Workshop pasted-text attachment', () => {
     expect(JSON.stringify(parseWorkshopPersistedSession(old))).toBe(JSON.stringify(old));
   });
 
+  it('round-trips the exact character-bound prefix and its count through pending and sent state', async () => {
+    const h = room();
+    await h.pin();
+    const limit = PROMPT_BUDGETS.workshopPastedText.characters;
+    const examples = [
+      { prefix: ' '.repeat(limit), suffix: 'first second', keptWords: 0 },
+      { prefix: ' '.repeat(limit - 2) + 'fi', suffix: 'rst second', keptWords: 1 },
+      { prefix: ' '.repeat(limit - 1), suffix: '🐇 second', keptWords: 0 }
+    ];
+    for (const { prefix, suffix } of examples) {
+      await h.stage(prefix + suffix);
+    }
+    const pending = parseWorkshopSessionStateV1(h.session.exportCommittedState()).pendingMessageAttachments;
+    await h.send();
+    const sent = parseWorkshopSessionStateV1(h.session.exportCommittedState());
+    const refs = sent.turns.find((turn) => turn.messageAttachments?.length)?.messageAttachments;
+    examples.forEach(({ prefix, suffix, keptWords }, index) => {
+      const pastedText = { truncated: true, truncation: {
+        keptWords, totalWords: 2, keptCharacters: prefix.length, totalCharacters: prefix.length + suffix.length
+      } };
+      expect(pending[index]).toMatchObject({ words: keptWords, content: prefix, pastedText });
+      expect(refs?.[index]).toMatchObject({ id: pending[index].id, words: keptWords, pastedText });
+      expect(sent.threadArtifacts?.find((artifact) => artifact.id === pending[index].id)?.content).toBe(prefix);
+    });
+  });
+
   it('rewinds an attachment-only message to a blank draft and the same attachment ID and bytes', async () => {
     const scripted = new ScriptedWorkshopRoom().start();
     const input = workshopPastedTextInput(body.repeat(100));
