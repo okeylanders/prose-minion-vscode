@@ -68,6 +68,13 @@ export function workshopAttachmentSize(
   }
   if (attachment.pastedText) {
     const size = `${attachment.words.toLocaleString()} ${attachment.words === 1 ? 'word' : 'words'}`;
+    const cut = attachment.pastedText.truncation;
+    if (cut) {
+      if (cut.keptWords < cut.totalWords) {
+        return `first ${cut.keptWords.toLocaleString()} of ${cut.totalWords.toLocaleString()} words`;
+      }
+      return `${size} · first ${cut.keptCharacters.toLocaleString()} of ${cut.totalCharacters.toLocaleString()} characters`;
+    }
     return attachment.pastedText.truncated ? `${size} · shortened` : size;
   }
   const words = `${attachment.words.toLocaleString()} words`;

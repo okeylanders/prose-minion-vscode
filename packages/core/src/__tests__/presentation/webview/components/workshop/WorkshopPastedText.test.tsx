@@ -83,6 +83,18 @@ describe('pasted text in the Workshop composer', () => {
     expect(send().disabled).toBe(false);
   });
 
+  it.each([
+    { keptWords: 1, totalWords: 1, size: '1 word · first 500 of 800 characters' },
+    { keptWords: 75, totalWords: 120, size: 'first 75 of 120 words' }
+  ])('discloses the cut before sending, including a single clipped word ($size)', ({ keptWords, totalWords, size }) => {
+    const r = mount();
+    r.state([{ ...pill, words: keptWords, pastedText: { truncated: true,
+      truncation: { keptWords, totalWords, keptCharacters: 500, totalCharacters: 800 } } }]);
+    const inspect = screen.getByRole('button', { name: 'Inspect or edit Pasted text' });
+    expect(document.getElementById(inspect.getAttribute('aria-describedby')!)?.textContent).toBe(size);
+    expect(send().disabled).toBe(false);
+  });
+
   it('reads on demand, keeps refused edits open, retries with the same ID, and sends an attachment-only message', () => {
     const r = mount();
     r.state([pill]);

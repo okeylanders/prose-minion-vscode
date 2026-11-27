@@ -44,9 +44,9 @@ export const WorkshopComposerAttachments: React.FC<WorkshopComposerAttachmentsPr
         >
           {attachment.pastedText && pastedText ? (
             <button type="button" className="pm-ws-comp-paste-action" onClick={() => pastedText.inspect(attachment.id)}
-              aria-label={`Inspect or edit ${attachment.label}`} disabled={pastedText.isBusy(attachment.id)}>
+              aria-label={`Inspect or edit ${attachment.label}`} aria-describedby={`workshop-paste-size-${attachment.id}`} disabled={pastedText.isBusy(attachment.id)}>
               <Icon name="doc" size={11} /> {attachment.label}{' '}
-              <span className="pm-ws-comp-attachment-size">{workshopAttachmentSize(attachment, 'composer')}</span>
+              <span className="pm-ws-comp-attachment-size" id={`workshop-paste-size-${attachment.id}`}>{workshopAttachmentSize(attachment, 'composer')}</span>
             </button>
           ) : (
             <>
