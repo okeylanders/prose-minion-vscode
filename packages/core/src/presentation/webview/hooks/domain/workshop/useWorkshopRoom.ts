@@ -239,7 +239,7 @@ export interface WorkshopRoomActions {
   runTool: (toolId: WorkshopToolId) => void;
   quickAction: (toolId: WorkshopToolId, reportTurnId: string, label: string) => void;
   /** `selectedText`: the snapshot the composer's live Selected Text pill showed and the room it was drawn in, when it rides this send. */
-  sendMessage: (text: string, selectedText?: { snapshotId: string; roomRevision: number }) => void;
+  sendMessage: (text: string, selectedText?: { snapshotId: string; roomRevision: number }, attachmentRoomRevision?: number) => void;
   seedComposerDraft: (text: string, keepDraft?: boolean) => void;
   selectPersona: (personaId: WorkshopPersonaId) => void;
   inviteGuest: (personaId: WorkshopPersonaId, openingMessage: string) => void;
@@ -538,13 +538,13 @@ export const useWorkshopRoom = (): UseWorkshopRoomReturn => {
   );
 
   const sendMessage = React.useCallback(
-    (text: string, selectedText?: { snapshotId: string; roomRevision: number }) => {
+    (text: string, selectedText?: { snapshotId: string; roomRevision: number }, attachmentRoomRevision?: number) => {
       setErrorMessage('');
       // A send that names a Selected Text snapshot names the room its pill was drawn in, as the pill
       // recorded it: never the room on screen at send time (ADR 2026-11-14 D14; PR #264 P2).
       post(MessageType.WORKSHOP_SEND_MESSAGE, selectedText
         ? { text, selectedTextSnapshotId: selectedText.snapshotId, roomRevision: selectedText.roomRevision }
-        : { text });
+        : { text, ...(attachmentRoomRevision !== undefined && { roomRevision: attachmentRoomRevision }) });
     },
     [post]
   );

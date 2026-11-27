@@ -36,7 +36,7 @@ import type {
 
 export interface WorkshopTextSheetProps {
   open: boolean;
-  mode: WorkshopTextSheetMode;
+  mode: WorkshopTextSheetMode | { kind: 'pasted-text' };
   /** Body to seed the editor with; undefined while the host round-trip is pending. */
   value?: string;
   /** True while the host is fetching an attachment body. */
@@ -57,6 +57,7 @@ export interface WorkshopTextSheetProps {
   turnPreview?: WorkshopTurnPreview;
   /** Disables Apply while a run/session operation holds the room. */
   applyDisabled?: boolean;
+  saving?: boolean;
   onApply: (text: string) => void;
   onOpenInEditor?: () => void;
   /** Cross-link out of the excerpt sheet into the project picker. */
@@ -97,7 +98,7 @@ interface SheetCopy {
 const ATTACHED_TEXT_LOADING = 'Loading the attached text…';
 
 const sheetCopy = (
-  mode: WorkshopTextSheetMode,
+  mode: WorkshopTextSheetProps['mode'],
   handlers: Pick<WorkshopTextSheetProps, 'onChooseFromProject' | 'turnPreview'>
 ): SheetCopy => {
   switch (mode.kind) {
@@ -131,6 +132,20 @@ const sheetCopy = (
         readOnly: false,
         openLabel: 'Open in editor tab',
         loadingLabel: ATTACHED_TEXT_LOADING
+      };
+    case 'pasted-text':
+      return {
+        kicker: 'Message attachment',
+        title: 'Pasted text',
+        sub: 'Edit the text that will go with your next message.',
+        placeholder: 'Pasted text…',
+        editLabel: 'Edit',
+        meta: '',
+        foot: null,
+        applyLabel: 'Save changes',
+        readOnly: false,
+        openLabel: '',
+        loadingLabel: 'Loading pasted text…'
       };
     case 'context-new':
       return {
@@ -244,6 +259,7 @@ export const WorkshopTextSheet: React.FC<WorkshopTextSheetProps> = ({
   onShowWhereRead,
   turnPreview,
   applyDisabled = false,
+  saving = false,
   onApply,
   onOpenInEditor,
   onChooseFromProject,
@@ -412,7 +428,7 @@ export const WorkshopTextSheet: React.FC<WorkshopTextSheetProps> = ({
             ref={textareaRef}
             className="pm-ws-text-sheet-input"
             value={draft}
-            readOnly={copy.readOnly}
+            readOnly={copy.readOnly || saving}
             placeholder={copy.placeholder}
             /* Named by its PURPOSE, not by the dialog's title: repeating the
                heading would give the sheet two controls with the same
@@ -496,7 +512,7 @@ export const WorkshopTextSheet: React.FC<WorkshopTextSheetProps> = ({
             disabled={!canApply}
             onClick={() => onApply(draft)}
           >
-            <Icon name="check" size={14} /> {copy.applyLabel}
+            <Icon name="check" size={14} /> {saving ? 'Saving…' : copy.applyLabel}
           </button>
         )}
       </footer>

@@ -66,6 +66,10 @@ export function workshopAttachmentSize(
   if (tile) {
     return `from the Lightbox · ${tile.quotes} ${tile.quotes === 1 ? 'quote' : 'quotes'}`;
   }
+  if (attachment.pastedText) {
+    const size = `${attachment.words.toLocaleString()} ${attachment.words === 1 ? 'word' : 'words'}`;
+    return attachment.pastedText.truncated ? `${size} · shortened` : size;
+  }
   const words = `${attachment.words.toLocaleString()} words`;
   if (!attachment.truncation) {
     return words;

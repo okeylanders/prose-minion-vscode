@@ -18,6 +18,7 @@ import {
   buildFullTabChromeRoutes,
   FullTabChromeRouteDeps
 } from '@hooks/fulltab/useFullTabChrome';
+import type { useWorkshopPastedText } from '@hooks/domain/workshop/useWorkshopPastedText';
 import type { UseWorkshopRoomReturn } from '@hooks/domain/workshop/useWorkshopRoom';
 import type { UseWorkshopSessionsReturn } from '@hooks/domain/workshop/useWorkshopSessions';
 import type { UseWorkshopReadInReturn } from '@hooks/domain/workshop/useWorkshopReadIn';
@@ -80,6 +81,7 @@ export interface WorkshopAppMessageRouterDeps {
   workshopSessions: UseWorkshopSessionsReturn;
   /** The Read in reader's file content (Wayfinding Slice 2). */
   readIn: UseWorkshopReadInReturn;
+  pastedText?: Pick<ReturnType<typeof useWorkshopPastedText>, 'handleResult' | 'handleSessionState'>;
   /** Bookmarks and the turn preview (Wayfinding Slice 5). */
   bookmarks: UseWorkshopBookmarksReturn;
   /** Message reactions (ADR 2026-11-07 D8): the snapshot's summaries. */
@@ -135,7 +137,7 @@ export function buildWorkshopAppMessageRoutes(
   const {
     workshopRoom,
     workshopSessions,
-    readIn,
+    readIn, pastedText,
     bookmarks,
     reactions,
     bookmarkBrowser,
@@ -168,6 +170,7 @@ export function buildWorkshopAppMessageRoutes(
   return {
     ...buildFullTabChromeRoutes(chrome),
     [MessageType.WORKSHOP_SESSION_STATE]: (message) => {
+      pastedText?.handleSessionState(message);
       workshopRoom.handleSessionState(message);
       bookmarks.handleSessionState(message);
       reactions.handleSessionState(message);
@@ -201,6 +204,7 @@ export function buildWorkshopAppMessageRoutes(
     },
     [MessageType.WORKSHOP_CONTEXT_CATALOG]: workshopRoom.handleContextCatalog,
     [MessageType.WORKSHOP_CONTEXT_ATTACHMENT_CONTENT]: workshopRoom.handleContextAttachmentContent,
+    [MessageType.WORKSHOP_MESSAGE_TEXT_RESULT]: (message) => pastedText?.handleResult(message),
     [MessageType.WORKSHOP_READ_IN_RESOURCE_CONTENT]: readIn.handleReadInResourceContent,
     // The reader's preview, and a memory sheet prefilled from a bookmark outside the window; each takes only its own requests.
     [MessageType.WORKSHOP_TURN_PREVIEW]: (message) => {
