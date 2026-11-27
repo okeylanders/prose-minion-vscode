@@ -97,7 +97,7 @@
 
 ## Implementation and verification
 
-The host checks the request id, room revision, owning turn and artifact together. Only successful room deliveries publish a retained copy. Private instrument messages and messages without a committed body explain why no copy is available. Configured files and safely identified files under a single workspace root offer **Open current file**. Historical external picks identified only by a display name and ambiguous workspace paths cannot be reopened by that name.
+The host checks the request id, room revision, owning turn and artifact together. Only successful room deliveries publish a retained copy. The active writer turn’s attachment buttons say “Available after the reply” until that copy is committed. Previously sent attachments remain readable during the run. Private instrument messages and messages without a committed body explain why no copy is available. Configured files and safely identified files under a single workspace root offer **Open current file**. Historical external picks identified only by a display name and ambiguous workspace paths cannot be reopened by that name.
 
 The retained body already holds the original bounded characters. The send-time frame encodes reserved delimiters separately. The sheet therefore preserves both literal tags and deliberately typed HTML entities. It shows the bounded body as selectable plain text.
 

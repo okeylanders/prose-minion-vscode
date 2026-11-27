@@ -576,12 +576,15 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
           {turn.messageAttachments && turn.messageAttachments.length > 0 && (
             <div className="pm-ws-turn-attachments" aria-label="Message attachments">
               {turn.messageAttachments.map((attachment) => (
-                <button key={attachment.id} type="button" className="pm-ws-turn-attachment" title={workshopAttachmentTitle(attachment)}
-                  aria-label={`Show the ${attachment.label} that was sent`} onClick={() => onOpenSentAttachment?.(turn.id, attachment)}>
+                <button key={attachment.id} type="button" className="pm-ws-turn-attachment" disabled={turn.sentAttachmentsPending}
+                  title={workshopAttachmentTitle(attachment)}
+                  aria-label={turn.sentAttachmentsPending ? `${attachment.label} · Available after the reply` : `Show the ${attachment.label} that was sent`}
+                  onClick={() => onOpenSentAttachment?.(turn.id, attachment)}>
                   <Icon name={attachment.lightboxTile ? 'pin' : 'doc'} size={11} /> {attachment.label} ·{' '}
                   {workshopAttachmentSize(attachment, 'turn')}
                 </button>
               ))}
+              {turn.sentAttachmentsPending && <span className="pm-ws-comp-attachment-hint">Available after the reply</span>}
             </div>
           )}
           {isPrivateInstrumentTurn && (

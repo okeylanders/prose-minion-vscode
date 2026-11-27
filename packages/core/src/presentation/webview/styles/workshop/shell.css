@@ -2514,7 +2514,7 @@
   gap: 6px;
   margin-bottom: 6px;
 }
-[data-pm-surface="workshop"] button.pm-ws-turn-attachment {
+[data-pm-surface="workshop"] button.pm-ws-turn-attachment:not(:disabled) {
   cursor: pointer;
 }
 [data-pm-surface="workshop"] .pm-ws-turn-attachment {

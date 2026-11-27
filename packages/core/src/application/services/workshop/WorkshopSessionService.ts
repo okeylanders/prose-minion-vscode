@@ -932,6 +932,10 @@ export class WorkshopSessionService {
     );
   }
 
+  pendingSentAttachmentTurnId(): string | undefined {
+    return this.activeRun?.artifact === 'persona_message' ? this.activeRun.writerTurnId : undefined;
+  }
+
   /** One writer-visible body, only from the successful room turn that actually published it. */
   readSentMessageAttachment(turnId: string, artifactId: string):
     { attachment: WorkshopMessageAttachmentSnapshot; content: string } | { error: string } {

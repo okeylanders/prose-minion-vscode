@@ -132,6 +132,21 @@ describe('WorkshopApp — show earlier turns', () => {
 
   afterEach(() => jest.clearAllMocks());
 
+  it('waits only on the provisional writer’s pill and enables the same button after commitment', () => {
+    const old = { ...turn(5), messageAttachments: [{ id: 'ta-5', label: 'Selected Text', words: 3 }] };
+    const fresh = { ...turn(7), messageAttachments: [{ id: 'ta-7', label: 'Selected Text', words: 2 }] };
+    deliver(session({ turns: [old, turn(6), { ...fresh, sentAttachmentsPending: true }], activeRequestId: 'run-7' }));
+    const current = within(bubble(fresh.id)).getByRole<HTMLButtonElement>('button', { name: /Available after the reply/ });
+    expect(current.disabled).toBe(true);
+    fireEvent.click(current);
+    expect(posted(MessageType.WORKSHOP_REQUEST_MESSAGE_ATTACHMENT)).toHaveLength(0);
+    expect(within(bubble(old.id)).getByRole<HTMLButtonElement>('button', { name: /that was sent/ }).disabled).toBe(false);
+    deliver(session({ turns: [old, turn(6), fresh, turn(8)] }));
+    expect(current.disabled).toBe(false);
+    fireEvent.click(current);
+    expect(posted(MessageType.WORKSHOP_REQUEST_MESSAGE_ATTACHMENT)[0].payload).toMatchObject({ turnId: fresh.id, artifactId: 'ta-7' });
+  });
+
   it('opens an earlier writer’s sent selection by its own ids and shows literal text, lines and the cut', () => {
     fireEvent.click(control()!);
     const older = page(3, 4);

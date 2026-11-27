@@ -47,6 +47,7 @@ export interface WorkshopEditOfferRoomView {
   readonly fileEditsOpen: boolean;
   /** A reply is running. */
   readonly runActive: boolean;
+  readonly pendingSentAttachmentTurnId?: string;
   /** The full ledger, not the snapshot's window. */
   readonly ledger: () => readonly WorkshopTurn[];
   /** Whether the persona who wrote this reply is still in the room, as host or guest. */
@@ -64,9 +65,12 @@ export function workshopEditOfferRoomViewOnce(view: WorkshopEditOfferRoomView): 
 }
 
 export function workshopTurnForWebview(turn: WorkshopTurn, room?: WorkshopEditOfferRoomView): WorkshopTurn {
-  if (turn.role === 'user' && !turn.content && turn.messageAttachments?.length) {
+  if (turn.role === 'user' && turn.messageAttachments?.length) {
     const count = turn.messageAttachments.length;
-    turn = { ...turn, content: `Shared ${count} ${count === 1 ? 'attachment' : 'attachments'}` };
+    turn = {
+      ...turn, content: turn.content || `Shared ${count} ${count === 1 ? 'attachment' : 'attachments'}`,
+      ...(turn.id === room?.pendingSentAttachmentTurnId && { sentAttachmentsPending: true as const })
+    };
   }
   if (!turn.highlights && !turn.fileEditProposals && !turn.editOffers && !turn.reactionDelivery && !turn.trailerOutcomes && !turn.todoStatusChanges
     && !turn.passageSearchRequest && !turn.passageSearchDelivery) {

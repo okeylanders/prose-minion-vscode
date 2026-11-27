@@ -1,5 +1,5 @@
 import { createWorkshopRouteTestHarness, message } from './WorkshopRouteTestHarness';
-import { MessageType, type WorkshopSentAttachmentRequest } from '@messages';
+import { MessageType, type WorkshopSentAttachmentRequest, type WorkshopTurn } from '@messages';
 import { workshopSelectedTextAttachmentInput } from '@/application/services/workshop/selection/WorkshopSelectedTextAttachment';
 import { workshopLightboxTileAttachmentInput } from '@/application/services/workshop/WorkshopLightboxTileAttachment';
 import { FileType } from '@/platform';
@@ -31,6 +31,40 @@ async function sent() {
   };
   return { h, turn, id, read, tile };
 }
+
+it('marks only the writer turn awaiting its retained attachment body and releases it on successful delivery', async () => {
+  const { h, turn: previous, id, read } = await sent();
+  const establish = h.service.continueConversation.getMockImplementation()!;
+  let release!: () => void;
+  let started!: () => void;
+  const waiting = new Promise<void>((resolve) => { release = resolve; });
+  const entered = new Promise<void>((resolve) => { started = resolve; });
+  h.service.continueConversation.mockImplementationOnce(async (...args) => {
+    started();
+    await waiting;
+    return establish(...args);
+  });
+  h.session.addMessageAttachment(workshopSelectedTextAttachmentInput({ id: 'fresh', text: 'Second selection',
+    displayPath: 'Draft/full.md', startLine: 10, endLine: 10, words: 2 }));
+  const sending = h.router.route(message(MessageType.WORKSHOP_SEND_MESSAGE, { text: 'And this one?' }) as never);
+  await entered;
+  const posted = h.posted(MessageType.WORKSHOP_TURN).at(-1)!.payload.turn as WorkshopTurn;
+  const window = () => h.posted(MessageType.WORKSHOP_SESSION_STATE).at(-1)!.payload.session.turns as WorkshopTurn[];
+  const projected = (turnId: string) => window().find((item) => item.id === turnId)!;
+  try {
+    expect(posted).toMatchObject({ content: 'And this one?', sentAttachmentsPending: true });
+    expect(projected(posted.id).sentAttachmentsPending).toBe(true);
+    expect(projected(previous.id).sentAttachmentsPending).toBeUndefined();
+    expect(await read(id(1))).toMatchObject({ content: raw });
+  } finally {
+    release();
+    await sending;
+  }
+  expect(projected(posted.id).sentAttachmentsPending).toBeUndefined();
+  expect(await read({ ...id(1), turnId: posted.id, artifactId: posted.messageAttachments![0].id }))
+    .toMatchObject({ content: 'Second selection' });
+  expect(JSON.stringify(h.session.exportCommittedState())).not.toContain('sentAttachmentsPending');
+});
 
 it('reads each successful producer’s retained body, preserving literal tags and entities across saved-session restoration', async () => {
   const { h, turn, id, read, tile } = await sent();

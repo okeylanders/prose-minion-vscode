@@ -435,6 +435,8 @@ export interface WorkshopTurn {
    * host/guest through room delivery. Ids are the `ta-N` addresses.
    */
   messageAttachments?: WorkshopMessageAttachmentSnapshot[];
+  /** Webview-only. This writer turn's attachment bodies await a successful room reply. */
+  sentAttachmentsPending?: true;
   content: string;
   /** Epoch ms when the turn was appended (host-stamped). */
   timestamp: number;

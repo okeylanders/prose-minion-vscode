@@ -1868,6 +1868,7 @@ export class WorkshopRoomHandler {
     return {
       fileEditsOpen: this.conversationSettingsService.getFileEditsMode() === 'ask',
       runActive: this.activeRun !== undefined,
+      pendingSentAttachmentTurnId: this.session.pendingSentAttachmentTurnId(),
       ledger: () => this.session.readRoomLedger(),
       authorPresent: (turn) => workshopEditOfferAuthorTarget(this.session, turn) !== undefined,
       liveSessionId: () => this.sessionPersistence.openRoomIdentity().sessionId,
