@@ -2514,8 +2514,10 @@
   gap: 6px;
   margin-bottom: 6px;
 }
-[data-pm-surface="workshop"] .pm-ws-turn-attachment {
+[data-pm-surface="workshop"] button.pm-ws-turn-attachment {
   cursor: pointer;
+}
+[data-pm-surface="workshop"] .pm-ws-turn-attachment {
   display: inline-flex;
   align-items: center;
   gap: 5px;
