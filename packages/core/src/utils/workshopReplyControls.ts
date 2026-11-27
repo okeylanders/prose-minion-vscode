@@ -168,6 +168,7 @@ export interface WorkshopTrailerKinds {
   readonly locations?: boolean;
   /** Whether it held a passage-search request frame (ADR 2026-11-20 D16). */
   readonly passageSearch?: boolean;
+  readonly highlights?: boolean;
 }
 
 /** The same, for a reply that was only a context-paths proposal (ADR 2026-11-19 D27). */
@@ -183,6 +184,10 @@ const REACTION_OBJECT = "the writer's message";
  * nothing to name, it is `WORKSHOP_NO_MESSAGE_REPLY_LINE`.
  */
 export function workshopTrailersOnlyReplyLine(kinds: WorkshopTrailerKinds): string {
+  if (kinds.highlights) {
+    const others = workshopTrailersOnlyReplyLine({ ...kinds, highlights: false });
+    return others === WORKSHOP_NO_MESSAGE_REPLY_LINE ? 'Requested highlights.' : `${others.slice(0, -1)}, and requested highlights.`;
+  }
   if (kinds.passageSearch) {
     const others = workshopTrailersOnlyReplyLine({ ...kinds, passageSearch: false });
     return others === WORKSHOP_NO_MESSAGE_REPLY_LINE
@@ -355,7 +360,8 @@ export function extractWorkshopReplyControls(
       ...(reactionFrames.length > 0 ? { reaction: named ?? true } : {}),
       ...(todoStatusFrames.length > 0 ? { todos: true } : {}),
       ...(locationsFrames.length > 0 ? { locations: true } : {}),
-      ...(passageSearchFrames.length > 0 ? { passageSearch: true } : {})
+      ...(passageSearchFrames.length > 0 ? { passageSearch: true } : {}),
+      ...(highlightsFrames.length > 0 ? { highlights: true } : {})
     }
   };
 }

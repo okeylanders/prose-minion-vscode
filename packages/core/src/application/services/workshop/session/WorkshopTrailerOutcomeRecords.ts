@@ -21,6 +21,8 @@
  */
 
 import {
+  WORKSHOP_HIGHLIGHT_FRAME_REASONS,
+  WORKSHOP_HIGHLIGHT_PLACE_REASONS,
   WORKSHOP_FILE_EDIT_TRAILER_DROP_REASONS,
   WORKSHOP_LOCATIONS_TRAILER_DROP_REASONS,
   WORKSHOP_MEMORY_TRAILER_DROP_REASONS,
@@ -48,10 +50,20 @@ export function assertWorkshopTrailerOutcomesShape(
   if (turn.role !== 'assistant' || (turn.participant !== 'host' && turn.participant !== 'guest')) {
     shapeError(path, 'a record on a persona reply');
   }
-  const outcomes = exactObject(value, path, [], ['memory', 'fileEdits', 'todos', 'locations', 'passageSearch']);
+  const outcomes = exactObject(value, path, [], ['memory', 'fileEdits', 'todos', 'locations', 'passageSearch', 'highlights']);
   if (outcomes.memory === undefined && outcomes.fileEdits === undefined && outcomes.todos === undefined
-    && outcomes.locations === undefined && outcomes.passageSearch === undefined) {
-    shapeError(path, 'at least one of memory, fileEdits, todos, locations and passageSearch');
+    && outcomes.locations === undefined && outcomes.passageSearch === undefined && outcomes.highlights === undefined) {
+    shapeError(path, 'at least one of memory, fileEdits, todos, locations, passageSearch and highlights');
+  }
+  if (outcomes.highlights !== undefined) {
+    const at = `${path}.highlights`;
+    const side = exactObject(outcomes.highlights, at, ['placed', 'closed', 'dropped', 'rejected']);
+    const total = countAt(side.placed, `${at}.placed`, 0) + countAt(side.closed, `${at}.closed`, 0)
+      + droppedAt(side.dropped, `${at}.dropped`, WORKSHOP_HIGHLIGHT_PLACE_REASONS)
+      + droppedAt(side.rejected, `${at}.rejected`, WORKSHOP_HIGHLIGHT_FRAME_REASONS);
+    if (!total) {
+      shapeError(at, 'at least one place or rejected frame counted');
+    }
   }
   if (outcomes.memory !== undefined) {
     const side = exactObject(outcomes.memory, `${path}.memory`, ['cards', 'dropped']);
@@ -142,6 +154,9 @@ function droppedAt(value: unknown, path: string, reasons: readonly string[]): nu
 /** A defensive copy of one record. */
 export function cloneWorkshopTrailerOutcomes(outcomes: WorkshopTrailerOutcomes): WorkshopTrailerOutcomes {
   return {
+    ...(outcomes.highlights ? { highlights: { ...outcomes.highlights,
+      dropped: outcomes.highlights.dropped.map((drop) => ({ ...drop })),
+      rejected: outcomes.highlights.rejected.map((drop) => ({ ...drop })) } } : {}),
     ...(outcomes.memory
       ? { memory: { cards: outcomes.memory.cards, dropped: outcomes.memory.dropped.map((drop) => ({ ...drop })) } }
       : {}),

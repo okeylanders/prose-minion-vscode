@@ -73,3 +73,8 @@ The important failure cases are private data in partial frames, diagnostics atta
 - [Observed] `WorkshopRunCompletion` settles trailer outcomes around the reply commit. `WorkshopSessionStateV1Shape` validates retained reply fields.
 - [Observed] `anchorQuote`, `findProtectedRegions`, `IssueAnnotator` and `VsCodeIssueAnnotator` already cover the main placement and display primitives.
 - [Proposed] Amend Draft Edit D10 to permit the Workshop highlight service to use a dedicated annotation family with read access to the target. Keep document writes on the existing Draft Edit boundary.
+
+
+### Writer authorization at placement
+
+The host asks once per valid set on a writer-directed host or guest reply, after it verifies the captured excerpt source. The notification names the persona, set, count and authorized excerpt file. **Keep highlights** authorizes that reply to retain the set and display it if the file is open. **Skip** or dismissal leaves the set out of the reply and records one rejected set under `skipped`. Stopping the run releases its pending notification. Approval expires if the run, room, excerpt or candidate reply changes. A retained set can be shown again through its reply’s **Show** action, which reauthorizes the file and anchors the saved passages to its current text.

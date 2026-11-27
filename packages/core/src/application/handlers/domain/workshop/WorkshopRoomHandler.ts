@@ -23,6 +23,7 @@ import {
   resolveWorkshopReplyLocations,
   type WorkshopReplyLocationsContext
 } from '@/application/services/workshop/locations/WorkshopReplyLocations';
+import { authorizeWorkshopReplyHighlights } from '@/application/services/workshop/highlights/WorkshopReplyHighlights';
 import type { WorkshopSavedSessionTodos } from '@/application/services/workshop/todos/WorkshopSavedSessionTodos';
 import type { WorkshopBookmarkBrowserPort } from '@handlers/domain/workshop/WorkshopBookmarkBrowserHandler';
 import type { WorkshopMemoryDraftPorts } from '@handlers/domain/workshop/WorkshopMemoryDraftHandler';
@@ -329,7 +330,7 @@ export class WorkshopRoomHandler {
     private readonly runToolSidePass: RunWorkshopToolSidePass,
     private readonly capabilityFactory: WorkshopPersonaCapabilityFactory,
     private readonly postMessage: MessageTransport,
-    shell: ShellService,
+    private readonly shell: ShellService,
     private readonly contextIntakeService: WorkshopContextIntakeService,
     private readonly conversationSettingsService: WorkshopConversationSettingsService,
     private readonly sessionTime: WorkshopSessionTimeService,
@@ -640,6 +641,7 @@ export class WorkshopRoomHandler {
     }
 
     await this.executeMessage(text, text, undefined, {
+      writerComposed: true,
       includeMessageAttachments: true,
       restoreDraftOnRollback: true
     });
@@ -748,6 +750,7 @@ export class WorkshopRoomHandler {
         requestId,
         openingMessage
       );
+      const joinRoomRevision = this.session.readRoomRevision();
       const joinRoomTurns = this.roomDelivery.prepareJoinSnapshot({
         kind: 'personaGuest',
         personaId
@@ -847,6 +850,9 @@ export class WorkshopRoomHandler {
           memoryAutoSavesInRoom: memoryAutoSave.inRoom,
           fileEdits, todoStatus, locations,
           passageSearch: await this.sliceComposition.replyPassageSearch(result.content, controller.signal),
+          highlights: await authorizeWorkshopReplyHighlights({ reply: result.content, requestId, roomRevision: joinRoomRevision,
+            excerpt: joinStart.excerpt, persona: workshopPersonaLabel(personaId), intake: this.contextIntakeService, editor: this.workshopHighlights,
+            signal: controller.signal, session: this.session, shell: this.shell }),
           reactionsOpen: this.conversationSettingsService.personaReactionsOpen(),
           session: this.session,
           requestId,
@@ -1150,6 +1156,8 @@ export class WorkshopRoomHandler {
        * deterministic quick actions never consume them (Phase 6B).
        */
       includeMessageAttachments?: boolean;
+      /** A writer-authored message can ask a persona to highlight its own excerpt. */
+      writerComposed?: true;
       /** Restore writer-owned composer text if transient rollback removes its turn. */
       restoreDraftOnRollback?: boolean;
       /**
@@ -1183,6 +1191,7 @@ export class WorkshopRoomHandler {
     // whether an excerpt happens to be present. An open conversation is a real
     // room; direct tool sidecars still require the passage they read.
     const excerpt = this.session.getExcerpt();
+    const messageRoomRevision = this.session.readRoomRevision();
     const hasExcerpt = !!excerpt && excerpt.text.trim().length > 0;
     const subjectStatus = this.session.getParticipantSubjectStatus();
     // Scope first, and independently of excerpt presence: a new session
@@ -1446,6 +1455,10 @@ export class WorkshopRoomHandler {
         memoryAutoSavesInRoom: memoryAutoSave.inRoom,
         fileEdits, todoStatus, locations,
         passageSearch: await this.sliceComposition.replyPassageSearch(result.content, controller.signal),
+        highlights: roomReader && executeOptions?.writerComposed && !directedRun && !widgetArtifact
+          ? await authorizeWorkshopReplyHighlights({ reply: result.content, requestId, roomRevision: messageRoomRevision, excerpt, persona: label,
+            intake: this.contextIntakeService, editor: this.workshopHighlights, signal: controller.signal, session: this.session, shell: this.shell })
+          : undefined,
         ...delivery?.completion(),
         reactionsOpen: this.conversationSettingsService.personaReactionsOpen(),
         session: this.session,

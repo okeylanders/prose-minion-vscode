@@ -145,6 +145,7 @@ export interface WorkshopRouteTestHarness {
 }
 
 export interface WorkshopRouteTestHarnessOptions {
+  workshopHighlights?: import('@/application/services/workshop/highlights/WorkshopHighlightEditor').WorkshopHighlightEditor;
   /** The Bookmarks screen's recall port over the harness's session; by default every read throws. */
   bookmarkBrowser?: (session: WorkshopSessionService) => WorkshopBookmarkBrowserPort;
   /** The helper's memory drafts (Helper Agent Slice 2); by default drafting is off and the helper is never reached. */
@@ -410,7 +411,8 @@ export const createWorkshopRouteTestHarness = (options: WorkshopRouteTestHarness
     undefined,
     options.passageSearch,
     undefined,
-    openWorkshopBranch
+    openWorkshopBranch,
+    options.workshopHighlights
   );
   const router = new MessageRouter();
   handler.registerRoutes(router);

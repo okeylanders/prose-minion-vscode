@@ -65,6 +65,7 @@ import {
 } from '@/application/services/workshop/todos/WorkshopReplyTodoStatus';
 import { settleWorkshopReplyLocations, type WorkshopReplyLocationsContext } from '@/application/services/workshop/locations/WorkshopReplyLocations';
 import { settleWorkshopReplyPassageSearch, type WorkshopReplyPassageSearchContext } from '@/application/services/workshop/passageSearch/WorkshopReplyPassageSearch';
+import { displayCommittedWorkshopHighlights, type WorkshopHighlightChoice } from './highlights/WorkshopReplyHighlights';
 import { isAgentRunIncomplete } from '@orchestration/AgentRunContracts';
 import { workshopWidgetLabel } from '@shared/constants/workshopWidgets';
 import {
@@ -171,6 +172,7 @@ export interface WorkshopRunCompletionInput {
    * is still stripped, and dropped as `reactions-off`.
    */
   reactionsOpen?: boolean;
+  highlights?: WorkshopHighlightChoice;
   /**
    * The reply's to-do status frames, resolved before completion (ADR
    * 2026-11-19 D5): the open room's ids and each saved session named, read.
@@ -317,14 +319,19 @@ export function completeWorkshopRun(input: WorkshopRunCompletionInput): Workshop
   const hostWritesDisplay = (widgetRecommendation.outcome !== 'absent' || trailers.memory || trailers.fileEdits
     || trailers.reaction !== undefined || controls.editOffers !== undefined || trailers.todos === true
     || trailers.locations === true || trailers.passageSearch === true || controls.highlights !== undefined) && strippedDisplayContent.trim().length === 0;
-  const kinds = { memory: trailers.memory, fileEdits: trailers.fileEdits, todos: trailers.todos, locations: trailers.locations, passageSearch: trailers.passageSearch };
+  const target = input.highlights;
+  const highlightChoice = target?.requestId === requestId && target.reply === result.content && target.roomRevision === session.readRoomRevision()
+    && target.excerptVersion === session.getExcerptVersion() && session.personaReplyReactionTarget(requestId) ? target : undefined;
+  const highlightTarget = highlightChoice?.kind === 'approved' ? highlightChoice : undefined;
+  const keepsHighlights = highlightTarget !== undefined && controls.highlights?.set !== undefined;
+  const kinds = { highlights: keepsHighlights, memory: trailers.memory, fileEdits: trailers.fileEdits, todos: trailers.todos, locations: trailers.locations, passageSearch: trailers.passageSearch };
   // R1: a reply that was only its reaction is drawn as a slim line; with cards or a widget it is a reply.
   // The ledger's line names only a reaction that lands (PR #247 M1); retention keeps the reply's intent.
   const kept = controls.reaction?.reaction;
   const hostLine = hostWritesDisplay && widgetRecommendation.outcome === 'absent';
   const reaction = controls.reaction && {
     reaction: kept,
-    only: hostLine && !trailers.memory && !trailers.fileEdits && !trailers.todos && !trailers.locations && !trailers.passageSearch,
+    only: hostLine && !trailers.memory && !trailers.fileEdits && !trailers.todos && !trailers.locations && !trailers.passageSearch && !keepsHighlights,
     ...(hostLine ? { unlandedContent: workshopTrailersOnlyReplyLine(kinds) } : {}),
     outcome: (outcome: WorkshopPersonaReactionOutcome) => input.log(outcome === 'added'
       ? `Persona reaction kept (reaction=${kept}; ${label})`
@@ -340,7 +347,7 @@ export function completeWorkshopRun(input: WorkshopRunCompletionInput): Workshop
   // An offer says what the reply's prose holds (ADR 2026-11-10 D1): settled once the display is known.
   const editOffers = settleWorkshopReplyEditOffers(controls.editOffers, fileEdits.editOffers,
     { content: displayContent, hostWritten: hostWritesDisplay }, (line) => input.log(`${line} (${label})`));
-  const turn = session.completeRun(
+  let turn = session.completeRun(
     requestId,
     displayContent,
     result.usage,
@@ -367,7 +374,8 @@ export function completeWorkshopRun(input: WorkshopRunCompletionInput): Workshop
     }),
     todos.commit,
     locations.card,
-    { request: passageSearch.card, delivery: input.passageSearchDelivery }
+    { request: passageSearch.card, delivery: input.passageSearchDelivery },
+    highlightTarget && controls.highlights?.set ? { source: highlightTarget.source, set: controls.highlights.set } : undefined
   );
   if (!turn) {
     if (input.createsRetainedConversation && result.conversationId) {
@@ -378,6 +386,11 @@ export function completeWorkshopRun(input: WorkshopRunCompletionInput): Workshop
       `Discarded zombie completion: ${requestId} (${label}) — session was reset or the run preempted mid-stream`
     );
     return undefined;
+  }
+  if (controls.highlights && (turn.participant === 'host' || turn.participant === 'guest')) {
+    const counts = displayCommittedWorkshopHighlights(turn, controls.highlights, highlightChoice);
+    turn = session.recordHighlightOutcome(turn.id, counts) ?? turn;
+    input.log(`Workshop highlights: ${JSON.stringify(counts)}`);
   }
   reportWorkshopEditOffers(editOffers, turn, (line) => input.log(`${line} (${label})`));
 

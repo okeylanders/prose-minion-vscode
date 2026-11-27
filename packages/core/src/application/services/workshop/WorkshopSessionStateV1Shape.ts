@@ -65,6 +65,7 @@ import {
 import { assertWorkshopProjectMemoryDeliveryShape } from '@/application/services/workshop/session/WorkshopProjectMemoryDeliveryRecords';
 import { assertWorkshopReactionDeliveryShape } from '@/application/services/workshop/session/WorkshopReactionDeliveryRecords';
 import { assertWorkshopLocationsProposalShape } from '@/application/services/workshop/locations/WorkshopLocationsProposalRecords';
+import { assertWorkshopHighlightRecord } from './highlights/WorkshopHighlightRecord';
 import { assertWorkshopPassageSearchShapes } from '@/application/services/workshop/passageSearch/WorkshopPassageSearchRecords';
 import { assertWorkshopTrailerOutcomesShape } from '@/application/services/workshop/session/WorkshopTrailerOutcomeRecords';
 import { assertWorkshopTodoClosedByShape, assertWorkshopTodoStatusChangesShape } from '@/application/services/workshop/session/WorkshopTodoStatusRecords';
@@ -627,6 +628,7 @@ function assertTurn(value: unknown, path: string, checkpoint: boolean): void {
       'todoStatusChanges',
       // A persona's context-paths card (ADR 2026-11-19 D27; additive).
       'locationsProposal',
+      'highlights',
       // A persona's passage-search card, a delivery's request turn and its receipt (ADR 2026-11-20 D17–D19a; additive).
       'passageSearchRequest',
       'passageSearchResults',
@@ -714,6 +716,9 @@ function assertTurn(value: unknown, path: string, checkpoint: boolean): void {
   }
   if (turn.locationsProposal !== undefined) {
     assertWorkshopLocationsProposalShape(turn.locationsProposal, `${path}.locationsProposal`, turn);
+  }
+  if (turn.highlights !== undefined) {
+    assertWorkshopHighlightRecord(turn, path);
   }
   assertWorkshopPassageSearchShapes(turn, path);
   if (turn.todoStatusChanges !== undefined) {

@@ -1782,7 +1782,8 @@ export class WorkshopSessionService {
     trailerOutcomes?: WorkshopTrailerOutcomes,
     todoStatus?: todoRows.WorkshopReplyTodoStatusCommit,
     locationsProposal?: WorkshopLocationsProposalCard,
-    passageSearch?: passageSearchRecords.WorkshopPassageSearchReplyCommit
+    passageSearch?: passageSearchRecords.WorkshopPassageSearchReplyCommit,
+    highlights?: WorkshopTurn['highlights']
   ): WorkshopTurn | undefined {
     if (this.activeRun?.requestId !== requestId) {
       return undefined;
@@ -1845,6 +1846,10 @@ export class WorkshopSessionService {
       // The answer to a press names the reply and kind it answers (ADR 2026-11-10 D3).
       ...((isHost || isGuest) && editOfferAnswer ? { editOfferAnswer: { ...editOfferAnswer } } : {})
     };
+
+    if (highlights && (isHost || isGuest) && active.artifact === 'persona_message') {
+      turn.highlights = highlights;
+    }
 
     if (isHost && conversationId) {
       if (this.getHostConversationId() !== conversationId) {
@@ -1950,6 +1955,13 @@ export class WorkshopSessionService {
       };
     }
     return cloneTurn(turn);
+  }
+
+  /** Placement reads the live editor after adoption. Store its counts before the reply is announced or saved. */
+  recordHighlightOutcome(turnId: string, highlights: NonNullable<WorkshopTrailerOutcomes['highlights']>): WorkshopTurn | undefined {
+    return this.turnLedger.update(turnId, (turn) => {
+      turn.trailerOutcomes = { ...turn.trailerOutcomes, highlights };
+    });
   }
 
   /**

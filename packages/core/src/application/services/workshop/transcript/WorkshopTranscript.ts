@@ -200,7 +200,7 @@ export function projectWorkshopTranscript(
     }
     const marked = meta.bookmarkedTurnIds?.has(turn.id) ? { ...entry, bookmarked: true as const } : entry;
     return [...pending.splice(0), withFileEdits(withModel(marked, turn), turn), ...todoReceipt(entry, turn), ...locationsCard(entry, turn),
-      ...passageSearchCard(entry, turn)];
+      ...passageSearchCard(entry, turn), ...highlightSet(entry, turn)];
   });
   // A slice whose turns all print nothing still closes the transcript.
   entries.push(...pending);
@@ -286,6 +286,13 @@ function locationsCard(entry: WorkshopTranscriptEntry, turn: WorkshopTurn): Work
   const groups = turn.locationsProposal?.view.groups.filter((group) => group.proposed).length ?? 0;
   return entry.kind === 'reply' && turn.locationsProposal
     ? [{ kind: 'event', turnId: turn.id, timestamp: turn.timestamp, text: workshopLocationsTranscriptLine(groups) }]
+    : [];
+}
+
+function highlightSet(entry: WorkshopTranscriptEntry, turn: WorkshopTurn): WorkshopTranscriptEventEntry[] {
+  const count = turn.highlights?.set.places.length;
+  return entry.kind === 'reply' && count
+    ? [{ kind: 'event', turnId: turn.id, timestamp: turn.timestamp, text: `Requested ${count} ${count === 1 ? 'highlight' : 'highlights'}.` }]
     : [];
 }
 

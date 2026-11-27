@@ -117,6 +117,14 @@ export function workshopTrailerOutcomeLines(
   todoRows: readonly Pick<WorkshopTodoStatusChange, 'state' | 'reason'>[] = []
 ): string[] {
   const lines: string[] = [];
+  if (outcomes.highlights) {
+    const { placed, closed, dropped, rejected } = outcomes.highlights;
+    const parts = [`${placed} placed`,
+      ...(closed ? [`${closed} awaiting Show (file closed)`] : []),
+      ...dropped.map(({ reason, count }) => `${count} dropped (${reason})`),
+      ...rejected.map(({ reason, count }) => `${count} ${count === 1 ? 'set' : 'sets'} rejected (${reason})`)];
+    lines.push(`Your last reply's highlights: ${parts.join(', ')}.`);
+  }
   if (outcomes.memory) {
     const parts = [
       ...(outcomes.memory.cards > 0 ? [shownAsCards(outcomes.memory.cards)] : []),

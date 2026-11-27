@@ -367,7 +367,7 @@ describe('the field in the session codec (optional and additive; ADR 2026-07-30)
     ['fileEdits without `refused`', (reply) => {
       reply.trailerOutcomes = { fileEdits: { cards: 1, dropped: [] } };
     }, /missing required field refused/],
-    ['an empty record', (reply) => { reply.trailerOutcomes = {}; }, /at least one of memory, fileEdits, todos, locations and passageSearch/],
+    ['an empty record', (reply) => { reply.trailerOutcomes = {}; }, /at least one of memory, fileEdits, todos, locations, passageSearch and highlights/],
     ['a side that counts no frame', (reply) => { reply.trailerOutcomes = { memory: { cards: 0, dropped: [] } }; }, /at least one frame counted/],
     ['an unknown side', (reply) => { reply.trailerOutcomes!.reactions = { cards: 1, dropped: [] }; }, /unknown field reactions/]
   ])('refuses %s', (_case, change, message) => {
