@@ -29,6 +29,7 @@ describe('Workshop highlights prompt', () => {
     }
     const unpinned = limits.reduce((remaining, [pattern]) => remaining.replace(pattern, ''), prose);
     expect(unpinned).not.toMatch(/\d/);
+    expect(prose).toContain('When you find more matching places than the set can hold, tell the writer you found more and wait for them to ask for another set.');
   });
 
   it('decodes and places the worked example as written', () => {

@@ -72,6 +72,8 @@ describe('the shipped help reference', () => {
     const result = await capability.fulfill({ capability: 'help.read', sections: [id] });
     expect(result.status).toBe('success');
     expect(result.content).toContain('**Send to New Workshop Excerpt**');
+    expect(result.content).toContain(`A reply can mark up to ${PROMPT_BUDGETS.workshopHighlights.placesPerSet} places.`);
+    expect(result.content).toContain('If the persona finds more, it tells you and waits for you to ask for another set.');
     expect(result.content).toContain('**Show**');
     expect(result.content).toContain('**Clear**');
     expect(result.content).toContain('**Prose Minion: Clear All Workshop Highlights**');

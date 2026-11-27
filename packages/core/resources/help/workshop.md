@@ -96,7 +96,7 @@ Each Workshop room can hold up to four results that have not been sent. With fou
 
 ## Highlight passages in the excerpt file
 
-Pin a file as your Workshop excerpt, or select text from a file and choose **Send to New Workshop Excerpt**. Ask your host or guest to “Highlight the lines Fresh called predictable and leave a note on each” or “Highlight where Mara puts on the blue sweater.” A persona can use the conversation, an attached report or a Lightbox reading to find passages in the excerpt's file. It adds read-only highlights when you ask. “All” means all the passages the persona found.
+Pin a file as your Workshop excerpt, or select text from a file and choose **Send to New Workshop Excerpt**. Ask your host or guest to “Highlight the lines Fresh called predictable and leave a note on each” or “Highlight where Mara puts on the blue sweater.” A persona can use the conversation, an attached report or a Lightbox reading to find passages in the excerpt's file. It adds read-only highlights when you ask. A reply can mark up to 24 places. If the persona finds more, it tells you and waits for you to ask for another set.
 
 If the excerpt's file is already open when the reply arrives, its marks appear in the editor. Hover a mark to read its note, or use the **Problems** panel and **F8** to visit the marks. The reply's chip names the set. Use **Show** to open the source file or bring that set back after clearing it, closing the file or reloading. Show checks the live file again and reports how many places it could not mark.
 

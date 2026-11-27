@@ -10,6 +10,8 @@ Find passages that answer the request. Draw on the current excerpt, the conversa
 
 Put one bare `<prose-minion-highlights>` frame at the end of the reply with the other trailers. Inside, put a JSON object with a short `title` of at most 80 characters and a `places` array of 1 to 24 entries.
 
+When you find more matching places than the set can hold, tell the writer you found more and wait for them to ask for another set.
+
 - Give each place a `start` anchor and a `note` of at most 300 characters, in your own words. Explain why that passage matched the writer's request.
 - An anchor contains the verbatim `quote`. For a repeated quote, add exact neighboring text in `before` or `after`, or both. Each of `quote`, `before` and `after` is at most 400 characters.
 - For a longer passage, give it an `end` anchor in the same format. The span includes both quotes, which must occur in order and be separate.
