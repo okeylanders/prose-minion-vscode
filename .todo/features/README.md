@@ -58,7 +58,17 @@ Several of these notes still carry their build-time status line (for example
 
 ## 🔨 In flight
 
-Nothing is being built right now. 2.17.0 is on `main`, waiting for its release.
+Feature 39 and the conveniences patch share `epic/workshop-persona-highlights`.
+The highlights sprints are merged into the epic. The patch sprints target the
+same branch. See the [patch scope and review cases](../epics/epic-workshop-persona-highlights/conveniences-runway.md).
+
+| # | Idea | Priority | Size and notes | Note |
+|---|---|---|---|---|
+| 4+ | Reads, the rest: `memory.read` fit and the engine backstop | High | Medium; ADR first. | [reads fit the window](feature-workshop-reads-fit-the-window/README.md) |
+| 33 | Update the default models (one table instead of three) | Medium | Small; a chore for any release. | [tech debt](../tech-debt/2026-11-20-default-models-behind.md) |
+| 34 | Click a sent pill to see what was sent | Medium | Small; V1 decided. | [sent attachment viewer](feature-workshop-sent-attachment-viewer/README.md) |
+| 36 | A long paste becomes a "Pasted text" pill | Medium | Small to medium; P1 (500 characters) and P2 decided. | [long paste pill](feature-workshop-long-paste-pill/README.md) |
+| 39 | Personas highlight the excerpt's file: any passages, each with a note (squiggles and Problems-panel notes) | Medium | In development | [persona highlights](../epics/epic-workshop-persona-highlights/README.md) |
 
 ## ⏳ Not started
 
@@ -66,23 +76,18 @@ Nothing is being built right now. 2.17.0 is on `main`, waiting for its release.
 |---|---|---|---|---|
 | 1 | Research agent | Low | Large; ADR first. Would call Passage Search and the measures. | [research agent](feature-workshop-research-agent/README.md) |
 | 3 | Helper drafts the session name | Medium | Small; N1–N4 decided. Pairs with 18. | [session name draft](feature-workshop-session-name-draft/README.md) |
-| 4+ | Reads, the rest: `memory.read` fit and the engine backstop | High | Medium; ADR first. | [reads fit the window](feature-workshop-reads-fit-the-window/README.md) |
 | 5 | Anthropic, OpenAI and local providers | High | Epic; ADR first. | [model providers](feature-model-providers/README.md) |
 | 6a | Selection inside the excerpt sent as a pointer | Low | Small; deferred by Okey. | [selection in excerpt pointer](feature-workshop-selection-in-excerpt-pointer/README.md) |
 | 9 (Lightbox) | Several Lightbox tabs | Medium | Follow-up to the Workshop tabs epic. | [multiple tabs](feature-multiple-workshop-and-lightbox-tabs/README.md) |
 | 11 | Basic WYSIWYG Markdown editor | Medium | Large; ADR first. | [markdown writing editor](feature-markdown-writing-editor/README.md) |
-| 13+ | Lexical Gravity fix 4 and the helper's repair | — | Deferred: only if the problem comes back. | [tech debt](../tech-debt/2026-11-09-lexical-gravity-reads-json-without-repair.md) |
+| 13+ | Lexical Gravity fix 4 and the helper's repair | — | Deferred pending recurrence. The existing repair passed its 30 regression tests on 2026-11-27. | [tech debt](../tech-debt/2026-11-09-lexical-gravity-reads-json-without-repair.md) |
 | 17 | Compaction that keeps the whole history | High | Epic. | [compaction keeps history](feature-workshop-compaction-keeps-history/README.md) |
 | 18 | Searchable session summary | Medium | Small to medium. Pairs with 3. | [session summary](feature-workshop-session-summary/README.md) |
 | 19 | Context strategies (diffs, superseded versions) | Medium | Medium. Pairs with 17. | [context strategies](feature-workshop-context-strategies/README.md) |
 | 31 | Read Aloud: measured cadence | Medium | Medium; ADR first; R1 decided. Lands as `measure.cadence` after 35. | [read aloud cadence](feature-read-aloud-cadence/README.md) |
 | 32 | Help section: using an OpenAI or Claude account (BYOK) | Medium | Small; the text is drafted in the note. | [help: OpenRouter BYOK](feature-help-openrouter-byok/README.md) |
-| 33 | Update the default models (one table instead of three) | Medium | Small; a chore for any release. | [tech debt](../tech-debt/2026-11-20-default-models-behind.md) |
-| 34 | Click a sent pill to see what was sent | Medium | Small; V1 decided. | [sent attachment viewer](feature-workshop-sent-attachment-viewer/README.md) |
 | 35 | Personas run the deterministic measures | Medium | Medium; short ADR. Reuses Passage Search's scopes. | [persona measures](feature-workshop-persona-measures/README.md) |
-| 36 | A long paste becomes a "Pasted text" pill | Medium | Small to medium; P1 (500 characters) and P2 decided. | [long paste pill](feature-workshop-long-paste-pill/README.md) |
 | 38 (rest) | Branch from an unsaved room; "Branch in new tab instead" in Rewind's confirm | Medium | Small. Branch still requires a saved room (ADR 2026-09-30, multi-tab amendment). B1 and B2 open, with leans. | [branch in new tab](feature-workshop-branch-in-new-tab/README.md) |
-| 39 | Personas highlight the excerpt's file: any passages, each with a note (squiggles and Problems-panel notes) | Medium | In development | [persona highlights](../epics/epic-workshop-persona-highlights/README.md) |
 
 ### Follow-ups split from shipped work (Low)
 
@@ -115,18 +120,16 @@ side.
    - **The tabs follow-ups' High item first:** the writer bio still sent
      after About you is off. It's a privacy fix; a 2.17.x patch.
    - **The CI timing test next.** It blocks other people's PRs.
-   - **36 (paste pill) and 34 (sent-pill viewer).** They share the
-     attachment code, and 34 is how a writer sees a sent paste.
    - **The draft-loss tech debt.** It's the same composer.
-   - **33 (default models) and 32 (BYOK help).** Small, and worth shipping.
+   - **32 (BYOK help).** The text is drafted.
    - **The Lexical Gravity log leak.** Room-bound context reads shipped with the Workshop tabs epic.
    - **38's rest,** while the tabs code is fresh.
-2. **Measures, then Read Aloud: 35, then 31.** 39 (highlights) pairs well here: both are new persona tools.
+2. **Measures, then Read Aloud: 35, then 31.** The highlights work is on its own branch.
    - 35 reuses Passage Search's scope type, lifted to a neutral module.
    - 31 then lands as `measure.cadence`, with the CMUdict dependency.
    - One short ADR covers the family.
 
-**After those: a context and memory epic** (4+, 19, 17). These are the
+**After those: a context and memory epic** (19, 17). These are the
 High items that have waited longest. They matter more as rooms get longer,
 and they share machinery.
 
