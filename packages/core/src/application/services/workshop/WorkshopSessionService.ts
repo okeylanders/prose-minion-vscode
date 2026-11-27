@@ -887,6 +887,25 @@ export class WorkshopSessionService {
     );
   }
 
+  /** One writer-visible body, only from the successful room turn that actually published it. */
+  readSentMessageAttachment(turnId: string, artifactId: string):
+    { attachment: WorkshopMessageAttachmentSnapshot; content: string } | { error: string } {
+    const turn = this.turnLedger.find(turnId);
+    const ref = turn?.messageAttachments?.find(attachment => attachment.id === artifactId);
+    if (!turn || turn.role !== 'user' || turn.kind !== 'message' || turn.participant !== 'writer' || !ref
+      || (turn.widgetCommit?.rail === 'thread-artifact' && turn.widgetCommit.artifactId === artifactId)) {
+      return { error: 'That attachment is no longer on this message.' } as const;
+    }
+    if (workshopTurnAudience(turn).kind !== 'room') {
+      return { error: 'This was a private instrument message. Its attachment text was not kept in the room.' } as const;
+    }
+    const body = this.threadArtifacts.find(item => item.turnId === turnId && item.id === artifactId);
+    if (!body || body.kind !== workshopMessageAttachmentKind(ref)) {
+      return { error: 'No sent copy is available for this message.' } as const;
+    }
+    return { attachment: cloneMessageAttachmentSnapshot(ref), content: body.content } as const;
+  }
+
   /** Host-private artifact projection for room catch-up and guest join only. */
   getRoomThreadArtifactsForTurn(turnId: string): WorkshopThreadArtifact[] {
     return this.threadArtifacts

@@ -1,5 +1,6 @@
 /** Workshop context attachments, configured resources, and wizard IPC slice. */
 
+import { WorkshopSentAttachmentRoutes } from './WorkshopSentAttachmentRoutes';
 import {
   WorkshopSessionService,
   workshopTextNoteLabel
@@ -97,6 +98,7 @@ type WorkshopContextEffects = Pick<
  * envelope, session-operation gate, and central cancel route.
  */
 export class WorkshopContextHandler {
+  private readonly sentAttachments: WorkshopSentAttachmentRoutes;
   private wizardRun?: {
     requestId: string;
     controller: AbortController;
@@ -111,6 +113,9 @@ export class WorkshopContextHandler {
     private readonly outputChannel: LogSink,
     private readonly effects: WorkshopContextEffects
   ) {
+    this.sentAttachments = new WorkshopSentAttachmentRoutes(
+      session, contextIntakeService, shell, postMessage, outputChannel, effects.reportError, () => this.disposed
+    );
     this.readIn = new WorkshopReadInRoutes(
       contextIntakeService, shell, postMessage, outputChannel, effects.reportError, effects.findReadInRecord
     );
@@ -145,6 +150,8 @@ export class WorkshopContextHandler {
       MessageType.WORKSHOP_OPEN_CONTEXT_ATTACHMENT_FILE,
       this.handleOpenContextAttachmentFile.bind(this)
     );
+    router.register(MessageType.WORKSHOP_REQUEST_MESSAGE_ATTACHMENT, message => this.sentAttachments.read(message.payload));
+    router.register(MessageType.WORKSHOP_OPEN_MESSAGE_ATTACHMENT_FILE, message => this.sentAttachments.open(message.payload));
     // Read in (ADR 2026-11-03 D4): a file a persona read, by `{ group, path }`.
     router.register(
       MessageType.WORKSHOP_REQUEST_READ_IN_RESOURCE,

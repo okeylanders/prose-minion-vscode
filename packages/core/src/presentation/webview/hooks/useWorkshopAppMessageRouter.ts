@@ -20,6 +20,7 @@ import {
 } from '@hooks/fulltab/useFullTabChrome';
 import type { UseWorkshopRoomReturn } from '@hooks/domain/workshop/useWorkshopRoom';
 import type { UseWorkshopSessionsReturn } from '@hooks/domain/workshop/useWorkshopSessions';
+import type { useWorkshopSentAttachments } from '@hooks/domain/workshop/useWorkshopSentAttachments';
 import type { UseWorkshopReadInReturn } from '@hooks/domain/workshop/useWorkshopReadIn';
 import type { UseWorkshopBookmarksReturn } from '@hooks/domain/workshop/useWorkshopBookmarks';
 import type { UseWorkshopReactionsReturn } from '@hooks/domain/workshop/useWorkshopReactions';
@@ -79,6 +80,7 @@ export interface WorkshopAppMessageRouterDeps {
   workshopRoom: UseWorkshopRoomReturn;
   workshopSessions: UseWorkshopSessionsReturn;
   /** The Read in reader's file content (Wayfinding Slice 2). */
+  sentAttachments: Pick<ReturnType<typeof useWorkshopSentAttachments>, 'receive'>;
   readIn: UseWorkshopReadInReturn;
   /** Bookmarks and the turn preview (Wayfinding Slice 5). */
   bookmarks: UseWorkshopBookmarksReturn;
@@ -135,6 +137,7 @@ export function buildWorkshopAppMessageRoutes(
   const {
     workshopRoom,
     workshopSessions,
+    sentAttachments,
     readIn,
     bookmarks,
     reactions,
@@ -201,6 +204,7 @@ export function buildWorkshopAppMessageRoutes(
     },
     [MessageType.WORKSHOP_CONTEXT_CATALOG]: workshopRoom.handleContextCatalog,
     [MessageType.WORKSHOP_CONTEXT_ATTACHMENT_CONTENT]: workshopRoom.handleContextAttachmentContent,
+    [MessageType.WORKSHOP_MESSAGE_ATTACHMENT_CONTENT]: sentAttachments.receive,
     [MessageType.WORKSHOP_READ_IN_RESOURCE_CONTENT]: readIn.handleReadInResourceContent,
     // The reader's preview, and a memory sheet prefilled from a bookmark outside the window; each takes only its own requests.
     [MessageType.WORKSHOP_TURN_PREVIEW]: (message) => {

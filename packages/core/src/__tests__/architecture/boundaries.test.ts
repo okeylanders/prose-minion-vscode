@@ -183,6 +183,8 @@ const WORKSHOP_ROUTE_OWNERS = [
     owner: WORKSHOP_CONTEXT_HANDLER_OWNER,
     registration: 'direct',
     messageTypes: [
+      'WORKSHOP_REQUEST_MESSAGE_ATTACHMENT',
+      'WORKSHOP_OPEN_MESSAGE_ATTACHMENT_FILE',
       'WORKSHOP_REQUEST_CONTEXT_ATTACHMENT',
       'WORKSHOP_OPEN_CONTEXT_ATTACHMENT_FILE',
       'WORKSHOP_REQUEST_READ_IN_RESOURCE',
@@ -2496,11 +2498,12 @@ describe('architectural boundaries', () => {
     // Workshop Persona Tools item C2 added the writer's Apply on a context-paths card (mutation).
     // Passage Search Slice 4 added a persona's card: Run, Cancel and Send (mutation); its price, Stop,
     // Discard and Open report (direct).
-    expect(expectedOwnerPairs).toHaveLength(110);
+    // Reading a sent attachment and opening its current file are both direct.
+    expect(expectedOwnerPairs).toHaveLength(112);
     expect(expectedOwnerPairs.filter(([, , registration]) => registration === 'mutation'))
       .toHaveLength(57);
     expect(expectedOwnerPairs.filter(([, , registration]) => registration === 'direct'))
-      .toHaveLength(53);
+      .toHaveLength(55);
     expect(duplicateLedgerEntries).toEqual([]);
     expect(toOwnerRecord(actualOwnerPairs)).toEqual(toOwnerRecord(expectedOwnerPairs));
   });

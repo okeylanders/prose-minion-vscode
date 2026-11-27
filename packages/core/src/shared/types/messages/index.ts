@@ -178,6 +178,9 @@ import {
   WorkshopRequestContextAttachmentMessage,
   WorkshopContextAttachmentContentMessage,
   WorkshopOpenContextAttachmentFileMessage,
+  WorkshopRequestMessageAttachmentMessage,
+  WorkshopOpenMessageAttachmentMessage,
+  WorkshopMessageAttachmentContentMessage,
   WorkshopRequestReadInResourceMessage,
   WorkshopReadInResourceContentMessage,
   WorkshopOpenReadInResourceMessage,
@@ -392,6 +395,8 @@ export type WebviewToExtensionMessage =
   | WorkshopUpdateContextTextMessage
   | WorkshopRequestContextAttachmentMessage
   | WorkshopOpenContextAttachmentFileMessage
+  | WorkshopRequestMessageAttachmentMessage
+  | WorkshopOpenMessageAttachmentMessage
   | WorkshopRequestReadInResourceMessage
   | WorkshopOpenReadInResourceMessage
   | WorkshopRequestContextCatalogMessage
@@ -534,6 +539,7 @@ export type ExtensionToWebviewMessage =
   | WorkshopContextCatalogMessage
   | WorkshopContextSearchResultsMessage
   | WorkshopContextAttachmentContentMessage
+  | WorkshopMessageAttachmentContentMessage
   | WorkshopReadInResourceContentMessage
   | WorkshopTurnPreviewMessage
   | WorkshopEarlierTurnsMessage

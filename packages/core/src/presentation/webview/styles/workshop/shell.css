@@ -2494,6 +2494,7 @@
   margin-bottom: 6px;
 }
 [data-pm-surface="workshop"] .pm-ws-turn-attachment {
+  cursor: pointer;
   display: inline-flex;
   align-items: center;
   gap: 5px;

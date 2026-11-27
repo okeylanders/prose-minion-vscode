@@ -45,6 +45,7 @@ import { ProviderPausedBanner } from '@components/fulltab/ProviderPausedBanner';
 import { WorkshopRail, WorkshopRailProps, workshopRailTabId } from './components/workshop/WorkshopRail';
 import { WorkshopRailStrip } from './components/workshop/WorkshopRailStrip';
 import { partitionContextSources } from '@utils/workshop/contextSources';
+import { useWorkshopSentAttachments } from '@hooks/domain/workshop/useWorkshopSentAttachments';
 import { useWorkshopReadIn } from '@hooks/domain/workshop/useWorkshopReadIn';
 import { useWorkshopBookmarks } from '@hooks/domain/workshop/useWorkshopBookmarks';
 import { useWorkshopReactions } from '@hooks/domain/workshop/useWorkshopReactions';
@@ -281,6 +282,7 @@ export const WorkshopApp: React.FC = () => {
     [contextSources]
   );
   const readIn = useWorkshopReadIn();
+  const sentAttachments = useWorkshopSentAttachments(workshop.sessionReady ? workshop.roomRevision : undefined);
   const bookmarks = useWorkshopBookmarks({ onBeforeChange: workshop.clearError });
   const reactions = useWorkshopReactions({ onBeforeChange: workshop.clearError });
   // The Bookmarks screen (Bookmark Recall Slice 2, ADR 2026-11-05 D8).
@@ -490,6 +492,7 @@ export const WorkshopApp: React.FC = () => {
   );
 
   useWorkshopAppMessageRouter({
+    sentAttachments,
     readIn,
     bookmarks,
     reactions,
@@ -786,6 +789,7 @@ export const WorkshopApp: React.FC = () => {
     updateContextText: workshop.updateContextText,
     openExcerptSelector,
     requestShelfReplacement: sessionSurfaces.requestShelfReplacement,
+    sentAttachments,
     readInContent: readIn.readInContent,
     requestReadInResource: readIn.requestReadInResource,
     openReadInResource: readIn.openReadInResource,
@@ -1464,6 +1468,7 @@ export const WorkshopApp: React.FC = () => {
             fileEdits={fileEditControls}
             todoReceipt={todoReceiptControls}
             locationsProposal={locationsProposalControls}
+            onOpenSentAttachment={contextSheet.openSentAttachmentSheet}
             onHighlightAction={onHighlightAction}
             passageSearch={passageSearchControls}
             reactions={reactionControls}

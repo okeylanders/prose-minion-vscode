@@ -3,6 +3,8 @@
 import * as React from 'react';
 import {
   ConfiguredResourceRef,
+  WorkshopMessageAttachmentSnapshot,
+  WorkshopSentAttachmentRequest,
   WorkshopContextAttachmentSnapshot,
   WorkshopExcerptSnapshot,
   WorkshopExcerptSource,
@@ -16,6 +18,7 @@ import type {
   WorkshopReadInContentState,
   WorkshopReadInRequest
 } from '@hooks/domain/workshop/useWorkshopReadIn';
+import type { useWorkshopSentAttachments } from '../useWorkshopSentAttachments';
 import type { ContextSourceEntry } from '@shared/types';
 import type { WorkshopTurnPreview } from '@messages';
 import type { WorkshopTurnPreviewState } from '@hooks/domain/workshop/useWorkshopBookmarks';
@@ -25,6 +28,7 @@ import type { WorkshopSavedTurnPreviewState } from '@hooks/domain/workshop/useWo
 export type WorkshopTextSheetMode =
   | { kind: 'excerpt'; retainedConversation: boolean }
   | { kind: 'context-new' }
+  | { kind: 'sent-attachment'; attachment: WorkshopMessageAttachmentSnapshot; request: WorkshopSentAttachmentRequest }
   | { kind: 'context-text'; label: string }
   | { kind: 'context-wizard'; label: string }
   | { kind: 'context-file'; label: string; relativePath?: string }
@@ -80,6 +84,7 @@ export interface UseWorkshopContextSheetOptions {
   openExcerptSelector: () => void;
   requestShelfReplacement: (resume: 'paste' | 'choose') => void;
   /** The Read in reader's transport (`useWorkshopReadIn`). */
+  sentAttachments?: ReturnType<typeof useWorkshopSentAttachments>;
   readInContent: WorkshopReadInContentState | null;
   requestReadInResource: (request: WorkshopReadInRequest) => void;
   openReadInResource: (ref: ConfiguredResourceRef) => void;
@@ -135,6 +140,7 @@ export interface WorkshopContextSheetState {
 export interface WorkshopContextSheetActions {
   openPasteSheet: () => void;
   openAddTextSheet: () => void;
+  openSentAttachmentSheet: (turnId: string, attachment: WorkshopMessageAttachmentSnapshot) => void;
   openAttachmentSheet: (attachment: WorkshopContextAttachmentSnapshot) => void;
   /** Opens a read-in row in the reader; a row with no configured file opens nothing. */
   openReadInSheet: (entry: ContextSourceEntry, participantLabel: string) => void;
@@ -190,6 +196,7 @@ export function useWorkshopContextSheet({
   updateContextText,
   openExcerptSelector,
   requestShelfReplacement,
+  sentAttachments,
   readInContent,
   requestReadInResource,
   openReadInResource,
@@ -204,13 +211,24 @@ export function useWorkshopContextSheet({
 }: UseWorkshopContextSheetOptions): UseWorkshopContextSheetReturn {
   const [textSheet, setTextSheet] = React.useState<WorkshopTextSheetState | null>(null);
 
+  const clearSent = sentAttachments?.clear;
+  const requestSent = sentAttachments?.request;
+  const openSentAttachmentSheet = React.useCallback((turnId: string, attachment: WorkshopMessageAttachmentSnapshot) => {
+    const request = requestSent?.(turnId, attachment.id);
+    if (request) { setTextSheet({ mode: { kind: 'sent-attachment', attachment, request } }); }
+  }, [requestSent]);
+  React.useEffect(() => {
+    if (textSheet?.mode.kind !== 'sent-attachment') { clearSent?.(); }
+  }, [textSheet?.mode.kind, clearSent]);
+
   const closeTextSheet = React.useCallback(() => {
     setTextSheet(null);
+    clearSent?.();
     clearAttachmentContent();
     clearReadInContent();
     clearTurnPreview();
     clearSavedTurnPreview?.();
-  }, [clearAttachmentContent, clearReadInContent, clearSavedTurnPreview, clearTurnPreview]);
+  }, [clearSent, clearAttachmentContent, clearReadInContent, clearSavedTurnPreview, clearTurnPreview]);
 
   const scopeKeyRef = React.useRef(readInScopeKey);
   const closeReaderWhenScopeChanged = React.useCallback(() => {
@@ -221,7 +239,7 @@ export function useWorkshopContextSheet({
     clearReadInContent();
     clearTurnPreview();
     setTextSheet((current) =>
-      current?.mode.kind === 'read-in' || current?.mode.kind === 'turn-preview' ? null : current
+      current?.mode.kind === 'sent-attachment' || current?.mode.kind === 'read-in' || current?.mode.kind === 'turn-preview' ? null : current
     );
   }, [clearReadInContent, clearTurnPreview, readInScopeKey]);
 
@@ -330,7 +348,7 @@ export function useWorkshopContextSheet({
 
   const applyTextSheet = React.useCallback((text: string) => {
     // The reader and the preview are read-only: nothing they show can be applied.
-    if (!textSheet || textSheet.mode.kind === 'read-in' || textSheet.mode.kind === 'turn-preview') {
+    if (!textSheet || textSheet.mode.kind === 'sent-attachment' || textSheet.mode.kind === 'read-in' || textSheet.mode.kind === 'turn-preview') {
       return;
     }
     if (textSheet.mode.kind === 'excerpt') {
@@ -359,6 +377,10 @@ export function useWorkshopContextSheet({
   ]);
 
   const openAttachmentInEditor = React.useCallback(() => {
+    if (textSheet?.mode.kind === 'sent-attachment') {
+      sentAttachments?.openFile(textSheet.mode.request);
+      return;
+    }
     if (textSheet?.mode.kind === 'read-in') {
       openReadInResource({ group: textSheet.mode.group, path: textSheet.mode.path });
       return;
@@ -366,7 +388,7 @@ export function useWorkshopContextSheet({
     if (textSheet?.attachmentId) {
       openContextAttachmentFile(textSheet.attachmentId);
     }
-  }, [openContextAttachmentFile, openReadInResource, textSheet]);
+  }, [sentAttachments, openContextAttachmentFile, openReadInResource, textSheet]);
 
   const chooseExcerptFromSheet = React.useCallback(() => {
     setTextSheet(null);
@@ -384,6 +406,7 @@ export function useWorkshopContextSheet({
     if (!textSheet) {
       return undefined;
     }
+    if (textSheet.mode.kind === 'sent-attachment') { return textSheet.mode.request.requestId; }
     if (textSheet.mode.kind === 'turn-preview') {
       return `turn-preview:${textSheet.mode.requestId}`;
     }
@@ -398,6 +421,14 @@ export function useWorkshopContextSheet({
   const sheetBody = ((): WorkshopTextSheetBody | undefined => {
     if (!textSheet) {
       return undefined;
+    }
+    if (textSheet.mode.kind === 'sent-attachment') {
+      const answer = sentAttachments?.answer;
+      if (!answer || answer.requestId !== textSheet.mode.request.requestId) {
+        return { loading: true, canOpenInEditor: false };
+      }
+      return 'error' in answer ? { loading: false, canOpenInEditor: false, error: answer.error }
+        : { loading: false, canOpenInEditor: answer.canOpenInEditor, value: answer.content };
     }
     if (textSheet.mode.kind === 'turn-preview' && textSheet.mode.source?.kind === 'given') {
       const { turn } = textSheet.mode.source;
@@ -455,6 +486,7 @@ export function useWorkshopContextSheet({
     verifiedDisplay,
     openPasteSheet,
     openAddTextSheet,
+    openSentAttachmentSheet,
     openAttachmentSheet,
     openReadInSheet,
     openTurnPreviewSheet,

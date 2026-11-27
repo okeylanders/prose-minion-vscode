@@ -50,6 +50,28 @@ export interface WorkshopMessageAttachmentSnapshot {
   selectedText?: WorkshopSelectedTextAttachmentMeta;
 }
 
+export interface WorkshopSentAttachmentRequest {
+  requestId: string;
+  roomRevision: number;
+  turnId: string;
+  artifactId: string;
+}
+
+export type WorkshopSentAttachmentContent = WorkshopSentAttachmentRequest & (
+  | { content: string; canOpenInEditor: boolean }
+  | { error: string }
+);
+
+export interface WorkshopRequestMessageAttachmentMessage extends MessageEnvelope<WorkshopSentAttachmentRequest> {
+  type: MessageType.WORKSHOP_REQUEST_MESSAGE_ATTACHMENT;
+}
+export interface WorkshopOpenMessageAttachmentMessage extends MessageEnvelope<WorkshopSentAttachmentRequest> {
+  type: MessageType.WORKSHOP_OPEN_MESSAGE_ATTACHMENT_FILE;
+}
+export interface WorkshopMessageAttachmentContentMessage extends MessageEnvelope<WorkshopSentAttachmentContent> {
+  type: MessageType.WORKSHOP_MESSAGE_ATTACHMENT_CONTENT;
+}
+
 /**
  * Host-resolved source material a widget can read without asking a persona to
  * copy it into the recommendation. References remain display-safe across IPC;
