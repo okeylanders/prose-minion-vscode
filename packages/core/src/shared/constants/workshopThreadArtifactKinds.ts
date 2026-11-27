@@ -16,7 +16,7 @@ import {
 } from '@shared/constants/workshopWidgets';
 
 /** Message-attachment kinds: a staged attachment that is not a file. */
-export const WORKSHOP_MESSAGE_ATTACHMENT_KINDS = ['lightbox-tile', 'selected-text'] as const;
+export const WORKSHOP_MESSAGE_ATTACHMENT_KINDS = ['lightbox-tile', 'selected-text', 'pasted-text'] as const;
 
 export type WorkshopMessageAttachmentKind = (typeof WORKSHOP_MESSAGE_ATTACHMENT_KINDS)[number];
 
@@ -39,8 +39,11 @@ export const WORKSHOP_THREAD_ARTIFACT_KIND_EXPECTED =
 
 /** The kind a message attachment's frame carries, from its host-owned shape; undefined for a file or note. */
 export function workshopMessageAttachmentKind(
-  attachment: { lightboxTile?: unknown; selectedText?: unknown }
+  attachment: { lightboxTile?: unknown; selectedText?: unknown; pastedText?: unknown }
 ): WorkshopMessageAttachmentKind | undefined {
+  if (attachment.pastedText !== undefined) {
+    return 'pasted-text';
+  }
   if (attachment.lightboxTile !== undefined) {
     return 'lightbox-tile';
   }
@@ -73,6 +76,8 @@ export const WORKSHOP_MESSAGE_ATTACHMENT_KIND_PREAMBLES: Readonly<
   Record<WorkshopMessageAttachmentKind, (context: WorkshopMessageAttachmentFrameContext) => string>
 > = {
   // eslint-disable-next-line @typescript-eslint/naming-convention -- attachment kinds are kebab-case protocol literals.
+  'pasted-text': () => 'Text the writer pasted into this message.',
+  // eslint-disable-next-line @typescript-eslint/naming-convention -- attachment kind.
   'lightbox-tile': () =>
     'A reading the writer brought from the Lightbox. Its claim is a model\'s reading of the chapter, offered to discuss, ' +
     'not a finding. Its quotes were found in the chapter when it was brought.',

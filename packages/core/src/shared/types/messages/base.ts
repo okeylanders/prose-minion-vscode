@@ -184,6 +184,8 @@ export enum MessageType {
   WORKSHOP_ADD_CONTEXT_RESOURCES = 'workshop_add_context_resources',
   WORKSHOP_ATTACH_MESSAGE_RESOURCES = 'workshop_attach_message_resources',
   WORKSHOP_ATTACH_MESSAGE_FILE = 'workshop_attach_message_file',
+  WORKSHOP_STAGE_MESSAGE_TEXT = 'workshop_stage_message_text',
+  WORKSHOP_MESSAGE_TEXT_RESULT = 'workshop_message_text_result',
   WORKSHOP_REMOVE_MESSAGE_ATTACHMENT = 'workshop_remove_message_attachment',
   WORKSHOP_SET_EXCERPT_RESOURCE = 'workshop_set_excerpt_resource',
   WORKSHOP_RUN_CONTEXT_WIZARD = 'workshop_run_context_wizard',

@@ -182,6 +182,7 @@ packages/core/src/
                 ├── seedDelivery.ts
                 ├── lightboxTiles.ts
                 ├── selectedText.ts
+                ├── pastedText.ts
                 ├── todoStatus.ts
                 ├── locationsProposal.ts
                 ├── highlights.ts

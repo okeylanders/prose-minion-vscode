@@ -320,6 +320,7 @@ workshop/
 ├── seedDelivery.ts          # Handed-over seeds: claim, grant or deny, answer
 ├── lightboxTiles.ts         # A Lightbox tile staged above the composer: item, bounds, offer/accept/staged
 ├── selectedText.ts          # The editor's selection as a one-shot attachment: seed offer/accept/staged, watch and current
+├── pastedText.ts            # Correlated pending pasted-text stage, read, edit, take and remove
 ├── todoStatus.ts            # A persona's to-do changes: closedBy, receipt rows, Undo (ADR 2026-11-19 D8, D9)
 ├── locationsProposal.ts     # A persona context-paths card: the checked view, baselines, answers (ADR 2026-11-19 D27)
 ├── highlights.ts             # Reply highlight Show and Clear, addressed by room revision and turn ID

@@ -63,6 +63,7 @@ import {
 import type {
   WorkshopMessageAttachmentReadsOutcome
 } from '@handlers/domain/workshop/WorkshopMessageAttachmentReads';
+import { WorkshopPastedTextRoute } from './WorkshopPastedTextRoute';
 import { fileURLToPath, pathToFileURL } from 'url';
 
 let requestIdCounter = 0;
@@ -124,6 +125,9 @@ export class WorkshopContextHandler {
     router: MessageRouter,
     registerMutation: WorkshopMutationRouteRegistrar
   ): void {
+    const pastedText = new WorkshopPastedTextRoute(this.session, this.postMessage, this.effects);
+    registerMutation(MessageType.WORKSHOP_STAGE_MESSAGE_TEXT,
+      (message) => pastedText.handle(message), undefined, (reason, message) => { void pastedText.handle(message, reason); });
     registerMutation(MessageType.WORKSHOP_ADD_CONTEXT_TEXT, this.handleAddContextText.bind(this));
     registerMutation(MessageType.WORKSHOP_ADD_CONTEXT_FILE, this.handleAddContextFile.bind(this));
     registerMutation(

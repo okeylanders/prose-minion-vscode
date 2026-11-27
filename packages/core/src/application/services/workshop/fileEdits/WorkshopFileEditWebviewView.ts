@@ -64,6 +64,10 @@ export function workshopEditOfferRoomViewOnce(view: WorkshopEditOfferRoomView): 
 }
 
 export function workshopTurnForWebview(turn: WorkshopTurn, room?: WorkshopEditOfferRoomView): WorkshopTurn {
+  if (turn.role === 'user' && !turn.content && turn.messageAttachments?.length) {
+    const count = turn.messageAttachments.length;
+    turn = { ...turn, content: `Shared ${count} ${count === 1 ? 'attachment' : 'attachments'}` };
+  }
   if (!turn.highlights && !turn.fileEditProposals && !turn.editOffers && !turn.reactionDelivery && !turn.trailerOutcomes && !turn.todoStatusChanges
     && !turn.passageSearchRequest && !turn.passageSearchDelivery) {
     return turn;

@@ -609,12 +609,18 @@ export class WorkshopRoomHandler {
   /** The one composer message: host start/continuation or explicit direct tool. */
   async handleSendMessage(message: WorkshopSendMessageMessage): Promise<void> {
     const text = typeof message.payload?.text === 'string' ? message.payload.text.trim() : '';
-    if (text.length === 0) {
-      this.sendError('workshop.send_message', 'Cannot send an empty message.');
+    if (typeof message.payload?.text !== 'string') {
+      this.sendError('workshop.send_message', 'A composer message needs text or attachments.');
       return;
     }
 
     if (!(await this.pickedAttachmentsStaged(text)) || this.disposed) {
+      return;
+    }
+
+    if (!message.payload.selectedTextSnapshotId && message.payload.roomRevision !== undefined && message.payload.roomRevision !== this.session.readRoomRevision()) {
+      this.sendError('workshop.send_message', 'The Workshop room changed before the message was sent.');
+      this.postComposerDraftRestored(text);
       return;
     }
 
@@ -627,6 +633,10 @@ export class WorkshopRoomHandler {
       return;
     }
 
+    if (!text && !this.session.hasPendingMessageAttachments()) {
+      this.sendError('workshop.send_message', 'Cannot send an empty message.');
+      return;
+    }
     const target = this.session.getChatTarget();
     if (
       target.kind === 'tool' &&
@@ -1939,7 +1949,7 @@ export class WorkshopRoomHandler {
 }
 
 /** The frame kind a staged attachment carries, when it has one. */
-function withMessageAttachmentKind(attachment: { lightboxTile?: unknown; selectedText?: unknown }): { kind?: string } {
+function withMessageAttachmentKind(attachment: { lightboxTile?: unknown; selectedText?: unknown; pastedText?: unknown }): { kind?: string } {
   const kind = workshopMessageAttachmentKind(attachment);
   return kind ? { kind } : {};
 }

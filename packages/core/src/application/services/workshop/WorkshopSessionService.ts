@@ -102,6 +102,8 @@ import {
 import {
   normalizeWorkshopSessionCheckpointForHydration
 } from '@/application/services/workshop/WorkshopSessionCheckpointNormalization';
+import type { WorkshopStageMessageTextPayload } from '@messages';
+import { workshopPastedTextInput } from './WorkshopPastedText';
 import { sameWorkshopMessageAttachmentSource } from '@/application/services/workshop/WorkshopMessageAttachmentIdentity';
 import type {
   WorkshopThreadArtifact,
@@ -769,11 +771,50 @@ export class WorkshopSessionService {
     return { ok: true, attachment: cloneMessageAttachment(attachment) };
   }
 
+  applyPendingPastedText(request: WorkshopStageMessageTextPayload):
+    { ok: true; attachmentId: string; text?: string } | { ok: false; reason: string } {
+    if (this.readRoomRevision() !== request.roomRevision) {
+      return { ok: false, reason: 'The Workshop room changed. Paste into the current room.' };
+    }
+    if (this.activeRun && request.action !== 'read') {
+      return { ok: false, reason: 'Wait for the current reply before changing pasted text.' };
+    }
+    if (request.action === 'stage' || request.action === 'update') {
+      if (typeof request.text !== 'string' || !request.text.length) {
+        return { ok: false, reason: 'Paste or enter some text first.' };
+      }
+      if (request.action === 'stage') {
+        if (request.text.length < PROMPT_BUDGETS.workshopPastedText.thresholdCharacters) {
+          return { ok: false, reason: 'This paste is short enough for the message itself.' };
+        }
+        const staged = this.addMessageAttachment(workshopPastedTextInput(request.text));
+        return staged.ok ? { ok: true, attachmentId: staged.attachment.id } : { ok: false, reason: 'The attachment tray is full.' };
+      }
+    }
+    const index = this.pendingMessageAttachments.findIndex((item) => item.id === request.attachmentId && item.pastedText !== undefined);
+    const item = this.pendingMessageAttachments[index];
+    if (!item) {
+      return { ok: false, reason: 'That pasted text is no longer in the tray.' };
+    }
+    if (request.action === 'update') {
+      this.pendingMessageAttachments[index] = { id: item.id, ...workshopPastedTextInput(request.text) };
+      this.announcePendingMessageAttachments();
+    } else if (request.action === 'remove' || request.action === 'take') {
+      this.removePendingMessageAttachmentAt(index);
+    }
+    return { ok: true, attachmentId: item.id, ...(request.action === 'read' || request.action === 'take' ? { text: item.content } : {}) };
+  }
+
   removeMessageAttachment(id: string): WorkshopMessageAttachment | undefined {
-    const index = this.pendingMessageAttachments.findIndex((attachment) => attachment.id === id);
+    // Pasted text is removed only by a room-bound request, including Take.
+    const index = this.pendingMessageAttachments.findIndex((attachment) => attachment.id === id && !attachment.pastedText);
     if (index === -1) {
       return undefined;
     }
+    return this.removePendingMessageAttachmentAt(index);
+  }
+
+  private removePendingMessageAttachmentAt(index: number): WorkshopMessageAttachment {
     const [removed] = this.pendingMessageAttachments.splice(index, 1);
     this.announcePendingMessageAttachments();
     return cloneMessageAttachment(removed);
@@ -806,6 +847,10 @@ export class WorkshopSessionService {
         }
       }
     });
+  }
+
+  hasPendingMessageAttachments(): boolean {
+    return this.pendingMessageAttachments.length > 0;
   }
 
   /** Pure read for send assembly — nothing is consumed until the turn succeeds. */

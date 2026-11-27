@@ -304,6 +304,8 @@ import {
   WorkshopAcceptLightboxTileMessage,
   WorkshopLightboxTileStagedMessage,
   WorkshopStageSelectedTextMessage,
+  WorkshopStageMessageTextMessage,
+  WorkshopMessageTextResultMessage,
   WorkshopSelectedTextOfferedMessage,
   WorkshopAcceptSelectedTextMessage,
   WorkshopSelectedTextStagedMessage,
@@ -475,6 +477,7 @@ export type WebviewToExtensionMessage =
   | WorkshopStageLightboxTileMessage
   | WorkshopAcceptLightboxTileMessage
   | WorkshopStageSelectedTextMessage
+  | WorkshopStageMessageTextMessage
   | WorkshopAcceptSelectedTextMessage
   | WorkshopSelectedTextWatchMessage
   | WorkshopRequestWidgetConfigMessage
@@ -571,6 +574,7 @@ export type ExtensionToWebviewMessage =
   | WorkshopLightboxTileStagedMessage
   | WorkshopSelectedTextOfferedMessage
   | WorkshopSelectedTextStagedMessage
+  | WorkshopMessageTextResultMessage
   | WorkshopSelectedTextCurrentMessage
   | WorkshopWidgetConfigDataMessage
   | WorkshopWidgetConfigRestoredMessage

@@ -29,6 +29,12 @@ export interface WorkshopMessageAttachmentTruncation {
   totalWords: number;
 }
 
+export interface WorkshopPastedTextMeta {
+  truncated: boolean;
+  /** UTF-16 character and word counts for the retained prefix and the original paste. */
+  truncation?: { keptCharacters: number; totalCharacters: number; keptWords: number; totalWords: number };
+}
+
 /**
  * Display-safe pending/shipped message-attachment metadata. Content stays
  * host-side; the pill (and later the manifest row) is the inspectable
@@ -48,6 +54,7 @@ export interface WorkshopMessageAttachmentSnapshot {
   lightboxTile?: WorkshopLightboxTileAttachmentMeta;
   /** The editor's selection when the message was sent (ADR 2026-11-14 D13), rather than a file. */
   selectedText?: WorkshopSelectedTextAttachmentMeta;
+  pastedText?: WorkshopPastedTextMeta;
 }
 
 /**

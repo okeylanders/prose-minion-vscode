@@ -295,6 +295,7 @@ export interface PromptBudgets {
    * newest `snapshots`; a watching composer hears at most one selection per
    * `pushIntervalMs`, trailing edge included.
    */
+  readonly workshopPastedText: Readonly<{ thresholdCharacters: number; words: number; characters: number }>;
   readonly workshopSelectedText: Readonly<{
     words: number;
     characters: number;
@@ -1009,6 +1010,7 @@ export const PROMPT_BUDGETS: PromptBudgets = {
     optionsPerOffer: 4,
     optionCharacters: 40
   },
+  workshopPastedText: { thresholdCharacters: 500, words: 5_000, characters: 40_000 },
   workshopSelectedText: { words: 5_000, characters: 40_000, previewCharacters: 120, snapshots: 8, pushIntervalMs: 150 },
   workshopThread: { pageTurns: 100, pageBytes: 1024 * 1024, jumpPages: 3 },
   workshopTodos: { items: 12, characters: 12_000, headerAllowanceCharacters: 600 },

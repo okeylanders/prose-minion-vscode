@@ -176,6 +176,7 @@ const WORKSHOP_ROUTE_OWNERS = [
       'WORKSHOP_ATTACH_MESSAGE_RESOURCES',
       'WORKSHOP_ATTACH_MESSAGE_FILE',
       'WORKSHOP_REMOVE_MESSAGE_ATTACHMENT',
+      'WORKSHOP_STAGE_MESSAGE_TEXT',
       'WORKSHOP_RUN_CONTEXT_WIZARD'
     ]
   },
@@ -2496,9 +2497,9 @@ describe('architectural boundaries', () => {
     // Workshop Persona Tools item C2 added the writer's Apply on a context-paths card (mutation).
     // Passage Search Slice 4 added a persona's card: Run, Cancel and Send (mutation); its price, Stop,
     // Discard and Open report (direct).
-    expect(expectedOwnerPairs).toHaveLength(110);
+    expect(expectedOwnerPairs).toHaveLength(111);
     expect(expectedOwnerPairs.filter(([, , registration]) => registration === 'mutation'))
-      .toHaveLength(57);
+      .toHaveLength(58);
     expect(expectedOwnerPairs.filter(([, , registration]) => registration === 'direct'))
       .toHaveLength(53);
     expect(duplicateLedgerEntries).toEqual([]);
@@ -3219,6 +3220,7 @@ describe('architectural boundaries', () => {
       'memoryDraft.ts',
       'participants.ts',
       'passageSearch.ts',
+      'pastedText.ts',
       'pinnedContext.ts',
       'projectMemory.ts',
       'projectMemoryManager.ts',

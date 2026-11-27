@@ -357,7 +357,7 @@ function event(turn: WorkshopTurn, text: string): WorkshopTranscriptEventEntry |
 
 function writerEntry(turn: WorkshopTurn): WorkshopTranscriptWriterEntry | undefined {
   const widgetCommit = turn.widgetCommit?.rail === 'thread-artifact' ? turn.widgetCommit : undefined;
-  if (!turn.content.trim() && !widgetCommit) {
+  if (!turn.content.trim() && !widgetCommit && !turn.messageAttachments?.length) {
     return undefined;
   }
   return {
