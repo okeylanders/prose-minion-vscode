@@ -7,11 +7,13 @@
 
 import './mockIssueAnnotatorHost';
 
+/* eslint-disable @typescript-eslint/naming-convention -- match the core barrel's exports. */
 jest.mock('@prose-minion/core', () => ({
   DRAFT_EDIT_LANGUAGE_IDS: jest.requireActual('@/domain/models/DraftEdit').DRAFT_EDIT_LANGUAGE_IDS,
   WorkshopHighlightService: jest.requireActual('@/application/services/workshop/highlights/WorkshopHighlightService').WorkshopHighlightService,
   shiftRanges: jest.requireActual('@/utils/draftEdit/shiftRanges').shiftRanges
 }));
+/* eslint-enable @typescript-eslint/naming-convention */
 
 import * as vscode from 'vscode';
 import { WorkshopHighlightService, type DocumentAnnotation } from '@prose-minion/core';
