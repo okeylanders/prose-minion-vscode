@@ -121,3 +121,7 @@ Ask a host or guest what lenses are available. The persona uses lens.catalog to 
 ## A file's git history
 
 If the project is a git repository, a host or guest can read the history of the excerpt's file or of any configured project file. There is no setting: ask, for example, what you cut from a chapter since last week, or how a new ending differs from the one you committed in March. The persona uses history.log to list a file's commits, newest first, 20 per page, with each commit's short id, date, author and subject. It uses history.diff to compare two commits, or a commit with the file as currently saved on disk. Unsaved changes in the editor are not included. A diff matches paragraphs first, then marks the words that changed inside a paragraph, and continues across calls when the conversation window is short. A diff is shared with the room when the reply commits and appears under **Read in**; the list of commits stays private to the persona. History is read through VS Code's built-in Git extension, so git must be installed and enabled, and the workspace must be trusted. The history does not follow a file across a rename: a renamed file's history starts at its rename.
+
+## Clear Workshop highlights
+
+Run **Prose Minion: Clear All Workshop Highlights** from the Command Palette to clear Workshop highlights in every file in the current window. Use **Show** on a reply to bring its set back.

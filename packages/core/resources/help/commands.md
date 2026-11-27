@@ -22,4 +22,5 @@ In the Command Palette, search for Prose Minion and the title. The prose-minion.
 | prose-minion.proofreadFix | Proofread and Fix | Command Palette, prose-minion.editorContext |
 | prose-minion.clearProofreadFlags | Clear Proofread Flags | Command Palette |
 | prose-minion.craftFlags | Craft Flags | Command Palette, prose-minion.editorContext |
+| prose-minion.clearWorkshopHighlights | Clear All Workshop Highlights | Command Palette |
 | prose-minion.clearCraftFlags | Clear Craft Flags | Command Palette |

@@ -116,7 +116,8 @@
     "onCommand:prose-minion.proofreadFix",
     "onCommand:prose-minion.clearProofreadFlags",
     "onCommand:prose-minion.craftFlags",
-    "onCommand:prose-minion.clearCraftFlags"
+    "onCommand:prose-minion.clearCraftFlags",
+    "onCommand:prose-minion.clearWorkshopHighlights"
   ],
   "main": "./dist/extension.js",
   "contributes": {
@@ -220,6 +221,11 @@
       {
         "command": "prose-minion.craftFlags",
         "title": "Craft Flags",
+        "category": "Prose Minion"
+      },
+      {
+        "command": "prose-minion.clearWorkshopHighlights",
+        "title": "Clear All Workshop Highlights",
         "category": "Prose Minion"
       },
       {

@@ -48,6 +48,7 @@ import {
   WorkshopAnalysisSidePass,
   WorkshopPersonaCapabilityFactory,
   WorkshopHelpReference,
+  WorkshopHighlightService,
   WorkshopContextIntakeService,
   WorkshopConversationSettingsService,
   WorkshopWriterProfileService,
@@ -127,7 +128,8 @@ import {
 import { VsCodeEditorContext } from './platform/vscode/VsCodeEditorContext';
 import { VsCodeDocumentEditor } from './platform/vscode/VsCodeDocumentEditor';
 import { VsCodeFileEditAuthorityEpoch } from './platform/vscode/VsCodeFileEditAuthorityEpoch';
-import { CRAFT_FLAGS, VsCodeIssueAnnotator } from './platform/vscode/VsCodeIssueAnnotator';
+import { VsCodeWorkshopHighlightDocuments } from './platform/vscode/VsCodeWorkshopHighlightDocuments';
+import { CRAFT_FLAGS, WORKSHOP_HIGHLIGHTS, VsCodeIssueAnnotator } from './platform/vscode/VsCodeIssueAnnotator';
 import { OpenFileInLightboxHost, openFileInLightbox } from './application/commands/openFileInLightbox';
 import { shutDownExtension, workshopPersistenceLog, type ExtensionShutdownParts } from './application/extensionShutdown';
 import {
@@ -192,6 +194,13 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // Craft Flags' own flags (Slice 3c): a second collection and source, with Dismiss and Clear only.
   const craftAnnotator = new VsCodeIssueAnnotator({ dismiss: CRAFT_FLAGS_DISMISS_COMMAND, clear: CRAFT_FLAGS_CLEAR_COMMAND }, CRAFT_FLAGS);
   context.subscriptions.push(craftAnnotator);
+  const workshopHighlightCommands = {
+    dismiss: 'prose-minion.dismissWorkshopHighlight',
+    clear: 'prose-minion.clearWorkshopHighlights'
+  };
+  const workshopAnnotator = new VsCodeIssueAnnotator(workshopHighlightCommands, WORKSHOP_HIGHLIGHTS);
+  const workshopHighlights = new WorkshopHighlightService(new VsCodeWorkshopHighlightDocuments(), workshopAnnotator);
+  context.subscriptions.push(workshopAnnotator);
   // Draft Edit's runs follow their open document's edits, and end when it closes (PR #171 F-03, F-04);
   // a review held when its document closes is logged, since VS Code gives no way to end it (PR #172 F-02, F-06).
   const documentEditor = new VsCodeDocumentEditor(outputChannel);
@@ -749,6 +758,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       ...windowServices,
       assistantToolService,
       workshopSessionService,
+      workshopHighlights: workshopHighlights.forRoom(),
       projectFileEditGateway,
       fileEditStaging,
       workshopRoomDeliveryService,
@@ -1092,6 +1102,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       fixAllProofreadIssues(proofreadCommandHost, draftEdit, uri)),
     vscode.commands.registerCommand(PROOFREAD_CLEAR_COMMAND, (uri?: unknown) => clearProofreadFlags(proofreadCommandHost, draftEdit, uri)),
     vscode.commands.registerCommand(PROOFREAD_DISMISS_COMMAND, (uri?: unknown, issueId?: unknown) => dismissProofreadIssue(draftEdit, uri, issueId)),
+    vscode.commands.registerCommand(workshopHighlightCommands.clear, () => workshopHighlights.clearAll()),
+    vscode.commands.registerCommand(workshopHighlightCommands.dismiss, (uri?: unknown, id?: unknown) => {
+      if (typeof uri === 'string' && typeof id === 'string') { workshopHighlights.dismiss(uri, id); }
+    }),
     vscode.commands.registerCommand(CRAFT_FLAGS_COMMAND, () => runCraftFlags(craftFlagsCommandHost, craftFlags)),
     vscode.commands.registerCommand(CRAFT_FLAGS_CLEAR_COMMAND, (uri?: unknown) => clearCraftFlags(craftFlagsCommandHost, craftFlags, uri)),
     vscode.commands.registerCommand(CRAFT_FLAGS_DISMISS_COMMAND, (uri?: unknown, issueId?: unknown) => dismissCraftFlag(craftFlags, uri, issueId))

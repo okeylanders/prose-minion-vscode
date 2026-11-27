@@ -1897,7 +1897,7 @@ describe('architectural boundaries', () => {
     expect(offenders).toEqual([]);
   });
 
-  it('reaches the Draft Edit document ports only through the runs and the applier (ADR 2026-10-21 D10; Slice 3c)', () => {
+  it('limits access to the document ports, with annotation-only access for Workshop highlights (ADR 2026-10-21 D10)', () => {
     // A type name, or a call through Platform's members that never names the type.
     const portReference = /\b(?:DocumentEditor|IssueAnnotator)\b|\.documents\.(?:watch|applyEdits)\(|\.(?:craftA|a)nnotations\.(?:show|remove|clear|current)\(/;
     const allowed = new Set([
@@ -1916,7 +1916,14 @@ describe('architectural boundaries', () => {
     const offenders = collectSourceFiles(SRC_ROOT)
       .map((file) => path.relative(SRC_ROOT, file).split(path.sep).join('/'))
       .filter((file) => !allowed.has(file))
-      .filter((file) => portReference.test(fs.readFileSync(path.join(SRC_ROOT, file), 'utf8')));
+      .filter((file) => {
+        const source = fs.readFileSync(path.join(SRC_ROOT, file), 'utf8');
+        if (file === 'application/services/workshop/highlights/WorkshopHighlightService.ts') {
+          // This service works with one dedicated annotation family and a read-only buffer port.
+          return /\b(?:Platform|DocumentEditor|DraftEditApplier|ProjectFileEditGateway|applyEdits)\b|\.(?:documents|craftAnnotations)\b/.test(source);
+        }
+        return portReference.test(source);
+      });
 
     expect(offenders).toEqual([]);
   });
