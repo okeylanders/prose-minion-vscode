@@ -1,7 +1,7 @@
 # Feature: Personas Highlight the Excerpt's File
 
 **Date Identified:** 2026-11-26
-**Status:** Idea. Medium. A short ADR: a new reply trailer, and a second door to the editor's annotations, amending ADR 2026-10-21 D10.
+**Status:** Idea, ready to build: H0–H2 decided. Medium. A short ADR: a new reply trailer, and a second door to the editor's annotations, amending ADR 2026-10-21 D10.
 **Priority:** Medium
 **Origin:** Okey, 2026-11-26
 
@@ -91,13 +91,9 @@ file.**
 | # | Decision | By |
 |---|---|---|
 | H0 | **General purpose.** Any passage, any note, about anything the writer asks, in the open excerpt's file. | Okey, 2026-11-26 |
+| H1 | **Only when the writer asks.** Otherwise a persona may offer ("Want me to highlight them?"), never highlight unasked. | Okey, 2026-11-27 (Ada's lean) |
+| H2 | **The excerpt's file first.** Other project files come later, named as file edits name them. | Okey, 2026-11-27 (Ada's lean) |
 
-## Open questions, with Ada's leans
-
-| # | Question | Lean |
-|---|---|---|
-| H1 | When does a persona highlight? | When the writer asks. Otherwise it may offer ("Want me to highlight them?"), never unasked. |
-| H2 | Only the excerpt's file, or project files too? | The excerpt's file first, as Okey described. Other project files later, named as file edits name them. |
 
 ## Limits, stated
 

@@ -1,7 +1,7 @@
 # Feature: A Workshop Session Keeps Its Cache Key Across a Reload
 
 **Date Identified:** 2026-11-25
-**Status:** Idea, ready to build. Small: one optional field on the engine's conversation archive, kept on restore. K1 and K2 decided. No ADR needed; a short note in the PR is enough.
+**Status:** Shipped in 2.17.0, in the Workshop tabs epic's Sprint 08 ([PR #310](https://github.com/okeylanders/prose-minion-vscode/pull/310)): a persisted routing key and cache estimate per conversation (`ConversationCacheMetadata.ts`).
 **Priority:** Medium. Okey loses the cache on every rebuild and relaunch while testing, and so does any writer who reloads the window mid-session.
 **Origin:** Okey, 2026-11-25, while Astra was building multiple Workshop tabs
 
