@@ -202,6 +202,7 @@ export enum MessageType {
   WORKSHOP_LOCATIONS_PROPOSAL_RESULT = 'workshop_locations_proposal_result',
   WORKSHOP_SHOW_HIGHLIGHTS = 'workshop_show_highlights',
   WORKSHOP_CLEAR_HIGHLIGHTS = 'workshop_clear_highlights',
+  WORKSHOP_ANSWER_HIGHLIGHT_PROMPT = 'workshop_answer_highlight_prompt',
   // A persona's passage-search card: its price, Run, Stop, Cancel, Send, Discard and Open report (ADR 2026-11-20 D20).
   WORKSHOP_PASSAGE_SEARCH_ESTIMATE = 'workshop_passage_search_estimate',
   WORKSHOP_PASSAGE_SEARCH_RUN = 'workshop_passage_search_run',

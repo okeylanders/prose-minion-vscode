@@ -77,4 +77,6 @@ The important failure cases are private data in partial frames, diagnostics atta
 
 ### Writer authorization at placement
 
-The host asks once per valid set on a writer-directed host or guest reply, after it verifies the captured excerpt source. The notification names the persona, set, count and authorized excerpt file. **Keep highlights** authorizes that reply to retain the set and display it if the file is open. **Skip** or dismissal leaves the set out of the reply and records one rejected set under `skipped`. Stopping the run releases its pending notification. Approval expires if the run, room, excerpt or candidate reply changes. A retained set can be shown again through its reply’s **Show** action, which reauthorizes the file and anchors the saved passages to its current text.
+The host asks once per valid proposed set on a writer-directed host or guest reply after verifying the captured excerpt. The chat dialog names the persona, set, count and excerpt file. **Apply highlights** keeps the set with that reply and draws it if the file is open. **Skip** or dismissal discards the proposal. The answer expires if the run, room, excerpt or candidate reply changes. A saved reply’s **Show** action directly reauthorizes the file and anchors its saved passages to the current text.
+
+See [highlight proposals and restore prompts](highlight-prompts-runway.md) for the per-opening restore offer, per-set suppression and sequencing behind the release notice.

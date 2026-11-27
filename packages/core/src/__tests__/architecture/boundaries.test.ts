@@ -208,7 +208,7 @@ const WORKSHOP_ROUTE_OWNERS = [
   {
     owner: 'application/handlers/domain/workshop/WorkshopHighlightHandler.ts',
     registration: 'direct',
-    messageTypes: ['WORKSHOP_SHOW_HIGHLIGHTS', 'WORKSHOP_CLEAR_HIGHLIGHTS']
+    messageTypes: ['WORKSHOP_SHOW_HIGHLIGHTS', 'WORKSHOP_CLEAR_HIGHLIGHTS', 'WORKSHOP_ANSWER_HIGHLIGHT_PROMPT']
   },
   {
     // A persona's passage-search card (ADR 2026-11-20 D20): the answers that lead to a room change wait behind the gate.
