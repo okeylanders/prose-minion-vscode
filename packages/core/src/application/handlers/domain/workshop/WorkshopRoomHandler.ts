@@ -27,6 +27,7 @@ import type { WorkshopSavedSessionTodos } from '@/application/services/workshop/
 import type { WorkshopBookmarkBrowserPort } from '@handlers/domain/workshop/WorkshopBookmarkBrowserHandler';
 import type { WorkshopMemoryDraftPorts } from '@handlers/domain/workshop/WorkshopMemoryDraftHandler';
 import type { WorkshopSelectedTextSnapshotsPort } from '@handlers/domain/workshop/WorkshopSelectedTextHandler';
+import type { WorkshopHighlightEditor } from '@/application/services/workshop/highlights/WorkshopHighlightEditor';
 import type { WorkshopProjectMemoryPort } from '@handlers/domain/workshop/WorkshopRouteContracts';
 import type { WorkshopPinnedContextServices } from '@/application/services/workshop/pinnedContext/WorkshopPinnedContextPorts';
 import {
@@ -329,7 +330,7 @@ export class WorkshopRoomHandler {
     private readonly capabilityFactory: WorkshopPersonaCapabilityFactory,
     private readonly postMessage: MessageTransport,
     shell: ShellService,
-    contextIntakeService: WorkshopContextIntakeService,
+    private readonly contextIntakeService: WorkshopContextIntakeService,
     private readonly conversationSettingsService: WorkshopConversationSettingsService,
     private readonly sessionTime: WorkshopSessionTimeService,
     private readonly sessionPersistence: WorkshopSessionPersistenceCoordinator,
@@ -353,7 +354,8 @@ export class WorkshopRoomHandler {
     /** A persona's passage search (ADR 2026-11-20 D20): the engine, the listing and the report file, built in `extension.ts`. */
     passageSearch?: WorkshopPassageSearchPorts,
     revealWorkshopRoom?: (roomId: string) => boolean,
-    openWorkshopBranch?: WorkshopUiActions['openWorkshopBranch']
+    openWorkshopBranch?: WorkshopUiActions['openWorkshopBranch'],
+    private readonly workshopHighlights?: WorkshopHighlightEditor
   ) {
     // Guide-loading status is forwarded only while a Workshop run is in
     // flight — the service is shared with the sidebar's AnalysisHandler, and
@@ -391,6 +393,7 @@ export class WorkshopRoomHandler {
         fileEditApply,
         memoryDrafts,
         selectedText, savedSessionTodos, locationsProposals, passageSearch, revealWorkshopRoom, openWorkshopBranch,
+        workshopHighlights: this.workshopHighlights,
         outputChannel: this.outputChannel
       },
       {

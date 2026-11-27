@@ -239,6 +239,7 @@ export interface WorkshopSliceCompositionDependencies {
   locationsProposals?: WorkshopLocationsProposalPorts;
   /** A persona's passage search (ADR 2026-11-20 D20): the one engine, the listing and the report file, built in extension.ts. */
   passageSearch?: WorkshopPassageSearchPorts;
+  workshopHighlights?: import('@/application/services/workshop/highlights/WorkshopHighlightEditor').WorkshopHighlightEditor;
   openWorkshopBranch?: WorkshopUiActions['openWorkshopBranch'];
   revealWorkshopRoom?: (roomId: string) => boolean;
   outputChannel: LogSink;
