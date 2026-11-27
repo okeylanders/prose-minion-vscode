@@ -438,6 +438,7 @@ describe('reply highlights in the footer', () => {
   it('shows the projected title and count and sends IDs only, even after reloading a room', () => {
     const postMessage = jest.fn();
     (useVSCodeApi as jest.Mock).mockReturnValue({ postMessage });
+    // eslint-disable-next-line @typescript-eslint/naming-convention -- React components use PascalCase.
     function Footer({ revision, count }: { revision: number; count: number }) {
       const onHighlightAction = useWorkshopHighlightAction(revision);
       return bubble({ turn: reply({ highlightSummary: { title: 'Signature lines', count } }), onHighlightAction });
