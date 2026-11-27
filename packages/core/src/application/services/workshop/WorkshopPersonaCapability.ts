@@ -106,6 +106,7 @@ import {
   CapabilityContextWindow,
   CapabilityDeliveredSource,
   CapabilityFulfillment,
+  PreparedCapabilityEvidence,
   isAgentRunIncomplete
 } from '@orchestration/AgentRunContracts';
 import { estimateTextTokens } from '@orchestration/RequestContextPreflight';
@@ -337,6 +338,10 @@ export class WorkshopPersonaCapability implements AgentCapability<
   }
 
   async fulfill(request: WorkshopCapabilityRequest, window?: CapabilityContextWindow): Promise<CapabilityFulfillment> {
+    return (await this.prepareEvidence(request, window)).settle();
+  }
+
+  async prepareEvidence(request: WorkshopCapabilityRequest, window?: CapabilityContextWindow): Promise<PreparedCapabilityEvidence> {
     const startedAt = Date.now();
     const unrunNativeCalls = this.nativeTranslation?.unrun ?? 0;
     this.nativeTranslation = undefined;
@@ -360,6 +365,24 @@ export class WorkshopPersonaCapability implements AgentCapability<
       };
     }
 
+    const evidence = this.formatEvidence(result, this.turn.excerptVersion, unrunNativeCalls);
+    return {
+      evidence,
+      operation: request.capability,
+      indivisible: request.capability === 'analysis.run' || request.capability === 'dictionary.full-entry',
+      settle: (notice) => {
+        const settled: WorkshopCapabilityResult = notice === undefined ? result : {
+          capability: request.capability, status: 'rejected', requestSummary: this.requestSummary(request),
+          error: notice, metadata: { reason: 'context-window-exceeded' }, usage: result.usage
+        };
+        const recorded = this.recordFulfillment(request, settled, model, notice ?? evidence, startedAt);
+        return notice === undefined ? recorded : { evidence: notice, artifacts: [], deliveredItems: [], deliveredSources: [], usage: result.usage };
+      }
+    };
+  }
+
+  private recordFulfillment(request: WorkshopCapabilityRequest, result: WorkshopCapabilityResult,
+    model: WorkshopTurnModel | undefined, evidence: string, startedAt: number): CapabilityFulfillment {
     const completedTurn = this.recordCompletedTurn(request, result, model);
     const rows = this.deliveredSourceRows(request, result);
     const duration = Date.now() - startedAt;
@@ -375,7 +398,7 @@ export class WorkshopPersonaCapability implements AgentCapability<
       workshopCapabilityResultLogSummary(result)
     );
     return {
-      evidence: this.formatEvidence(result, this.turn.excerptVersion, unrunNativeCalls),
+      evidence,
       artifacts: completedTurn ? [{
         catalog: this.catalog,
         id: completedTurn.id,

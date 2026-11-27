@@ -201,14 +201,40 @@ describe('AgentRunEngine', () => {
     expect(client.createChatCompletion).toHaveBeenCalledTimes(2);
   });
 
-  it('checks growth from capability evidence before another provider inference', async () => {
-    jest.spyOn(OpenRouterModels, 'getCachedContextLength').mockReturnValue(50_000);
+  it.each([AGENT_RUN_POLICIES.assistant, AGENT_RUN_POLICIES.context, AGENT_RUN_POLICIES.workshopTool])(
+    'withholds oversized evidence and its provenance, then accepts a narrower read under $id', async policy => {
+      jest.spyOn(OpenRouterModels, 'getCachedContextLength').mockReturnValue(18_000);
+      const accepted = '<prose-minion-tool-call name="resource.read"><paths><path>one.md</path></paths></prose-minion-tool-call>';
+      const reads = capability();
+      const narrow = { operation: 'resource.read' as const, paths: ['one.md'] };
+      reads.inspectRequest.mockImplementation(text => text === accepted ? { kind: 'request', request: narrow } : guideGate.inspect(text));
+      const secret = 'WITHHELD_GUIDE_BODY '.repeat(11_000);
+      reads.fulfill.mockResolvedValueOnce({ evidence: secret, artifacts: [{ catalog: 'guides', id: 'withheld', label: 'Oversized', category: 'test', reason: 'test', size: secret.length }],
+        deliveredItems: ['withheld'], deliveredSources: [{ kind: 'resource', label: 'withheld', sizeChars: secret.length }],
+        usage: { promptTokens: 2, completionTokens: 3, totalTokens: 5 } });
+      client.createChatCompletion.mockResolvedValueOnce({ content: GUIDE_REQUEST }).mockResolvedValueOnce({ content: accepted })
+        .mockResolvedValueOnce({ content: 'Final' });
+      const result = await engine.runInitial({ toolName: 'assistant', systemMessage: 'System', userMessage: 'Hello', policy,
+        capability: { ...reads, catalog: policy.capabilityCatalog as 'guides' | 'projectContext' | 'workshopToolContext' } });
+      expect(reads.fulfill).toHaveBeenCalledTimes(2);
+      expect(result.content).toBe('Final');
+      expect(result.usage?.totalTokens).toBe(5);
+      const sent = client.createChatCompletion.mock.calls.map(call => call[0]);
+      expect(sent[1].at(-1)?.content).toMatch(/did not fit.*\d+ tokens.*characters.*narrower/);
+      expect(sent[2].at(-1)?.content).toContain('Evidence for one.md');
+      expect(JSON.stringify([sent, result, conversations.getContextSources(result.conversationId)])).not.toMatch(/WITHHELD_GUIDE_BODY|"withheld"/);
+    }
+  );
+
+  it('retains the original preflight failure if the history and a short notice no longer fit', async () => {
+    const window = jest.spyOn(OpenRouterModels, 'getCachedContextLength').mockReturnValue(50_000);
     client.createChatCompletion.mockResolvedValue({ content: PERSONA_REQUEST });
-    const capability = personaCapability(jest.fn().mockResolvedValue({
-      evidence: 'word '.repeat(40_000), artifacts: [], deliveredItems: []
+    const adapter = personaCapability(jest.fn(async () => {
+      window.mockReturnValue(10_550);
+      return { evidence: 'too large '.repeat(5000), artifacts: [], deliveredItems: [] };
     }));
     await expect(engine.runInitial({ toolName: 'host', systemMessage: 'System', userMessage: 'Hello',
-      policy: AGENT_RUN_POLICIES.workshopHost, capability
+      policy: AGENT_RUN_POLICIES.workshopHost, capability: adapter
     })).rejects.toMatchObject({ name: 'AgentRunUnavailableError', reason: 'context-window-exceeded' });
     expect(client.createChatCompletion).toHaveBeenCalledTimes(1);
   });
@@ -242,26 +268,32 @@ describe('AgentRunEngine', () => {
     expect(client.createChatCompletion).toHaveBeenCalledTimes(2);
   });
 
-  it('refuses the next request when evidence outgrows the room it was told of', async () => {
+  it('counts an oversized last round and sends the forced-final instruction if the persona asks again', async () => {
     jest.spyOn(OpenRouterModels, 'getCachedContextLength').mockReturnValue(50_000);
-    client.createChatCompletion.mockResolvedValue({ content: PERSONA_REQUEST });
+    client.createChatCompletion.mockResolvedValueOnce({ content: PERSONA_REQUEST }).mockResolvedValueOnce({ content: PERSONA_REQUEST })
+      .mockResolvedValueOnce({ content: 'Final' });
     const fulfill = jest.fn(async (_request: unknown, window?: CapabilityContextWindow) =>
       ({ evidence: 'a'.repeat(4 * (window!.freeInputTokens + 2)), artifacts: [], deliveredItems: [] }));
-    await expect(engine.runInitial({ toolName: 'host', systemMessage: 'System', userMessage: 'Hello',
-      policy: AGENT_RUN_POLICIES.workshopHost, capability: personaCapability(fulfill)
-    })).rejects.toMatchObject({ name: 'AgentRunUnavailableError', reason: 'context-window-exceeded' });
-    expect(client.createChatCompletion).toHaveBeenCalledTimes(1);
+    const adapter = personaCapability(fulfill);
+    const result = await engine.runInitial({ toolName: 'host', systemMessage: 'System', userMessage: 'Hello',
+      policy: { ...AGENT_RUN_POLICIES.workshopHost, maxCapabilityRounds: 1 }, capability: adapter });
+    expect(fulfill).toHaveBeenCalledTimes(1);
+    expect(adapter.limitInstruction).toHaveBeenCalledTimes(1);
+    expect(client.createChatCompletion.mock.calls[1][0].at(-1)?.content).toContain('did not fit');
+    expect(result.content).toBe('Final');
   });
 
   it('gives a capability no window when the model’s live window is unknown', async () => {
     jest.spyOn(OpenRouterModels, 'getCachedContextLength').mockReturnValue(undefined);
     client.createChatCompletion.mockResolvedValueOnce({ content: PERSONA_REQUEST })
       .mockResolvedValue({ content: 'Final' });
-    const capability = personaCapability();
+    const large = 'unknown-window evidence '.repeat(40_000);
+    const capability = personaCapability(jest.fn().mockResolvedValue({ evidence: large, deliveredItems: [], artifacts: [] }));
     await engine.runInitial({ toolName: 'host', systemMessage: 'System', userMessage: 'Hello',
       policy: AGENT_RUN_POLICIES.workshopHost, capability });
 
     expect(capability.fulfill.mock.calls[0]).toHaveLength(1);
+    expect(client.createChatCompletion.mock.calls[1][0].at(-1).content).toContain(large);
   });
 
   it('keeps provider validation when live window metadata is unavailable', async () => {

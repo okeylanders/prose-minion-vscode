@@ -136,6 +136,14 @@ export interface CapabilityFulfillment {
   readonly usage?: TokenUsage;
 }
 
+/** A ledger-owning adapter decides what to publish only after the engine checks the actual evidence request. */
+export interface PreparedCapabilityEvidence {
+  readonly evidence: string;
+  readonly operation: string;
+  readonly indivisible: boolean;
+  settle(withheldNotice?: string): CapabilityFulfillment;
+}
+
 /**
  * A capability owns its protocol, validation, execution, evidence formatting,
  * and provenance. The engine owns turn mechanics and treats the request as an
@@ -168,6 +176,8 @@ export interface AgentCapability<
   translateNativeToolCalls?(calls: readonly AgentNativeToolCall[]): AgentNativeToolCallTranslation;
   /** `window` is present when the model's live context window is known. */
   fulfill(request: Request, window?: CapabilityContextWindow): Promise<CapabilityFulfillment>;
+  /** For adapters that publish a capability card. Its settlement runs before the next provider call. */
+  prepareEvidence?(request: Request, window?: CapabilityContextWindow): Promise<PreparedCapabilityEvidence>;
   stripToolCalls(content: string): string;
   statusMessage(request: Request): string;
   statusTicker?(request: Request): string | undefined;
