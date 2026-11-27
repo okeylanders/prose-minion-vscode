@@ -59,6 +59,24 @@ describe('the shipped help reference', () => {
     expect(result.content!.indexOf(sections[0])).toBeLessThan(result.content!.indexOf(sections[2]));
   });
 
+  it('finds the instructions for asking a Workshop persona to highlight passages', async () => {
+    const { reference, capability } = await realReference();
+    const loaded = await reference.load();
+    if (!loaded) {
+      throw new Error('Bundled Workshop help could not be loaded');
+    }
+
+    const id = 'workshop#highlight-passages-in-the-excerpt-file';
+    const { hits } = searchWorkshopHelp(loaded.sections, 'Workshop highlight passages');
+    expect(hits.map(hit => hit.id)).toContain(id);
+    const result = await capability.fulfill({ capability: 'help.read', sections: [id] });
+    expect(result.status).toBe('success');
+    expect(result.content).toContain('**Send to New Workshop Excerpt**');
+    expect(result.content).toContain('**Show**');
+    expect(result.content).toContain('**Clear**');
+    expect(result.content).toContain('**Prose Minion: Clear All Workshop Highlights**');
+  });
+
   it('fits whole sections including the cost of the exact call, and refuses a section when no room remains', async () => {
     const { reference, capability } = await realReference();
     const loaded = (await reference.load())!;
