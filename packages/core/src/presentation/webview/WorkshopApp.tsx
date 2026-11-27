@@ -1617,6 +1617,7 @@ export const WorkshopApp: React.FC = () => {
             onRequestCatalog: workshop.requestContextCatalog,
             onAttach: workshop.attachMessageResources
           }}
+          submissionPending={workshop.submissionPending}
           onSend={(text) => workshop.sendMessage(text, selectedText.sendSelection,
             !text || workshop.pendingMessageAttachments.some((item) => item.pastedText) ? workshop.roomRevision : undefined)}
           onCancel={workshop.cancelRun}

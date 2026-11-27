@@ -111,7 +111,8 @@ interface WorkshopComposerProps {
   pastedText?: WorkshopComposerPastedText;
   /** `@` attaches a project file to this message (item G); absent, `@` is only a character. */
   mentions?: WorkshopComposerMentions;
-  onSend: (text: string) => void;
+  submissionPending?: boolean;
+  onSend: (text: string) => boolean | void;
   onCancel: () => void;
   onOpenContext: () => void;
   onAttachToMessage: () => void;
@@ -155,7 +156,7 @@ export const WorkshopComposer: React.FC<WorkshopComposerProps> = ({
   messageAttachments,
   selectedText, pastedText,
   mentions,
-  onSend,
+  onSend, submissionPending,
   onCancel,
   onOpenContext,
   onAttachToMessage,
@@ -187,7 +188,9 @@ export const WorkshopComposer: React.FC<WorkshopComposerProps> = ({
   };
 
   const trimmed = draft.trim();
-  const canSend = canMessage && !pastedText?.mutating() && (trimmed.length > 0 || messageAttachments.length > 0);
+  const liveSelection = selectedText?.includeSelectedText && selectedText.livePill && !selectedText.livePill.disabledReason;
+  const canSend = canMessage && !submissionPending && !pastedText?.mutating()
+    && (trimmed.length > 0 || messageAttachments.length > 0 || !!liveSelection);
 
   const { paste, insertPaste } = workshopComposerPasteHandlers(pastedText, textareaRef, applyComposerEdit, canMessage && sessionReady);
 
@@ -195,8 +198,9 @@ export const WorkshopComposer: React.FC<WorkshopComposerProps> = ({
     if (!canSend || pastedText?.mutating()) {
       return;
     }
-    onSend(trimmed);
-    setDraft('');
+    if (onSend(trimmed) !== false) {
+      setDraft('');
+    }
   };
 
   const submit = (event: React.FormEvent) => {

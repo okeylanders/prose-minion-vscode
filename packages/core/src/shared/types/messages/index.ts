@@ -164,6 +164,7 @@ import {
   WorkshopRunToolMessage,
   WorkshopQuickActionMessage,
   WorkshopSendMessageMessage,
+  WorkshopSendAcknowledgedMessage,
   WorkshopInviteGuestMessage,
   WorkshopDismissGuestMessage,
   WorkshopSelectPersonaMessage,
@@ -533,6 +534,7 @@ export type ExtensionToWebviewMessage =
   | StreamCompleteMessage
   | WorkshopTurnMessage
   | WorkshopComposerDraftRestoredMessage
+  | WorkshopSendAcknowledgedMessage
   | WorkshopSessionStateMessage
   | WorkshopSessionsDataMessage
   | WorkshopSessionActionResultMessage

@@ -451,7 +451,8 @@ export class WorkshopRoomHandler {
     ) => {
       registerMutation(MessageType.WORKSHOP_RUN_TOOL, this.handleRunTool.bind(this));
       registerMutation(MessageType.WORKSHOP_QUICK_ACTION, this.handleQuickAction.bind(this));
-      registerMutation(MessageType.WORKSHOP_SEND_MESSAGE, this.handleSendMessage.bind(this));
+      registerMutation(MessageType.WORKSHOP_SEND_MESSAGE, this.handleSendMessage.bind(this), undefined,
+        (reason, message) => { void this.handleSendMessage(message, reason); });
       registerMutation(MessageType.WORKSHOP_INVITE_GUEST, this.handleInviteGuest.bind(this));
       registerMutation(MessageType.WORKSHOP_DISMISS_GUEST, this.handleDismissGuest.bind(this));
       registerMutation(MessageType.WORKSHOP_SELECT_PERSONA, this.handleSelectPersona.bind(this));
@@ -607,21 +608,56 @@ export class WorkshopRoomHandler {
   }
 
   /** The one composer message: host start/continuation or explicit direct tool. */
-  async handleSendMessage(message: WorkshopSendMessageMessage): Promise<void> {
+  async handleSendMessage(message: WorkshopSendMessageMessage, blocked?: string): Promise<void> {
+    const { submissionId, roomRevision } = message.payload ?? {};
+    let accepted = false;
+    const acknowledge = (ok: boolean) => {
+      if (typeof submissionId === 'string' && typeof roomRevision === 'number') {
+        void this.postMessage({
+          type: MessageType.WORKSHOP_SEND_ACKNOWLEDGED, source: 'extension.workshop', timestamp: Date.now(),
+          payload: { submissionId, roomRevision, accepted: ok }
+        });
+      }
+    };
+
+    try {
+      if (blocked) {
+        this.sendError('workshop.send_message', blocked);
+        return;
+      }
+      await this.submitComposerMessage(message, () => {
+        accepted = true;
+        acknowledge(true);
+      });
+    } finally {
+      // Every refusal, including preflight errors and the session mutation gate, settles the same submission.
+      if (!accepted && !this.disposed) {
+        acknowledge(false);
+      }
+    }
+  }
+
+  private async submitComposerMessage(message: WorkshopSendMessageMessage, accepted: () => void): Promise<void> {
     const text = typeof message.payload?.text === 'string' ? message.payload.text.trim() : '';
     if (typeof message.payload?.text !== 'string') {
       this.sendError('workshop.send_message', 'A composer message needs text or attachments.');
       return;
     }
 
-    if (!(await this.pickedAttachmentsStaged(text)) || this.disposed) {
+    // The correlated sender keeps its draft until the verdict. Older clients need the host to give it back.
+    const restoreOnRefusal = () => {
+      if (!message.payload.submissionId) {
+        this.postComposerDraftRestored(text);
+      }
+    };
+    if (!(await this.pickedAttachmentsStaged(restoreOnRefusal)) || this.disposed) {
       return;
     }
 
     if (message.payload.selectedTextSnapshotId === undefined && message.payload.roomRevision !== undefined
       && message.payload.roomRevision !== this.session.readRoomRevision()) {
       this.sendError('workshop.send_message', 'The Workshop room changed before the message was sent.');
-      this.postComposerDraftRestored(text);
+      restoreOnRefusal();
       return;
     }
 
@@ -630,7 +666,7 @@ export class WorkshopRoomHandler {
     const selection = this.sliceComposition.stageSelectedTextForSend(message.payload);
     if (!selection.ok) {
       this.sendError('workshop.send_message', selection.message);
-      this.postComposerDraftRestored(text);
+      restoreOnRefusal();
       return;
     }
 
@@ -653,6 +689,7 @@ export class WorkshopRoomHandler {
 
     await this.executeMessage(text, text, undefined, {
       writerComposed: true,
+      onComposerAccepted: accepted,
       includeMessageAttachments: true,
       restoreDraftOnRollback: true
     });
@@ -667,7 +704,7 @@ export class WorkshopRoomHandler {
    * send and gives the draft back: a message never goes without its file
    * unseen.
    */
-  private async pickedAttachmentsStaged(text: string): Promise<boolean> {
+  private async pickedAttachmentsStaged(restoreOnRefusal: () => void): Promise<boolean> {
     const room = this.session.readRoomRevision();
     if (!this.sliceComposition.messageAttachmentReadsPending(room)) {
       return true;
@@ -689,7 +726,7 @@ export class WorkshopRoomHandler {
       WORKSHOP_SEND_WITHOUT_ATTACHMENT_REFUSALS[fault],
       reads.kind === 'refused' ? reads.reason : undefined
     );
-    this.postComposerDraftRestored(text);
+    restoreOnRefusal();
     return false;
   }
 
@@ -1169,6 +1206,8 @@ export class WorkshopRoomHandler {
       includeMessageAttachments?: boolean;
       /** A writer-authored message can ask a persona to highlight its own excerpt. */
       writerComposed?: true;
+      /** The running snapshot and stream start were posted; the composer can release its local send guard. */
+      onComposerAccepted?: () => void;
       /** Restore writer-owned composer text if transient rollback removes its turn. */
       restoreDraftOnRollback?: boolean;
       /**
@@ -1414,6 +1453,7 @@ export class WorkshopRoomHandler {
     this.postTurn(userTurn);
     this.postSessionState();
     this.sendStreamStarted(requestId);
+    executeOptions?.onComposerAccepted?.();
     this.sendStatus(statusMessage);
 
     // A directed run's reply is never shown (ADR 2026-11-10 D5): its tokens go nowhere.

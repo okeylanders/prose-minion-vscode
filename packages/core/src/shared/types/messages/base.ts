@@ -157,6 +157,7 @@ export enum MessageType {
   WORKSHOP_RUN_TOOL = 'workshop_run_tool',
   WORKSHOP_QUICK_ACTION = 'workshop_quick_action',
   WORKSHOP_SEND_MESSAGE = 'workshop_send_message',
+  WORKSHOP_SEND_ACKNOWLEDGED = 'workshop_send_acknowledged',
   WORKSHOP_INVITE_GUEST = 'workshop_invite_guest',
   WORKSHOP_DISMISS_GUEST = 'workshop_dismiss_guest',
   WORKSHOP_SELECT_PERSONA = 'workshop_select_persona',
