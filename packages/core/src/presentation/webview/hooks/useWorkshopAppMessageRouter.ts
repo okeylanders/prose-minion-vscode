@@ -18,6 +18,7 @@ import {
   buildFullTabChromeRoutes,
   FullTabChromeRouteDeps
 } from '@hooks/fulltab/useFullTabChrome';
+import type { useWorkshopHighlightPrompt } from '@hooks/domain/workshop/useWorkshopHighlightPrompt';
 import type { useWorkshopPastedText } from '@hooks/domain/workshop/useWorkshopPastedText';
 import type { UseWorkshopRoomReturn } from '@hooks/domain/workshop/useWorkshopRoom';
 import type { UseWorkshopSessionsReturn } from '@hooks/domain/workshop/useWorkshopSessions';
@@ -83,6 +84,7 @@ export interface WorkshopAppMessageRouterDeps {
   /** The Read in reader's file content (Wayfinding Slice 2). */
   sentAttachments: Pick<ReturnType<typeof useWorkshopSentAttachments>, 'receive'>;
   readIn: UseWorkshopReadInReturn;
+  highlightPrompts: Pick<ReturnType<typeof useWorkshopHighlightPrompt>, 'handleSessionState'>;
   pastedText?: Pick<ReturnType<typeof useWorkshopPastedText>, 'handleResult' | 'handleSessionState'>;
   /** Bookmarks and the turn preview (Wayfinding Slice 5). */
   bookmarks: UseWorkshopBookmarksReturn;
@@ -139,6 +141,7 @@ export function buildWorkshopAppMessageRoutes(
   const {
     workshopRoom,
     workshopSessions,
+    highlightPrompts,
     pastedText,
     sentAttachments,
     readIn,
@@ -174,6 +177,7 @@ export function buildWorkshopAppMessageRoutes(
   return {
     ...buildFullTabChromeRoutes(chrome),
     [MessageType.WORKSHOP_SESSION_STATE]: (message) => {
+      highlightPrompts.handleSessionState(message);
       pastedText?.handleSessionState(message);
       workshopRoom.handleSessionState(message);
       bookmarks.handleSessionState(message);

@@ -6,6 +6,7 @@ import { MessageType } from '@messages';
 import {
   DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR,
   DEFAULT_WORKSHOP_WRITER_PROFILE,
+  WorkshopHighlightPrompt,
   WorkshopSessionStateMessage,
   WorkshopTurn
 } from '@messages';
@@ -95,6 +96,69 @@ describe('WorkshopApp', () => {
     jest.runOnlyPendingTimers();
     jest.useRealTimers();
     jest.clearAllMocks();
+  });
+
+  describe('highlight questions in the Workshop chat', () => {
+    const publish = (data: unknown) => act(() => window.dispatchEvent(new MessageEvent('message', { data })));
+    const notice = (shouldShow: boolean) => publish({
+      type: MessageType.STARTUP_NOTICE_DATA, source: 'extension.ui', timestamp: 1,
+      payload: { shouldShow, noticeVersion: 'current' }
+    });
+    const snapshot = (highlightPrompt?: WorkshopHighlightPrompt) => {
+      const state = readySession();
+      publish({ ...state, payload: { ...state.payload, highlightPrompt } });
+    };
+    const proposal: WorkshopHighlightPrompt = {
+      kind: 'proposal', promptId: 'p1', roomRevision: 1, count: 1, displayPath: 'chapters/one.md',
+      persona: 'Jill', title: 'Echoes'
+    };
+    const restore: WorkshopHighlightPrompt = {
+      kind: 'restore', promptId: 'r1', roomRevision: 1, count: 4, displayPath: 'chapters/two.md', setCount: 2
+    };
+    const answers = () => vscode.postMessage.mock.calls.map(([message]) => message)
+      .filter(message => message.type === MessageType.WORKSHOP_ANSWER_HIGHLIGHT_PROMPT);
+
+    it('waits for a delayed release notice and its dismissal before presenting the current proposal', () => {
+      render(<WorkshopApp />);
+      snapshot(restore);
+      expect(screen.queryByRole('dialog', { name: 'Restore saved highlights?' })).toBeNull();
+      notice(true);
+      snapshot(proposal);
+      expect(screen.getAllByRole('dialog')).toHaveLength(1);
+      expect(screen.queryByText('Apply highlights')).toBeNull();
+      fireEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
+      expect(screen.getByRole('dialog', { name: 'Apply Jill’s highlights?' }).textContent).toContain('“Echoes” has 1 highlight for chapters/one.md.');
+      notice(true); // A duplicate startup response cannot interrupt the consent decision.
+      fireEvent.click(screen.getByRole('button', { name: 'Apply highlights' }));
+      snapshot(proposal);
+      expect(screen.queryByText('Apply highlights')).toBeNull();
+      expect(answers().map(message => message.payload)).toEqual([{ promptId: 'p1', roomRevision: 1, choice: 'apply' }]);
+    });
+
+    it.each([
+      ['Restore highlights', 'restore'], ['Not now', 'not-now'], ['Don’t ask again for these highlights', 'suppress']
+    ])('sends the saved-set choice from %s', (button, choice) => {
+      render(<WorkshopApp />);
+      notice(false);
+      snapshot(restore);
+      const modal = screen.getByRole('dialog', { name: 'Restore saved highlights?' });
+      expect(modal.textContent).toContain('4 highlights in 2 saved sets for chapters/two.md.');
+      expect(modal.textContent).toContain('Show on the original reply');
+      fireEvent.click(screen.getByRole('button', { name: button }));
+      expect(answers().map(message => message.payload)).toEqual([{ promptId: 'r1', roomRevision: 1, choice }]);
+      expect(screen.queryByRole('dialog', { name: 'Restore saved highlights?' })).toBeNull();
+    });
+
+    it('uses the temporary decline on Escape and retires a withdrawn offer without sending a decision', () => {
+      render(<WorkshopApp />);
+      notice(false);
+      snapshot(restore);
+      fireEvent.keyDown(document, { key: 'Escape' });
+      snapshot(proposal);
+      snapshot();
+      expect(screen.queryByText('Apply highlights')).toBeNull();
+      expect(answers().map(message => message.payload)).toEqual([{ promptId: 'r1', roomRevision: 1, choice: 'not-now' }]);
+    });
   });
 
   it('keeps startup loading visible after dismissing the notice before the room arrives', () => {
