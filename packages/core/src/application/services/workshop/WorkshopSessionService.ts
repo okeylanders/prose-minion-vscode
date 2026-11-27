@@ -1426,6 +1426,33 @@ export class WorkshopSessionService {
       .filter((id): id is string => id !== undefined));
   }
 
+  /** Scan the whole ledger, including offscreen replies. The caller authorizes each source on this host. */
+  readHighlightPromptCandidates(): { turnId: string; source: { sourceUri: string; relativePath: string }; count: number }[] {
+    return this.turnLedger.project(turn => {
+      const record = turn.highlights;
+      return record && !record.suppressRestorePrompt
+        ? { turnId: turn.id, source: { ...record.source }, count: record.set.places.length }
+        : undefined;
+    }).filter(candidate => candidate !== undefined);
+  }
+
+  /** A restore dialog affects only the exact set IDs it offered, in the same opening of the room. */
+  suppressHighlightPrompts(roomRevision: number, turnIds: readonly string[]): boolean {
+    if (roomRevision !== this.roomRevision) {
+      return false;
+    }
+    let changed = false;
+    for (const id of new Set(turnIds)) {
+      this.turnLedger.update(id, turn => {
+        if (turn.highlights && !turn.highlights.suppressRestorePrompt) {
+          turn.highlights.suppressRestorePrompt = true;
+          changed = true;
+        }
+      });
+    }
+    return changed;
+  }
+
   /** The panel closed: even a reader returning before the final flush must drop its result. */
   invalidatePendingRoomReads(): void {
     this.roomRevision = mintRoomRevision();
