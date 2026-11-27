@@ -969,7 +969,8 @@ export class WorkshopSessionPersistenceCoordinator {
 
   async openNamed(
     sessionId: string,
-    afterLoad?: () => Promise<void>
+    afterLoad?: () => Promise<void>,
+    purpose: 'reopen' | 'new-branch' = 'reopen'
   ): Promise<WorkshopSessionHydrateResult> {
     return this.serializeNamedOperation(async () => {
       this.requireWritableSession(sessionId);
@@ -979,7 +980,9 @@ export class WorkshopSessionPersistenceCoordinator {
       }
       const result = await this.promoteNamedSession(persisted);
       await afterLoad?.();
-      this.recordHighlightRestoreOpening();
+      // A newly created branch continues at its cut. A later saved-session Open or restore
+      // still offers its inherited sets, since the opening purpose is never persisted.
+      if (purpose === 'reopen') { this.recordHighlightRestoreOpening(); }
       return result;
     });
   }
