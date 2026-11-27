@@ -1,7 +1,7 @@
 # Feature: Branch or Rewind Into a New Workshop Tab
 
 **Date Identified:** 2026-11-25
-**Status:** Idea. Small to medium, on top of [Workshop tabs](../feature-multiple-workshop-and-lightbox-tabs/README.md) (#9, Astra, `epic/workshop-tabs`). An addendum to the tabs ADR and to ADR 2026-09-30's D2, not a new ADR.
+**Status:** Core shipped in 2.17.0 (Workshop tabs Sprint 08, [PR #310](https://github.com/okeylanders/prose-minion-vscode/pull/310)): Branch from here opens the saved branch in a new tab, and the source tab stays (ADR 2026-09-30, multi-tab amendment). Still open: branching from an unsaved room (B1), and "Branch in new tab instead" in Rewind's confirm (B2). B2's chevron is moot now that Branch always opens a new tab.
 **Priority:** Medium
 **Origin:** Okey, 2026-11-25: "Branch|Rewind in new workshop tab"
 

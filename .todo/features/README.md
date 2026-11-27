@@ -1,6 +1,6 @@
 # Feature Ideas: Status Index
 
-**As of:** 2026-11-25. `main` is at v2.16.0.
+**As of:** 2026-11-27. `main` holds 2.17.0 (Workshop tabs, PR #312), waiting for its release tag.
 
 Numbers come from Okey's idea inbox. Each row links to a note. The note
 holds the problem, Okey's decisions, the open questions and the completion
@@ -48,6 +48,9 @@ criteria.
 | 28 | Personas read a file's git history | v2.16.0 | [file git history](feature-workshop-file-git-history/README.md) |
 | 29 | Passage Search, with group narrowing | v2.16.0 | [passage search](feature-passage-search/README.md) |
 | 30 | Personas mark to-dos done, here and in saved sessions | v2.16.0 | [recall to-do closeout](feature-workshop-recall-todo-closeout/README.md) |
+| 9 | Several Workshop tabs, including unsaved rooms | 2.17.0 | [Epic](../epics/epic-workshop-tabs-2026-11-25/README.md) · [feature note](feature-multiple-workshop-and-lightbox-tabs/README.md) |
+| 37 | A session keeps its cache key and cache clock across a reload | 2.17.0 (tabs Sprint 08, PR #310) | [session cache key](feature-workshop-session-cache-key/README.md) |
+| 38 (core) | Branch opens the saved branch in a new tab; the source tab stays | 2.17.0 (tabs Sprint 08, PR #310) | [branch in new tab](feature-workshop-branch-in-new-tab/README.md) |
 
 Several of these notes still carry their build-time status line (for example
 "In the … epic, on `epic/…`"). This table is the truth. They move to
@@ -55,9 +58,7 @@ Several of these notes still carry their build-time status line (for example
 
 ## 🔨 In flight
 
-| # | Idea | Who and where | Note |
-|---|---|---|---|
-| 9 | Several Workshop tabs, including unsaved rooms | Implemented on `epic/workshop-tabs` | [Epic](../epics/epic-workshop-tabs-2026-11-25/README.md) · [Feature note](feature-multiple-workshop-and-lightbox-tabs/README.md) |
+Nothing is being built right now. 2.17.0 is on `main`, waiting for its release.
 
 ## ⏳ Not started
 
@@ -80,9 +81,8 @@ Several of these notes still carry their build-time status line (for example
 | 34 | Click a sent pill to see what was sent | Medium | Small; V1 decided. | [sent attachment viewer](feature-workshop-sent-attachment-viewer/README.md) |
 | 35 | Personas run the deterministic measures | Medium | Medium; short ADR. Reuses Passage Search's scopes. | [persona measures](feature-workshop-persona-measures/README.md) |
 | 36 | A long paste becomes a "Pasted text" pill | Medium | Small to medium; P1 (500 characters) and P2 decided. | [long paste pill](feature-workshop-long-paste-pill/README.md) |
-| 37 | A session keeps its OpenRouter cache key across a reload | Medium | Small; K1 and K2 decided. After #9 merges. | [session cache key](feature-workshop-session-cache-key/README.md) |
-| 38 | Branch or Rewind into a new Workshop tab | Medium | Small to medium; B1 and B2 open, with leans. After #9 merges. | [branch in new tab](feature-workshop-branch-in-new-tab/README.md) |
-| 39 | Personas highlight the excerpt's file: any passages, each with a note (squiggles and Problems-panel notes) | Medium | Medium; short ADR (a second door to the annotator). H0 decided; H1–H2 open, with leans. | [persona highlights](feature-workshop-persona-highlights/README.md) |
+| 38 (rest) | Branch from an unsaved room; "Branch in new tab instead" in Rewind's confirm | Medium | Small. Branch still requires a saved room (ADR 2026-09-30, multi-tab amendment). B1 and B2 open, with leans. | [branch in new tab](feature-workshop-branch-in-new-tab/README.md) |
+| 39 | Personas highlight the excerpt's file: any passages, each with a note (squiggles and Problems-panel notes) | Medium | Medium; short ADR (a second door to the annotator). H0–H2 decided; ready to build. | [persona highlights](feature-workshop-persona-highlights/README.md) |
 
 ### Follow-ups split from shipped work (Low)
 
@@ -97,6 +97,7 @@ Several of these notes still carry their build-time status line (for example
 
 | Item | Priority | Note |
 |---|---|---|
+| Workshop tabs follow-ups: an import can keep sending the writer bio after About you is off (High); a Branch retry loses its starting text, and a stale rolling lock sticks the primary room in recovery (Medium); six Low | High | [tabs epic-review follow-ups](../tech-debt/2026-11-26-workshop-tabs-epic-review-follow-ups.md) |
 | The Lightbox passage tests fail CI on timing, including unrelated PRs | Medium | [wall-clock test](../tech-debt/2026-11-19-lightbox-passages-wall-clock-test.md) |
 | A send refused while the room is busy loses its draft | Medium | [gated send loses draft](../tech-debt/2026-11-18-workshop-gated-send-loses-draft.md) |
 | Lexical Gravity logs a rejected reply's text | Medium | [LG logs reply text](../tech-debt/2026-11-18-lexical-gravity-logs-rejected-reply-text.md) |
@@ -111,13 +112,16 @@ The two threads touch different parts of the code, so they can run side by
 side.
 
 1. **Everyday Conveniences, round three: the composer and cleanup.**
-   - **The CI timing test first.** It blocks other people's PRs.
+   - **The tabs follow-ups' High item first:** the writer bio still sent
+     after About you is off. It's a privacy fix; a 2.17.x patch.
+   - **The CI timing test next.** It blocks other people's PRs.
    - **36 (paste pill) and 34 (sent-pill viewer).** They share the
      attachment code, and 34 is how a writer sees a sent paste.
    - **The draft-loss tech debt.** It's the same composer.
    - **33 (default models) and 32 (BYOK help).** Small, and worth shipping.
-   - **The Lexical Gravity log leak.** Room-bound context reads are part of the Workshop tabs epic.
-2. **Measures, then Read Aloud: 35, then 31.**
+   - **The Lexical Gravity log leak.** Room-bound context reads shipped with the Workshop tabs epic.
+   - **38's rest,** while the tabs code is fresh.
+2. **Measures, then Read Aloud: 35, then 31.** 39 (highlights) pairs well here: both are new persona tools.
    - 35 reuses Passage Search's scope type, lifted to a neutral module.
    - 31 then lands as `measure.cadence`, with the CMUdict dependency.
    - One short ADR covers the family.
