@@ -159,6 +159,13 @@ export interface PromptBudgets {
     catalogItems: number;
     readSections: number;
   }>;
+  /** Bounds for a page of current file diagnostics. Text limits use UTF-16 code units. */
+  readonly workshopProblems: Readonly<{
+    rowsPerPage: number;
+    sourceCharacters: number;
+    messageCharacters: number;
+    quoteCharacters: number;
+  }>;
   /**
    * A file's git history for personas (ADR 2026-11-19 D17). `history.log`
    * lists `logPageCommits` a page and reads at most `logScanCommits` back;
@@ -936,6 +943,7 @@ export const PROMPT_BUDGETS: PromptBudgets = {
   },
   workshopCapabilityPaging: { pageDigits: 9 },
   workshopLens: { catalogItems: 50, readSections: 7 },
+  workshopProblems: { rowsPerPage: 16, sourceCharacters: 80, messageCharacters: 800, quoteCharacters: 240 },
   workshopHistory: {
     logPageCommits: 20,
     logScanCommits: 1_000,

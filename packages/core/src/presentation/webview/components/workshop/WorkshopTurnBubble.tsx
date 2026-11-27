@@ -313,6 +313,8 @@ const capabilityTruncationNote = (operation: WorkshopCapabilityOperation | undef
       return 'Result was bounded by the file-history limits';
     case 'locations':
       return 'Result was bounded by the context-path limits';
+    case 'problems':
+      return 'The file had more problems than this read could show';
     case 'dictionary':
     case 'analysis':
       return 'Result reached its response-token limit';

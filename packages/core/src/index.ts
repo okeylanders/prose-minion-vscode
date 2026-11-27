@@ -277,6 +277,14 @@ export { workshopExcerptFileEditDocument } from '@/application/services/workshop
 export { workshopHistoryExcerptFile } from '@/application/services/workshop/history/WorkshopHistoryFiles';
 export { WORKSHOP_HISTORY_GIT_READY_MS } from '@/application/services/workshop/history/WorkshopHistoryCapability';
 export { WorkshopHighlightService, type WorkshopHighlightDocuments } from '@/application/services/workshop/highlights/WorkshopHighlightService';
+export {
+  WORKSHOP_PROBLEMS_BOUNDS,
+  workshopProblemTextPrefix,
+  type WorkshopProblemRow,
+  type WorkshopProblemsPage,
+  type WorkshopProblemsReader,
+  type WorkshopProblemsPorts
+} from '@/application/services/workshop/problems/WorkshopProblemsPort';
 export { WorkshopHistoryDiffCache } from '@/application/services/workshop/history/WorkshopHistoryDiffCache';
 export { describeDraftEditOutcome, describeQuickFixOutcome, type DraftEditSummary } from '@/application/services/draftEdit/draftEditSummary';
 export {

@@ -121,6 +121,10 @@ export const WORKSHOP_LENS_CAPABILITY_PROMPT_PATH =
 export const WORKSHOP_HISTORY_CAPABILITY_PROMPT_PATH =
   'workshop-personas/history-capability.md';
 
+/** Current editor Problems for one authorized file, available to hosts and guests. */
+export const WORKSHOP_PROBLEMS_CAPABILITY_PROMPT_PATH =
+  'workshop-personas/problems-capability.md';
+
 /**
  * The stable `locations.*` grammar and the context-paths proposal trailer
  * (ADR 2026-11-19 D26, D27): read-only calls and a proposal the writer
@@ -293,7 +297,7 @@ export function workshopPersonaSystemPromptPaths(
     // Unconditional capability grammars for host and guest alike (ADR 2026-11-17 D16).
     ...(participant
       ? [WORKSHOP_HELP_CAPABILITY_PROMPT_PATH, WORKSHOP_LOCATIONS_CAPABILITY_PROMPT_PATH,
-        WORKSHOP_HISTORY_CAPABILITY_PROMPT_PATH, WORKSHOP_LENS_CAPABILITY_PROMPT_PATH]
+        WORKSHOP_PROBLEMS_CAPABILITY_PROMPT_PATH, WORKSHOP_HISTORY_CAPABILITY_PROMPT_PATH, WORKSHOP_LENS_CAPABILITY_PROMPT_PATH]
       : []),
     WORKSHOP_INTERACTION_CONTRACT_PROMPT_PATH,
     WORKSHOP_INTERACTION_MODE_PROMPT_PATHS[behavior.interactionMode],

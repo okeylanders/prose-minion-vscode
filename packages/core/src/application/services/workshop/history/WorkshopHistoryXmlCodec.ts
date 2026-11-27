@@ -19,11 +19,8 @@
  * operation, so the persona capability leaves a visible artifact for it.
  */
 
-import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
-import { isContextPathGroup } from '@shared/types';
 import type {
   WorkshopHistoryDiffTarget,
-  WorkshopHistoryFile,
   WorkshopHistoryRequest
 } from '@shared/types/workshopCapabilities';
 import type {
@@ -32,12 +29,12 @@ import type {
 } from '@/application/services/workshop/WorkshopCapabilityXmlDocument';
 import type { WorkshopCapabilityRejectionReason } from '@/application/services/workshop/WorkshopCapabilityXmlCodec';
 import { workshopCapabilityPage } from '@/application/services/workshop/WorkshopCapabilityPaging';
-import { isSafeConfiguredResourcePath } from '@/application/services/workshop/WorkshopConfiguredResourceLookup';
+import { inspectWorkshopCapabilityFile } from '@/application/services/workshop/WorkshopCapabilityFileXml';
 
 type HistoryOperation = WorkshopHistoryRequest['capability'];
 
 /** The one `<group>` value that is not a context group: the room's excerpt file. */
-export const WORKSHOP_HISTORY_EXCERPT_GROUP = 'excerpt';
+export { WORKSHOP_FILE_EXCERPT_GROUP as WORKSHOP_HISTORY_EXCERPT_GROUP } from '@/application/services/workshop/WorkshopCapabilityFileXml';
 /** `<to>`'s one word that is not a commit: the file as saved on disk. */
 export const WORKSHOP_HISTORY_CURRENT = 'current';
 
@@ -98,9 +95,9 @@ export function inspectWorkshopHistoryCall(
   if (empty) {
     return reject('empty-field', empty.name);
   }
-  const named = historyFile(call.fields, reject);
+  const named = inspectWorkshopCapabilityFile(call.fields);
   if (named.kind === 'invalid') {
-    return named;
+    return { ...named, operation };
   }
 
   switch (operation) {
@@ -140,32 +137,6 @@ export function inspectWorkshopHistoryCall(
     default:
       return assertNever(operation);
   }
-}
-
-/** The file the call names: the excerpt alone, or a configured group with a safe, bounded path. */
-function historyFile(
-  fields: ReadonlyMap<string, string>,
-  reject: (reason: WorkshopCapabilityRejectionReason, field?: string) => WorkshopHistoryRejection
-): WorkshopHistoryFile | WorkshopHistoryRejection {
-  const group = fields.get('group')!;
-  const path = fields.get('path');
-  if (group === WORKSHOP_HISTORY_EXCERPT_GROUP) {
-    // The excerpt names its own file: a path beside it would be a second, free name.
-    return path === undefined ? { kind: 'excerpt' } : reject('unexpected-field', 'path');
-  }
-  if (!isContextPathGroup(group)) {
-    return reject('unknown-resource-group', 'group');
-  }
-  if (path === undefined) {
-    return reject('missing-field', 'path');
-  }
-  if (path.length > PROMPT_BUDGETS.workshopResource.pathCharacters) {
-    return reject('oversized-input', 'path');
-  }
-  if (!isSafeConfiguredResourcePath(path)) {
-    return reject('invalid-resource-path', 'path');
-  }
-  return { kind: 'configured', group, path };
 }
 
 function diffTarget(

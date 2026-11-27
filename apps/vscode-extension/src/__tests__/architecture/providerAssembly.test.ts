@@ -636,7 +636,7 @@ describe('app-shell provider assembly', () => {
     );
     expect(source.match(/new WorkshopLiveRoomBookmarkReader\(/g)).toHaveLength(1);
     // Both private read families receive their shared reader from the composition root.
-    expect(factoryArgs).toMatch(/workshopTranscriptRecallService,\s*projectMemoryLibrary,\s*lexicalGravityLensRepository,\s*workshopHelpReference,\s*workshopHistoryPorts,\s*\{ scan: projectFolderScan, checker: contextPathChecker \}\s*$/);
+    expect(factoryArgs).toMatch(/workshopTranscriptRecallService,\s*projectMemoryLibrary,\s*lexicalGravityLensRepository,\s*workshopHelpReference,\s*workshopHistoryPorts,\s*\{ scan: projectFolderScan, checker: contextPathChecker \},\s*\{ intake: fileAuthority, reader: workshopProblemsReader \}\s*$/);
     // One scan, checker and writer serve Settings, a persona's calls and her card (ADR 2026-11-19 D18, D26, D27).
     expect(source.match(/new ContextPathProposalChecker\(/g)).toHaveLength(1);
     expect(source.match(/new ProjectFolderScan\(/g)).toHaveLength(1);
@@ -648,8 +648,12 @@ describe('app-shell provider assembly', () => {
     expect(source.match(/new WorkshopHistoryDiffCache\(/g)).toHaveLength(1);
     expect(at('const workshopHistoryPorts = {')).toBeLessThan(at('new WorkshopPersonaCapabilityFactory('));
     expect(source.slice(at('const workshopHistoryPorts = {'), at('new WorkshopPersonaCapabilityFactory('))).toMatch(
-      /history: platform\.fileHistory,\s*fileSystem: platform\.fileSystem,\s*excerpt: workshopHistoryExcerptFile\(\s*workshopSessionService,/
+      /history: platform\.fileHistory,\s*fileSystem: platform\.fileSystem,\s*excerpt: workshopHistoryExcerptFile\(\s*workshopSessionService, fileAuthority\)/
     );
+    // Each room resolves files through its counts-only intake; every room sees the window's current Problems.
+    expect(source).toMatch(/const fileAuthority = new WorkshopContextIntakeService\(\s*contextResourceResolver\.countsOnly\(\),\s*platform\.fileSystem,\s*platform\.workspace,\s*contextResourceResolver\s*\)/);
+    expect(at('new VsCodeWorkshopProblemsReader(')).toBeLessThan(at('const createRoomServices'));
+    expect(at('const createRoomServices')).toBeLessThan(at('const fileAuthority ='));
     expect(source.match(/new LexicalGravityLensRepository\(/g)).toHaveLength(1);
     expect(source.match(/new WorkshopHelpReference\(/g)).toHaveLength(1);
     expect(at('new WorkshopHelpReference(')).toBeLessThan(at('new WorkshopPersonaCapabilityFactory('));

@@ -208,6 +208,32 @@ export interface WorkshopCapabilityArtifactInput {
   model?: WorkshopTurnModel;
 }
 
+/**
+ * File Problems evidence belongs to the invoking conversation. Its room
+ * artifact is a receipt: rebuild it from status and counts so a path, quote,
+ * diagnostic message, or provider error cannot travel with a saved turn.
+ */
+export function workshopProblemsReadReceipt(input: WorkshopCapabilityArtifactInput): WorkshopCapabilityArtifactInput {
+  const { status, requestedByPersonaId, invokedBy } = input.details;
+  const { diagnosticCount, shownCount } = input.result.metadata ?? {};
+  const counts = (status === 'success' || status === 'partial') &&
+    typeof diagnosticCount === 'number' && Number.isSafeInteger(diagnosticCount) && diagnosticCount >= 0 &&
+    typeof shownCount === 'number' && Number.isSafeInteger(shownCount) && shownCount >= 0 && shownCount <= diagnosticCount
+    ? { diagnosticCount, shownCount } : undefined;
+  const summary = counts
+    ? `${counts.shownCount} of ${counts.diagnosticCount} ${counts.diagnosticCount === 1 ? 'problem' : 'problems'}`
+    : 'file problems';
+  const content = counts ? `Read ${summary}.`
+    : input.result.metadata?.reason === 'context-window-exceeded' ? 'File Problems evidence did not fit in the context window.'
+      : `File Problems read ${status}.`;
+  return {
+    requestId: input.requestId,
+    excerptVersion: input.excerptVersion,
+    details: { operation: 'problems.read', status, requestSummary: summary, requestedByPersonaId, invokedBy, metadata: counts },
+    result: { capability: 'problems.read', status, requestSummary: summary, content }
+  };
+}
+
 export interface WorkshopExcerptReplacement {
   excerpt: WorkshopExcerpt;
   disposedConversationIds: string[];

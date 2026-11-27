@@ -35,6 +35,7 @@ import {
   WORKSHOP_LOCATIONS_FIELD_POLICY
 } from '@/application/services/workshop/locations/WorkshopLocationsXmlCodec';
 import { workshopResourceInstructionLines } from '@/application/services/workshop/WorkshopResourceInstruction';
+import { inspectWorkshopProblemsCall } from '@/application/services/workshop/problems/WorkshopProblemsXmlCodec';
 import type { WorkshopCapabilityXmlFieldPolicy } from '@/application/services/workshop/WorkshopCapabilityXmlDocument';
 import { countWords } from '@/utils/textUtils';
 
@@ -117,6 +118,8 @@ export type WorkshopCapabilityRejectionReason =
   | 'invalid-commit'
   | 'invalid-start-change'
   | 'invalid-current'
+  // An offset into the current file's diagnostic listing.
+  | 'invalid-start'
   // The project's context paths (ADR 2026-11-19 D26; locations/WorkshopLocationsXmlCodec).
   | 'too-many-patterns'
   | 'missing-pattern-group'
@@ -144,7 +147,8 @@ export interface WorkshopResourceGroupAvailability {
 export const createWorkshopCapabilityTurnReminder = (): string =>
   `This writer message starts a new user turn with a fresh allowance of ` +
   `${PROMPT_BUDGETS.workshopCapability.callsPerTurn} capability calls. ` +
-  'A limit reached in an earlier turn does not carry forward. Use the available calls when fresh evidence would materially improve the answer.';
+  'A limit reached in an earlier turn does not carry forward. Use the available calls when fresh evidence would materially improve the answer. ' +
+  'When the writer asks about current editor highlights or Problems, use a fresh problems.read as taught in your system instructions.';
 
 export const createWorkshopCapabilityInstruction = (
   resourceGroups: readonly WorkshopResourceGroupAvailability[] = []
@@ -177,6 +181,7 @@ export const createWorkshopCapabilityInstruction = (
     // message, and whether recall is available is a per-call fact each
     // transcript.* result reports.
     'The stable transcript.* grammar is in your system instructions.',
+    'The stable problems.read grammar for current editor highlights and Problems is in your system instructions.',
     `Dictionary input ceilings are word ${budgets.wordCharacters} characters, context ${budgets.contextCharacters}, ` +
       `and purpose ${budgets.purposeCharacters}. Do not split or truncate an input to evade a ceiling.`,
     'After evidence is returned, use it honestly. The dictionary and analysis agents remain separately attributed; never claim their report as your own.'
@@ -230,6 +235,8 @@ export class WorkshopCapabilityXmlCodec {
       case 'locations.folders':
       case 'locations.check':
         return inspectWorkshopLocationsCall(operation, document);
+      case 'problems.read':
+        return inspectWorkshopProblemsCall(document);
       default:
         return { kind: 'invalid', reason: 'unknown-capability' };
     }

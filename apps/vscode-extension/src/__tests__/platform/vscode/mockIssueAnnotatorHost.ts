@@ -26,6 +26,8 @@ jest.mock('vscode', () => {
   const collections = new Map<string, Map<string, unknown[]>>([['prose-minion.draftEdit', diagnostics]]);
   class Range {
     constructor(readonly start: { offset: number }, readonly end: { offset: number }) {}
+    get isEmpty() { return this.start.offset === this.end.offset; }
+    isEqual(other: Range) { return this.start.offset === other.start.offset && this.end.offset === other.end.offset; }
   }
   class Diagnostic {
     source?: string;
@@ -54,6 +56,7 @@ jest.mock('vscode', () => {
     TabInputTextDiff,
     workspace: { openTextDocument: jest.fn(), textDocuments: [] as unknown[], onDidChangeTextDocument: changes.event, onDidCloseTextDocument: closes.event },
     languages: {
+      getDiagnostics: jest.fn((uri: { toString(): string }) => [...collections.values()].flatMap(collection => collection.get(uri.toString()) ?? [])),
       createDiagnosticCollection: (name: string) => {
         const own = collections.get(name) ?? new Map<string, unknown[]>();
         collections.set(name, own);
@@ -72,7 +75,7 @@ jest.mock('vscode', () => {
     Location,
     DiagnosticRelatedInformation,
     CodeAction,
-    DiagnosticSeverity: { Warning: 1, Information: 2 },
+    DiagnosticSeverity: { Error: 0, Warning: 1, Information: 2, Hint: 3 },
     CodeActionKind: { QuickFix: 'quickfix' },
     mockHost: { changes, closes, tabsChanged, groupsChanged, diagnostics, collections }
   };
