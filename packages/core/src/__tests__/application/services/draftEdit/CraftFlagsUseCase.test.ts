@@ -12,7 +12,7 @@ import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import type { CraftFlagsCallResult, CraftFlagsRunRequest } from '@services/craftFlags/CraftFlagsService';
 import { CRAFT_FLAGS_CLOSING_SENTINEL, CRAFT_FLAGS_OPENING_SENTINEL, decodeCraftFlagsReply, readCraftFlagsFrame } from '@services/craftFlags/CraftFlagsResponseCodec';
 import { withPhraseScanLimit } from '@/__tests__/utils/craftFlags/phraseScanLimit';
-import { CHAPTER, ESTIMATE, MODEL, PASS, flag, rangeOf, read, setup } from '@/__tests__/application/services/draftEdit/craftFlagsHarness';
+import { APPROVAL, CHAPTER, ESTIMATE, MODEL, PASS, flag, rangeOf, read, setup } from '@/__tests__/application/services/draftEdit/craftFlagsHarness';
 
 describe('CraftFlagsUseCase.run', () => {
   it('reads the whole document, protected regions masked, and shows its flags with no quick fix', async () => {
@@ -88,7 +88,7 @@ describe('CraftFlagsUseCase.run', () => {
     if (begun.kind !== 'gesture') {
       throw new Error('no gesture');
     }
-    await useCase.run(begun.gesture, { model: 'placeholder/the-approved-model' });
+    await useCase.run(begun.gesture, { ...APPROVAL, model: 'placeholder/the-approved-model' });
     expect(requests[0].model).toBe('placeholder/the-approved-model');
   });
 
@@ -323,7 +323,7 @@ describe('CraftFlagsUseCase: the reasoning level (2026-10-27)', () => {
         throw new Error('no gesture');
       }
       await useCase.plan(begun.gesture);
-      await useCase.run(begun.gesture, { model: MODEL });
+      await useCase.run(begun.gesture, APPROVAL);
       const [priced] = (port.estimate as jest.Mock).mock.calls[0] as [Record<string, unknown>];
       expect(priced.reasoning).toBe(reasoning);
       expect(requests[0].reasoning).toBe(reasoning);
@@ -374,7 +374,7 @@ describe('CraftFlagsUseCase: the gesture held from its first read (PR #177 F-02)
     documents.close();
     documents.isOpen = true;
 
-    expect(await useCase.run(gesture, { model: MODEL })).toEqual({ kind: 'changed' });
+    expect(await useCase.run(gesture, APPROVAL)).toEqual({ kind: 'changed' });
     expect(pass.flag).not.toHaveBeenCalled();
     expect(annotations.shows).toEqual([]);
   });
@@ -397,7 +397,7 @@ describe('CraftFlagsUseCase: the gesture held from its first read (PR #177 F-02)
     letPricingGo();
     await planned;
 
-    expect(await useCase.run(gesture, { model: MODEL })).toMatchObject({ kind: 'completed', flagged: 1 });
+    expect(await useCase.run(gesture, APPROVAL)).toMatchObject({ kind: 'completed', flagged: 1 });
     expect(annotations.flaggedText()).toEqual(['a chill ran down her spine']);
   });
 
@@ -409,7 +409,7 @@ describe('CraftFlagsUseCase: the gesture held from its first read (PR #177 F-02)
     useCase.release(gesture);
     useCase.release(gesture);
 
-    await expect(useCase.run(gesture, { model: MODEL })).rejects.toThrow('already run or been released');
+    await expect(useCase.run(gesture, APPROVAL)).rejects.toThrow('already run or been released');
     expect(useCase.begin(target(), PASS).kind).toBe('gesture');
   });
 
@@ -420,8 +420,8 @@ describe('CraftFlagsUseCase: the gesture held from its first read (PR #177 F-02)
       throw new Error('no gesture');
     }
     (context.pass.flag as jest.Mock).mockRejectedValueOnce(new Error('prompts missing'));
-    await expect(context.useCase.run(begun.gesture, { model: MODEL })).rejects.toThrow('prompts missing');
-    await expect(context.useCase.run(begun.gesture, { model: MODEL })).rejects.toThrow('already run or been released');
+    await expect(context.useCase.run(begun.gesture, APPROVAL)).rejects.toThrow('prompts missing');
+    await expect(context.useCase.run(begun.gesture, APPROVAL)).rejects.toThrow('already run or been released');
     expect(context.useCase.begin(context.target(), PASS).kind).toBe('gesture');
   });
 
@@ -437,50 +437,23 @@ describe('CraftFlagsUseCase: the gesture held from its first read (PR #177 F-02)
   });
 });
 
-describe('CraftFlagsUseCase: reasoning off on a model that always reasons (PR #181 F-01)', () => {
-  const OFF = { ...PASS, reasoning: 'off' as const };
-
-  function begun(context: ReturnType<typeof setup>) {
-    const gesture = context.useCase.begin(context.target(), OFF);
-    if (gesture.kind !== 'gesture') {
+describe('CraftFlagsUseCase: the approved reasoning budget', () => {
+  it('passes the reasoning budget decision from the approved estimate to the model call', async () => {
+    const context = setup(CHAPTER, []);
+    (context.pass.estimate as jest.Mock).mockResolvedValueOnce({ ...ESTIMATE, reasoningBudgeted: false });
+    const begun = context.useCase.begin(context.target(), PASS);
+    if (begun.kind !== 'gesture') {
       throw new Error('no gesture');
     }
-    return gesture.gesture;
-  }
+    const plan = await context.useCase.plan(begun.gesture);
+    if (plan.kind !== 'ready') {
+      throw new Error(`not ready: ${plan.kind}`);
+    }
 
-  it('asks about the model it priced, at the pass\'s level, before any confirmation', async () => {
-    const context = setup(CHAPTER, []);
-    await context.useCase.plan(begun(context));
-
-    expect(context.pass.refusesReasoning).toHaveBeenCalledWith({ model: MODEL, label: 'chapter-01.md', reasoning: 'off' });
-  });
-
-  it('refuses with no confirmation and nothing sent, naming the model, and ends the gesture', async () => {
-    const context = setup(CHAPTER, []);
-    (context.pass.refusesReasoning as jest.Mock).mockResolvedValueOnce(true);
-
-    expect(await context.useCase.plan(begun(context))).toEqual({ kind: 'reasoning-required', model: MODEL });
-    expect(context.pass.flag).not.toHaveBeenCalled();
-    expect(context.useCase.begin(context.target(), OFF).kind).toBe('gesture');
-  });
-
-  it('shows no confirmation when the lifetime ends while the catalog is read', async () => {
-    const context = setup(CHAPTER, []);
-    (context.pass.refusesReasoning as jest.Mock).mockImplementationOnce(async () => {
-      context.documents.close();
-      context.documents.isOpen = true;
-      return false;
+    await context.useCase.run(begun.gesture, {
+      model: plan.estimate.model,
+      reasoningBudgeted: plan.estimate.reasoningBudgeted
     });
-
-    expect(await context.useCase.plan(begun(context))).toEqual({ kind: 'changed' });
-  });
-
-  it('says what the run says when the approved model is refused at the calls, and shows nothing', async () => {
-    const context = setup(CHAPTER, []);
-    (context.pass.flag as jest.Mock).mockResolvedValueOnce({ kind: 'reasoning-required', model: MODEL });
-    const gesture = begun(context);
-
-    expect(await context.useCase.run(gesture, { model: MODEL })).toEqual({ kind: 'reasoning-required', model: MODEL });
-    expect(context.annotations.shows).toEqual([]);
+    expect(context.pass.flag).toHaveBeenCalledWith(expect.objectContaining({ model: MODEL, reasoningBudgeted: false }));
   });
 });

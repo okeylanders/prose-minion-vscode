@@ -19,6 +19,8 @@ export interface OpenRouterModel {
     completion: string;
   };
   context_length: number;
+  // eslint-disable-next-line @typescript-eslint/naming-convention -- OpenRouter's wire field.
+  supported_parameters?: unknown;
   /**
    * The model's reasoning options, as the catalog gives them; read only
    * through `getCachedAlwaysReasons`. `mandatory: true` marks a model that
@@ -37,13 +39,6 @@ export interface CuratedOpenRouterModel {
   family: string;
   description: string;
 }
-
-/**
- * Curated list of recommended models for prose analysis ( Prose Excerpt Assistant )
- * Updated as of 2026
- * Grouped by provider family and version progression
- */
-export const DEFAULT_CATEGORY_MODEL = 'openai/gpt-oss-120b:nitro';
 
 /**
  * Curated list of models for Category Search.
@@ -639,7 +634,7 @@ export const RECOMMENDED_MODELS: CuratedOpenRouterModel[] = [
     id: 'anthropic/claude-sonnet-5.5',
     name: 'Claude Sonnet 5.5',
     family: 'Claude Sonnet',
-    description: 'Anthropic\'s newest Sonnet model with 1M context. An opt-in choice for everyday prose analysis, writing assistance, and sustained editorial conversations.'
+    description: 'Anthropic\'s newest Sonnet model with 1M context and mandatory reasoning for everyday prose analysis, writing assistance, and sustained editorial conversations.'
   },
   {
     id: 'anthropic/claude-fable-5',
@@ -1403,6 +1398,20 @@ export class OpenRouterModels {
     }
     const mandatory: unknown = (live.reasoning as { mandatory?: unknown }).mandatory;
     return typeof mandatory === 'boolean' ? mandatory : undefined;
+  }
+
+  /** Whether the live model advertises reasoning. Incomplete and offline metadata is unknown. */
+  static getCachedSupportsReasoning(model: string): boolean | undefined {
+    if (this.getCachedAlwaysReasons(model) !== undefined) {
+      return true;
+    }
+    const live = this.findCachedModel(model);
+    const parameters = live?.supported_parameters;
+    if (live?.isFallback || !Array.isArray(parameters) || parameters.length === 0 ||
+      !parameters.every(parameter => typeof parameter === 'string' && parameter.trim().length > 0)) {
+      return undefined;
+    }
+    return parameters.some(parameter => parameter === 'reasoning' || parameter === 'reasoning_effort' || parameter === 'include_reasoning');
   }
 
   private static findCachedModel(model: string): OpenRouterModel | undefined {

@@ -3299,36 +3299,23 @@ when touching Proofread, Craft Flags, or anything that reads, flags, or
   - Both are linear in the document, so they need no budget. A check whose
     work can grow faster than the text charges a budget, as the name check
     does.
-- **Reasoning levels** (2026-10-27; the ADR's reasoning-levels amendment).
-  Proofread and Craft Flags each send a named level (`REASONING_LEVELS`:
-  `off`, `light`, `standard`, `deep`), read at the gesture from
-  `proseMinion.proofread.reasoning` (`light`) and
-  `proseMinion.craftFlags.reasoning` (`standard`) and carried on the pass;
-  the defaults are `DRAFT_EDIT_PASS_POLICIES`' and the manifest's, held
-  together by a sync test. `reasoningRequest` turns a level into the request:
-  `off` is `effort: 'none'`; any other level sends its budget
-  (`PROMPT_BUDGETS.reasoning`) as `reasoning.max_tokens` and adds it to the
-  reply's own ceiling, so thinking never takes the reply's room on a model
-  that honors it. A level is a request, never a guarantee: never depend on a
-  model keeping it. Reasoning tokens a provider reports ride on each call's
-  result and `ExecutionResult.reasoningTokens`, **never `TokenUsage`**, whose
-  fields persisted shapes list exactly. A reply cut off at its ceiling with
-  most of its output spent thinking is rejected in host words naming the
-  setting (`draftEditCeilingRejection`), never salvaged. Every other model
-  scope sends no reasoning setting but the helper's, which asks for `off`
-  ([ADR 2026-11-05](docs/adr/2026-11-05-helper-agent.md) D1, amended
-  2026-11-06); a level belongs to the request, never the model. **`off` is never sent to a model that always reasons** (PR #181
-  F-01): at `off` alone, each pass asks the live catalog
-  (`ReasoningCatalog`, `refusesReasoningOff`) about the exact model it sends
-  to (Proofread's run model, pinned on every chunk; Craft Flags' priced model
-  before the confirmation, and its approved model again before the calls),
-  and a model marked `reasoning.mandatory` is refused with nothing sent
-  (`reasoning-required`), never given another level or model. A catalog that
-  cannot say sends `off` as asked. A new pass with a level asks the same
-  check. The catalog rule lives in `orchestration/ReasoningCatalog.ts`, so
-  the helper reads it without importing Draft Edit; where a pass refuses, the
-  helper sends a model that always reasons the `light` budget on top of its
-  ceiling.
+- **Reasoning levels** (Draft Edit ADR amendments of 2026-10-27 and 2026-11-27).
+  Read each level at the gesture. Proofread defaults to `light` and accepts
+  all four `REASONING_LEVELS`. Craft Flags reads `CRAFT_FLAGS_REASONING_LEVELS`
+  (light, standard, deep) and defaults a historical `off` setting to
+  `standard`. A sync test checks the manifest choices and defaults.
+  For a positive level, `reasoningRequest` adds the requested thinking budget
+  to the reply ceiling. Craft Flags consults the live model catalog and binds
+  the model and budget to its cost confirmation. It omits reasoning when the
+  catalog identifies a model without that capability and uses the requested
+  budget if the catalog cannot tell.
+  Proofread Off sends `effort: 'none'` when available. It refuses that setting
+  on a model marked `reasoning.mandatory`. The helper uses a light budget
+  for a mandatory-reasoning model (helper ADR 2026-11-05 D1).
+  Each call's result and `ExecutionResult.reasoningTokens` carry reported
+  thinking tokens. Persisted `TokenUsage` keeps its existing fields.
+  `draftEditCeilingRejection` explains when thinking consumed most of the
+  output at the ceiling and identifies the setting the writer can adjust.
 - **The prompt and its worked example move together.** `proofreadPrompt.test.ts`
   holds the prompt's category list to `PROOFREAD_CATEGORIES`, and reads the
   example's response through the production frame reader, codec, anchoring

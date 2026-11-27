@@ -12,6 +12,7 @@
 import { renderHook, act } from '@testing-library/react';
 import { useModelsSettings } from '@hooks/domain/useModelsSettings';
 import { MessageType } from '@shared/types';
+import { DEFAULT_MODEL_SELECTIONS } from '@shared/constants/defaultModelSelections';
 import { createMockVSCode } from '@/__tests__/mocks/vscode';
 
 // Mock dependencies
@@ -42,11 +43,11 @@ describe('useModelsSettings', () => {
       const { result } = renderHook(() => useModelsSettings());
 
       expect(result.current.settings).toEqual({
-        assistantModel: 'anthropic/claude-sonnet-5',
-        dictionaryModel: 'anthropic/claude-haiku-4.5',
-        contextModel: 'openai/gpt-5.4',
-        categoryModel: 'openai/gpt-oss-120b:nitro',
-        widgetModel: 'anthropic/claude-sonnet-5',
+        assistantModel: DEFAULT_MODEL_SELECTIONS.assistant,
+        dictionaryModel: DEFAULT_MODEL_SELECTIONS.dictionary,
+        contextModel: DEFAULT_MODEL_SELECTIONS.context,
+        categoryModel: DEFAULT_MODEL_SELECTIONS.category,
+        widgetModel: DEFAULT_MODEL_SELECTIONS.widget,
         includeCraftGuides: true,
         temperature: 0.7,
         maxTokens: 10000,
@@ -83,16 +84,16 @@ describe('useModelsSettings', () => {
       const { result } = renderHook(() => useModelsSettings());
 
       expect(result.current.settings).toEqual({
-        assistantModel: 'anthropic/claude-3-5-sonnet',  // From persisted
-        dictionaryModel: 'anthropic/claude-haiku-4.5',  // Default
-        contextModel: 'openai/gpt-5.4',                 // Default
-        categoryModel: 'openai/gpt-oss-120b:nitro',     // Default
-        widgetModel: 'anthropic/claude-sonnet-5',       // Default
-        includeCraftGuides: true,                       // Default
-        temperature: 0.9,                               // From persisted
-        maxTokens: 10000,                               // Default
+        assistantModel: 'anthropic/claude-3-5-sonnet',
+        dictionaryModel: DEFAULT_MODEL_SELECTIONS.dictionary,
+        contextModel: DEFAULT_MODEL_SELECTIONS.context,
+        categoryModel: DEFAULT_MODEL_SELECTIONS.category,
+        widgetModel: DEFAULT_MODEL_SELECTIONS.widget,
+        includeCraftGuides: true,
+        temperature: 0.9,
+        maxTokens: 10000,
         claudeCacheTtl: '5m',
-        applyContextWindowTrimming: true                // Default
+        applyContextWindowTrimming: true
       });
     });
   });
@@ -113,9 +114,9 @@ describe('useModelsSettings', () => {
       const { result } = renderHook(() => useModelsSettings());
 
       expect(result.current.persistedState).toHaveProperty('modelsSettings');
-      expect(result.current.persistedState.modelsSettings.assistantModel).toBe('anthropic/claude-sonnet-5');
-      expect(result.current.persistedState.modelsSettings.categoryModel).toBe('openai/gpt-oss-120b:nitro');
-      expect(result.current.persistedState.modelsSettings.widgetModel).toBe('anthropic/claude-sonnet-5');
+      expect(result.current.persistedState.modelsSettings.assistantModel).toBe(DEFAULT_MODEL_SELECTIONS.assistant);
+      expect(result.current.persistedState.modelsSettings.categoryModel).toBe(DEFAULT_MODEL_SELECTIONS.category);
+      expect(result.current.persistedState.modelsSettings.widgetModel).toBe(DEFAULT_MODEL_SELECTIONS.widget);
     });
 
     it('should update persistedState when settings change', () => {
@@ -224,7 +225,7 @@ describe('useModelsSettings', () => {
       });
 
       expect(result.current.settings.temperature).toBe(0.9);
-      expect(result.current.settings.assistantModel).toBe('anthropic/claude-sonnet-5'); // Default preserved
+      expect(result.current.settings.assistantModel).toBe(DEFAULT_MODEL_SELECTIONS.assistant);
     });
 
     it('should accept a widget-only settings refresh', () => {

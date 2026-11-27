@@ -1449,6 +1449,26 @@ apart from the reply's own ceiling, named rather than counted, Proofread
 | Scope | **These two passes.** Every other model scope sends no reasoning setting and keeps its model's default. A level belongs to the request, never the model: Craft Flags following the assistant model shares only the model id, so its level never reaches the Workshop. Another scope can take a setting of its own later, with the same levels. |
 | To confirm | The names `reasoning.max_tokens`, `effort: 'none'` (where a model supports it) and `completion_tokens_details.reasoning_tokens` are OpenRouter's, as the PR #181 review confirmed from its reasoning documentation on 2026-10-27 (the build container cannot reach it). The writer's acceptance pass runs one Proofread chunk at `off` and one at `light` on the default model and reads both sidecars or log lines, before the release. |
 
+## Amendment 2026-11-27 — Craft Flags reasons when available
+
+Okey chose reasoning for each Craft Flags category because a line-level craft
+judgment needs context. The writer sets its depth to Light, Standard or Deep.
+Standard is the default. The existing setting key remains valid and a previously
+saved `off` value resolves to Standard at the point of use. The extension does
+not rewrite user settings. Proofread and the helper each retain their own policy.
+
+The default Craft Flags model follows Assistant to Claude Sonnet 5.5. The
+OpenRouter catalog marks that model as requiring reasoning. A writer can
+continue to choose a separate Craft Flags model. If the catalog identifies
+that model as lacking reasoning support, the pass can run with its ordinary
+reply ceiling. The estimate and the request must agree on the model, the
+reply allowance and whether a reasoning budget applies. The confirmation binds
+that budget to the model the estimate priced. If the catalog is unavailable
+or cannot identify support, the pass requests the selected budget and records
+the uncertainty in the Output channel. The provider can accept the request or
+return its normal refusal.
+[OpenRouter catalog](https://openrouter.ai/api/v1/models)
+
 ## Amendment 2026-10-28: PR #183 review (integration)
 
 The aggregate review of `epic/lightbox` into `main` found two Draft Edit
