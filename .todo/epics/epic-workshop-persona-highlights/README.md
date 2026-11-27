@@ -5,6 +5,17 @@
 **Priority:** Medium
 **Origin:** Okey, 2026-11-26
 
+## Sprint branches
+
+Each sprint targets `epic/workshop-persona-highlights`. The common base contains the reply codec, quote placement rules and the editor service contract.
+
+| Branch | Deliverable | Review case |
+|---|---|---|
+| `sprint/highlights-persona` | Persona instructions and writer help | Ask for any passage or accept an offer in a file-backed room |
+| `sprint/highlights-editor` | VS Code diagnostics, per-room ownership and window-wide Clear All | Stack sets in one file, edit their text, then clear one set |
+| `sprint/highlights-settlement` | Run binding, committed reply, persistence, projection and outcomes | Switch rooms during a reply, reload an older session and inspect the exported transcript |
+| `sprint/highlights-controls` | Footer actions, routing and lifecycle cleanup | Show a retained set after Clear or reload, then rewind away its turn |
+
 ## In Okey's words
 
 > I literally just want to say whatever about whatever and the persona can
