@@ -308,6 +308,18 @@ describe('Workshop routes — Selected Text', () => {
       expect(restoredDrafts()).toEqual(['Is the silence doing enough here?']);
     });
 
+    it.each(['', 'snap-expired'])('retains other pills on an attachment-only send with an invalid selection (%p)', async (id) => {
+      await harness.pin();
+      const staged = harness.session.addMessageAttachment({ label: 'Pasted text', words: 2,
+        content: 'Pasted material', pastedText: { truncated: false } });
+      expect(staged.ok).toBe(true);
+      await send('', { selectedTextSnapshotId: id, roomRevision: harness.session.readRoomRevision() });
+      expect(harness.service.startWorkshopPersonaConversation).not.toHaveBeenCalled();
+      expect(writerTurns()).toEqual([]);
+      expect(errors()).toEqual([WORKSHOP_SELECTED_TEXT_CHANGED_MESSAGE]);
+      expect(harness.session.collectMessageAttachments()).toHaveLength(1);
+    });
+
     it('refuses a send that raced a full message, with the reason, and keeps the draft', async () => {
       await harness.pin();
       const limit = PROMPT_BUDGETS.workshopThreadArtifacts.itemsPerMessage;

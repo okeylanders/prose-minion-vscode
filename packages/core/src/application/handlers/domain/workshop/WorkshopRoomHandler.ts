@@ -618,7 +618,8 @@ export class WorkshopRoomHandler {
       return;
     }
 
-    if (!message.payload.selectedTextSnapshotId && message.payload.roomRevision !== undefined && message.payload.roomRevision !== this.session.readRoomRevision()) {
+    if (message.payload.selectedTextSnapshotId === undefined && message.payload.roomRevision !== undefined
+      && message.payload.roomRevision !== this.session.readRoomRevision()) {
       this.sendError('workshop.send_message', 'The Workshop room changed before the message was sent.');
       this.postComposerDraftRestored(text);
       return;
