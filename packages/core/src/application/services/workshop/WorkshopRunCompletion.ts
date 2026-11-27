@@ -65,7 +65,7 @@ import {
 } from '@/application/services/workshop/todos/WorkshopReplyTodoStatus';
 import { settleWorkshopReplyLocations, type WorkshopReplyLocationsContext } from '@/application/services/workshop/locations/WorkshopReplyLocations';
 import { settleWorkshopReplyPassageSearch, type WorkshopReplyPassageSearchContext } from '@/application/services/workshop/passageSearch/WorkshopReplyPassageSearch';
-import { displayCommittedWorkshopHighlights, type WorkshopHighlightTarget } from './highlights/WorkshopReplyHighlights';
+import { displayCommittedWorkshopHighlights, type WorkshopHighlightChoice } from './highlights/WorkshopReplyHighlights';
 import { isAgentRunIncomplete } from '@orchestration/AgentRunContracts';
 import { workshopWidgetLabel } from '@shared/constants/workshopWidgets';
 import {
@@ -172,7 +172,7 @@ export interface WorkshopRunCompletionInput {
    * is still stripped, and dropped as `reactions-off`.
    */
   reactionsOpen?: boolean;
-  highlights?: WorkshopHighlightTarget;
+  highlights?: WorkshopHighlightChoice;
   /**
    * The reply's to-do status frames, resolved before completion (ADR
    * 2026-11-19 D5): the open room's ids and each saved session named, read.
@@ -320,8 +320,9 @@ export function completeWorkshopRun(input: WorkshopRunCompletionInput): Workshop
     || trailers.reaction !== undefined || controls.editOffers !== undefined || trailers.todos === true
     || trailers.locations === true || trailers.passageSearch === true || controls.highlights !== undefined) && strippedDisplayContent.trim().length === 0;
   const target = input.highlights;
-  const highlightTarget = target?.requestId === requestId && target.roomRevision === session.readRoomRevision()
+  const highlightChoice = target?.requestId === requestId && target.reply === result.content && target.roomRevision === session.readRoomRevision()
     && target.excerptVersion === session.getExcerptVersion() && session.personaReplyReactionTarget(requestId) ? target : undefined;
+  const highlightTarget = highlightChoice?.kind === 'approved' ? highlightChoice : undefined;
   const keepsHighlights = highlightTarget !== undefined && controls.highlights?.set !== undefined;
   const kinds = { highlights: keepsHighlights, memory: trailers.memory, fileEdits: trailers.fileEdits, todos: trailers.todos, locations: trailers.locations, passageSearch: trailers.passageSearch };
   // R1: a reply that was only its reaction is drawn as a slim line; with cards or a widget it is a reply.
@@ -387,7 +388,7 @@ export function completeWorkshopRun(input: WorkshopRunCompletionInput): Workshop
     return undefined;
   }
   if (controls.highlights && (turn.participant === 'host' || turn.participant === 'guest')) {
-    const counts = displayCommittedWorkshopHighlights(turn, controls.highlights, highlightTarget);
+    const counts = displayCommittedWorkshopHighlights(turn, controls.highlights, highlightChoice);
     turn = session.recordHighlightOutcome(turn.id, counts) ?? turn;
     input.log(`Workshop highlights: ${JSON.stringify(counts)}`);
   }

@@ -186,7 +186,7 @@ export interface WorkshopPassageSearchTrailerOutcomes {
   dropped: WorkshopTrailerDrop<WorkshopPassageSearchTrailerDropReason>[];
 }
 
-export const WORKSHOP_HIGHLIGHT_FRAME_REASONS = ['malformed', 'misplaced', 'extra', 'unavailable'] as const;
+export const WORKSHOP_HIGHLIGHT_FRAME_REASONS = ['malformed', 'misplaced', 'extra', 'unavailable', 'skipped'] as const;
 export const WORKSHOP_HIGHLIGHT_PLACE_REASONS = ['unanchored', 'ambiguous', 'unordered', 'protected', 'display-failed'] as const;
 export type WorkshopHighlightFrameReason = typeof WORKSHOP_HIGHLIGHT_FRAME_REASONS[number];
 
