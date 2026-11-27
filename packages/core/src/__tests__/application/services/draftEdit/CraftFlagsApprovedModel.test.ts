@@ -74,7 +74,8 @@ async function createHost(values: Record<string, unknown>) {
       return `SYSTEM ${files.join(' + ')}`;
     }
   };
-  const service = new CraftFlagsService(manager, promptLoader as never, prices, { supportsReasoning: async () => undefined }, { capture: jest.fn() } as never, { present: jest.fn() }, log);
+  const supportsReasoning = jest.fn(async (model: string) => model === CHEAP);
+  const service = new CraftFlagsService(manager, promptLoader as never, prices, { supportsReasoning }, { capture: jest.fn() } as never, { present: jest.fn() }, log);
   const documents = new FakeDocuments(TEXT);
   const useCase = new CraftFlagsUseCase(service, documents, new FakeAnnotations(documents), log);
   const target = { uri: documents.uri, version: documents.version, text: TEXT, languageId: 'markdown', relativePath: 'chapter-01.md' };
@@ -83,7 +84,7 @@ async function createHost(values: Record<string, unknown>) {
     Object.assign(values, changes);
     await manager.refreshModelSelections();
   };
-  return { manager, useCase, target, sent, pricing, prompts, repick };
+  return { manager, useCase, target, sent, pricing, prompts, repick, supportsReasoning };
 }
 
 describe('Craft Flags runs at the model the writer approved (PR #177 F-01)', () => {
@@ -114,7 +115,8 @@ describe('Craft Flags runs at the model the writer approved (PR #177 F-01)', () 
     await during.confirmation?.();
     const promptsHeld = held();
     host.prompts.gate = promptsHeld.promise;
-    const ran = host.useCase.run(begun.gesture, { model: plan.estimate.model });
+    const { model, reasoningBudgeted } = plan.estimate;
+    const ran = host.useCase.run(begun.gesture, { model, reasoningBudgeted });
     await during.prompts?.();
     promptsHeld.release();
     return { plan, outcome: await ran };
@@ -134,7 +136,8 @@ describe('Craft Flags runs at the model the writer approved (PR #177 F-01)', () 
     });
 
     expect(host.manager.getEngine('craft')?.getModel()).toBe(EXPENSIVE);
-    expect(plan.estimate).toMatchObject({ model: CHEAP });
+    expect(plan.estimate).toMatchObject({ model: CHEAP, reasoningBudgeted: true });
+    expect(host.supportsReasoning.mock.calls).toEqual([[CHEAP]]);
     expect(plan.estimate.usd).toBeLessThan(0.01);
     expect(outcome.kind).toBe('completed');
     expect(host.sent).toEqual(PASS.categories.map(() => CHEAP));

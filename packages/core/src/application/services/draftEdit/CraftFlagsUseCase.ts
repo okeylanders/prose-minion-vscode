@@ -56,7 +56,7 @@ import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { countWords } from '@/utils/textUtils';
 import { findProtectedRegions, maskProtectedRegions } from '@/utils/draftEdit/protectedRegions';
 import { findSpeechSpansOutsideProtected } from '@/utils/draftEdit/speechSpans';
-import type { CraftFlagsEstimate, CraftFlagsRunRequest, CraftFlagsRunResult } from '@services/craftFlags/CraftFlagsService';
+import type { CraftFlagsEstimate, CraftFlagsModelEstimate, CraftFlagsRunRequest, CraftFlagsRunResult } from '@services/craftFlags/CraftFlagsService';
 import { moveIssues, outsideProtected } from '@/application/services/draftEdit/draftEditIssues';
 import {
   craftFlagAnnotation,
@@ -71,7 +71,7 @@ import { continuitySections, withinOneSection } from '@/application/services/dra
 /** The Craft Flags pass as this use case needs it: a passage in, passage-relative flags out, and their price before. */
 export interface CraftFlagsPassPort {
   estimate(request: Pick<CraftFlagsRunRequest, 'passage' | 'categories' | 'breaks' | 'reasoning'>): Promise<CraftFlagsEstimate>;
-  flag(request: CraftFlagsRunRequest): Promise<CraftFlagsRunResult>;
+  flag(request: CraftFlagsRunRequest & CraftFlagsApproval): Promise<CraftFlagsRunResult>;
 }
 
 /** The writer's gesture, held from its first read until it runs or is released (PR #177 F-02). Opaque to the host. */
@@ -98,15 +98,12 @@ export type CraftFlagsRunPlan =
       readonly reads: 'document' | 'selection';
       /** Whether the run shows only a selection's flags. */
       readonly selection: boolean;
-      /** The price of the model it names, which is the model a run approved from it goes to. */
-      readonly estimate: CraftFlagsEstimate & { readonly model: string };
+      /** The model and reasoning decision the approved run uses. */
+      readonly estimate: CraftFlagsModelEstimate;
     };
 
 /** What the writer approved: the model and whether the estimate included reasoning. */
-export interface CraftFlagsApproval {
-  readonly model: string;
-  readonly reasoningBudgeted?: boolean;
-}
+export type CraftFlagsApproval = Pick<CraftFlagsModelEstimate, 'model' | 'reasoningBudgeted'>;
 
 interface Held {
   readonly target: DraftEditTarget;
@@ -184,8 +181,7 @@ export class CraftFlagsUseCase {
       this.release(gesture);
       return { kind: 'changed' };
     }
-    const { model } = estimate;
-    if (model === undefined) {
+    if (estimate.model === undefined) {
       this.release(gesture);
       return { kind: 'unconfigured' };
     }
@@ -194,7 +190,7 @@ export class CraftFlagsUseCase {
       words: held.prepared.words,
       reads: held.prepared.reads,
       selection: held.target.range !== undefined,
-      estimate: { ...estimate, model }
+      estimate
     };
   }
 
@@ -230,7 +226,7 @@ export class CraftFlagsUseCase {
       breaks: held.breaks,
       label,
       model: approval.model,
-      ...(approval.reasoningBudgeted === undefined ? {} : { reasoningBudgeted: approval.reasoningBudgeted }),
+      reasoningBudgeted: approval.reasoningBudgeted,
       ...(held.pass.reasoning ? { reasoning: held.pass.reasoning } : {}),
       stillCurrent: () => !watch.ended(),
       ...(signal ? { signal } : {})

@@ -290,12 +290,15 @@ describe('CraftFlagsService.estimate', () => {
   });
 
   it('leaves the price out when the catalog has none, or cannot be read, and names no model without an engine', async () => {
-    expect(await createService([], { prices: { pricing: async () => undefined } }).service.estimate(request)).not.toHaveProperty('usd');
+    const unknownPrice = await createService([], { prices: { pricing: async () => undefined } }).service.estimate(request);
+    expect(unknownPrice).toMatchObject({ model: 'placeholder/craft-model', reasoningBudgeted: true });
+    expect(unknownPrice).not.toHaveProperty('usd');
     const failing = createService([], { prices: { pricing: async () => { throw new Error('offline'); } } });
     expect(await failing.service.estimate(request)).not.toHaveProperty('usd');
     expect(failing.log.appendLine).toHaveBeenCalledWith(expect.stringContaining('offline'));
     const unconfigured = await createService([], { engine: false }).service.estimate(request);
     expect(unconfigured).not.toHaveProperty('model');
+    expect(unconfigured).not.toHaveProperty('reasoningBudgeted');
     expect(unconfigured).not.toHaveProperty('usd');
   });
 });

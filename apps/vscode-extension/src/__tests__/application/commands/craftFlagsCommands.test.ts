@@ -17,7 +17,7 @@ jest.mock('@prose-minion/core', () => ({
   describeCraftFlagsPlan: jest.requireActual('@/application/services/draftEdit/craftFlagsSummary').describeCraftFlagsPlan
 }));
 
-import type { CraftFlagsBegin, CraftFlagsGesture, CraftFlagsOutcome, CraftFlagsRunPlan, DraftEditTarget } from '@prose-minion/core';
+import type { CraftFlagsApproval, CraftFlagsBegin, CraftFlagsGesture, CraftFlagsOutcome, CraftFlagsRunPlan, DraftEditTarget } from '@prose-minion/core';
 import { OPEN_SETTINGS_COMMAND, SHOW_PROBLEMS_COMMAND, type ProofreadEditorSnapshot } from '@app/application/commands/proofreadCommands';
 import {
   clearCraftFlags,
@@ -30,7 +30,7 @@ import {
 const TEXT = 'When the Rabbit took a watch out of its waistcoat-pocket, a chill ran down her spine.';
 const READY: CraftFlagsRunPlan = {
   kind: 'ready', words: 16, reads: 'document', selection: false,
-  estimate: { model: 'anthropic/claude-sonnet-5', calls: 1, inputTokens: 900, outputTokens: 1500, usd: 0.031 }
+  estimate: { model: 'anthropic/claude-sonnet-5', reasoningBudgeted: true, calls: 1, inputTokens: 900, outputTokens: 1500, usd: 0.031 }
 };
 const COMPLETED: CraftFlagsOutcome = {
   kind: 'completed', flagged: 1, reads: 'document',
@@ -78,7 +78,7 @@ function setup(options: {
       return options.begin ?? { kind: 'gesture', gesture };
     }),
     plan: jest.fn(async (_gesture: CraftFlagsGesture): Promise<CraftFlagsRunPlan> => options.plan ?? READY),
-    run: jest.fn(async (_gesture: CraftFlagsGesture, _approval: { model: string }): Promise<CraftFlagsOutcome> => options.outcome ?? COMPLETED),
+    run: jest.fn(async (_gesture: CraftFlagsGesture, _approval: CraftFlagsApproval): Promise<CraftFlagsOutcome> => options.outcome ?? COMPLETED),
     release: jest.fn((_gesture: CraftFlagsGesture) => {
       calls.push('release');
     }),
@@ -120,7 +120,7 @@ describe('Craft Flags', () => {
       { uri: 'file:///workspace/chapter-01.md', version: 4, text: TEXT, languageId: 'markdown', relativePath: 'chapter-01.md', range: selection },
       { kind: 'craft', categories: ['cliche', 'register', 'gesture', 'continuity'], reasoning: 'standard' }
     );
-    expect(runner.run).toHaveBeenCalledWith(gesture, { model: 'anthropic/claude-sonnet-5' }, expect.any(AbortSignal));
+    expect(runner.run).toHaveBeenCalledWith(gesture, { model: 'anthropic/claude-sonnet-5', reasoningBudgeted: true }, expect.any(AbortSignal));
     expect(calls[2]).toBe('progress:Craft Flags: reading chapter-01.md (selection)…');
     expect(calls[calls.length - 1]).toBe('release');
     expect(result).toEqual({ kind: 'ran', outcome: COMPLETED });

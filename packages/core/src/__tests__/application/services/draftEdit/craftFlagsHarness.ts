@@ -24,7 +24,8 @@ export const CHAPTER = [
 
 export const PASS: CraftFlagsPass = { kind: 'craft', categories: [...CRAFT_FLAG_CATEGORIES] };
 export const MODEL = 'placeholder/craft-model';
-export const ESTIMATE = { model: MODEL, calls: 1, inputTokens: 900, outputTokens: 1500, usd: 0.03 };
+export const APPROVAL = { model: MODEL, reasoningBudgeted: true };
+export const ESTIMATE = { ...APPROVAL, calls: 1, inputTokens: 900, outputTokens: 1500, usd: 0.03 };
 
 export const flag = (quote: string, { before, ...extra }: Partial<CraftFlagFinding> & { before?: string } = {}): CraftFlagFinding => ({
   anchor: { quote, ...(before ? { before } : {}) },
@@ -64,13 +65,13 @@ export function setup(
     relativePath: 'chapter-01.md',
     ...(range ? { range } : {})
   });
-  /** A gesture begun, priced and run at the approved model, as the command does. */
+  /** Run a gesture with the fixture's approval. */
   const runOnce = async (at: DraftEditTarget = target(), signal?: AbortSignal): Promise<CraftFlagsOutcome> => {
     const begun = useCase.begin(at, PASS);
     if (begun.kind !== 'gesture') {
       return begun;
     }
-    return useCase.run(begun.gesture, { model: MODEL }, signal);
+    return useCase.run(begun.gesture, APPROVAL, signal);
   };
   return { documents, annotations, pass, requests, log, useCase, target, runOnce };
 }

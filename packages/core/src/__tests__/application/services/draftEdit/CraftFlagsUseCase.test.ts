@@ -12,7 +12,7 @@ import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import type { CraftFlagsCallResult, CraftFlagsRunRequest } from '@services/craftFlags/CraftFlagsService';
 import { CRAFT_FLAGS_CLOSING_SENTINEL, CRAFT_FLAGS_OPENING_SENTINEL, decodeCraftFlagsReply, readCraftFlagsFrame } from '@services/craftFlags/CraftFlagsResponseCodec';
 import { withPhraseScanLimit } from '@/__tests__/utils/craftFlags/phraseScanLimit';
-import { CHAPTER, ESTIMATE, MODEL, PASS, flag, rangeOf, read, setup } from '@/__tests__/application/services/draftEdit/craftFlagsHarness';
+import { APPROVAL, CHAPTER, ESTIMATE, MODEL, PASS, flag, rangeOf, read, setup } from '@/__tests__/application/services/draftEdit/craftFlagsHarness';
 
 describe('CraftFlagsUseCase.run', () => {
   it('reads the whole document, protected regions masked, and shows its flags with no quick fix', async () => {
@@ -88,7 +88,7 @@ describe('CraftFlagsUseCase.run', () => {
     if (begun.kind !== 'gesture') {
       throw new Error('no gesture');
     }
-    await useCase.run(begun.gesture, { model: 'placeholder/the-approved-model' });
+    await useCase.run(begun.gesture, { ...APPROVAL, model: 'placeholder/the-approved-model' });
     expect(requests[0].model).toBe('placeholder/the-approved-model');
   });
 
@@ -323,7 +323,7 @@ describe('CraftFlagsUseCase: the reasoning level (2026-10-27)', () => {
         throw new Error('no gesture');
       }
       await useCase.plan(begun.gesture);
-      await useCase.run(begun.gesture, { model: MODEL });
+      await useCase.run(begun.gesture, APPROVAL);
       const [priced] = (port.estimate as jest.Mock).mock.calls[0] as [Record<string, unknown>];
       expect(priced.reasoning).toBe(reasoning);
       expect(requests[0].reasoning).toBe(reasoning);
@@ -374,7 +374,7 @@ describe('CraftFlagsUseCase: the gesture held from its first read (PR #177 F-02)
     documents.close();
     documents.isOpen = true;
 
-    expect(await useCase.run(gesture, { model: MODEL })).toEqual({ kind: 'changed' });
+    expect(await useCase.run(gesture, APPROVAL)).toEqual({ kind: 'changed' });
     expect(pass.flag).not.toHaveBeenCalled();
     expect(annotations.shows).toEqual([]);
   });
@@ -397,7 +397,7 @@ describe('CraftFlagsUseCase: the gesture held from its first read (PR #177 F-02)
     letPricingGo();
     await planned;
 
-    expect(await useCase.run(gesture, { model: MODEL })).toMatchObject({ kind: 'completed', flagged: 1 });
+    expect(await useCase.run(gesture, APPROVAL)).toMatchObject({ kind: 'completed', flagged: 1 });
     expect(annotations.flaggedText()).toEqual(['a chill ran down her spine']);
   });
 
@@ -409,7 +409,7 @@ describe('CraftFlagsUseCase: the gesture held from its first read (PR #177 F-02)
     useCase.release(gesture);
     useCase.release(gesture);
 
-    await expect(useCase.run(gesture, { model: MODEL })).rejects.toThrow('already run or been released');
+    await expect(useCase.run(gesture, APPROVAL)).rejects.toThrow('already run or been released');
     expect(useCase.begin(target(), PASS).kind).toBe('gesture');
   });
 
@@ -420,8 +420,8 @@ describe('CraftFlagsUseCase: the gesture held from its first read (PR #177 F-02)
       throw new Error('no gesture');
     }
     (context.pass.flag as jest.Mock).mockRejectedValueOnce(new Error('prompts missing'));
-    await expect(context.useCase.run(begun.gesture, { model: MODEL })).rejects.toThrow('prompts missing');
-    await expect(context.useCase.run(begun.gesture, { model: MODEL })).rejects.toThrow('already run or been released');
+    await expect(context.useCase.run(begun.gesture, APPROVAL)).rejects.toThrow('prompts missing');
+    await expect(context.useCase.run(begun.gesture, APPROVAL)).rejects.toThrow('already run or been released');
     expect(context.useCase.begin(context.target(), PASS).kind).toBe('gesture');
   });
 

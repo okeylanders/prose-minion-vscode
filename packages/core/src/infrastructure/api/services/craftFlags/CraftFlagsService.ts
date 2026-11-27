@@ -114,14 +114,13 @@ export interface CraftFlagsRunRequest {
   /** Names the run in logs and recovery files: a path, never the text. */
   readonly label: string;
   /**
-   * The model the writer approved with its price (the estimate's): every call
-   * goes to it, whatever the craft engine's model is by dispatch (PR #177
-   * F-01).
+   * Every call goes to this model. A priced run uses the model from the
+   * approved estimate even if the craft engine's model changes (PR #177 F-01).
    */
   readonly model: string;
   /** How much the model may think per call (2026-10-27); absent, the pass's default. Priced in the estimate. */
   readonly reasoning?: ReasoningLevel;
-  /** Whether the approved price included reasoning, if this run had an estimate. */
+  /** Whether the approved estimate included reasoning. Direct unpriced calls resolve support themselves. */
   readonly reasoningBudgeted?: boolean;
   /**
    * Whether the gesture's document is still the lifetime it read: asked once
@@ -132,17 +131,26 @@ export interface CraftFlagsRunRequest {
   readonly signal?: AbortSignal;
 }
 
-export interface CraftFlagsEstimate {
-  /** The model the calls are priced for, and go to once approved; absent with no key. */
-  readonly model?: string;
+interface CraftFlagsEstimateCounts {
   readonly calls: number;
   readonly inputTokens: number;
   readonly outputTokens: number;
-  /** Whether the estimate included reasoning. Absent without a model. */
-  readonly reasoningBudgeted?: boolean;
+}
+
+export interface CraftFlagsModelEstimate extends CraftFlagsEstimateCounts {
+  /** The model the calls are priced for and go to once approved. */
+  readonly model: string;
+  /** Whether the estimate included reasoning. */
+  readonly reasoningBudgeted: boolean;
   /** Absent when the catalog has no live prices for the model. */
   readonly usd?: number;
 }
+
+export type CraftFlagsEstimate = CraftFlagsModelEstimate | (CraftFlagsEstimateCounts & {
+  readonly model?: never;
+  readonly reasoningBudgeted?: never;
+  readonly usd?: never;
+});
 
 export type CraftFlagsCallResult =
   | {
@@ -183,7 +191,7 @@ export class CraftFlagsService {
   async estimate(request: Pick<CraftFlagsRunRequest, 'passage' | 'categories' | 'breaks' | 'reasoning'>): Promise<CraftFlagsEstimate> {
     await this.aiResourceManager.ensureInitialized();
     // Read once, before anything is awaited: the price and the confirmation name this model, and the run goes to it.
-    const model = this.aiResourceManager.getEngine(DRAFT_EDIT_PASS_POLICIES.craft.modelScope)?.getModel() || undefined;
+    const model = this.aiResourceManager.getEngine(DRAFT_EDIT_PASS_POLICIES.craft.modelScope)?.getModel();
     let inputTokens = 0;
     for (const category of request.categories) {
       const systemMessage = await this.systemMessage(category);
@@ -192,17 +200,22 @@ export class CraftFlagsService {
         { role: 'user', content: buildCraftFlagsMessage(category, request.passage, request.breaks) }
       ]);
     }
-    const reasoningBudgeted = model ? await this.shouldBudgetReasoning(model) : undefined;
+    const calls = request.categories.length;
+    const typicalOutput = PROMPT_BUDGETS.craftFlags.typicalOutputTokens;
+    if (!model) {
+      return { calls, inputTokens, outputTokens: calls * typicalOutput };
+    }
+    const reasoningBudgeted = await this.shouldBudgetReasoning(model);
     // Typical thinking is half the level's budget, an assumption for pricing.
     const thinking = reasoningBudgeted ? Math.round(reasoningBudget(craftFlagsReasoningLevelOf(request.reasoning)) / 2) : 0;
-    const outputTokens = request.categories.length * (PROMPT_BUDGETS.craftFlags.typicalOutputTokens + thinking);
-    const pricing = model ? await this.pricingOf(model) : undefined;
+    const outputTokens = calls * (typicalOutput + thinking);
+    const pricing = await this.pricingOf(model);
     return {
-      ...(model ? { model } : {}),
-      calls: request.categories.length,
+      model,
+      calls,
       inputTokens,
       outputTokens,
-      ...(reasoningBudgeted === undefined ? {} : { reasoningBudgeted }),
+      reasoningBudgeted,
       ...(pricing ? { usd: inputTokens * pricing.promptUsdPerToken + outputTokens * pricing.completionUsdPerToken } : {})
     };
   }

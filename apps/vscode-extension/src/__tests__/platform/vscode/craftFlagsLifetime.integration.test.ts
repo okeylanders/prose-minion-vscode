@@ -151,7 +151,7 @@ const CHILL = {
   kind: 'cliche' as const,
   why: 'A borrowed shiver stands in for what the watch means to her.'
 };
-const ESTIMATE = { model: 'placeholder/craft-model', calls: 1, inputTokens: 900, outputTokens: 1500, usd: 0.03 };
+const ESTIMATE = { model: 'placeholder/craft-model', reasoningBudgeted: true, calls: 1, inputTokens: 900, outputTokens: 1500, usd: 0.03 };
 
 /** The command over the real adapters, its price and its confirmation each held until the test lets them go. */
 function start(document: FakeDocument) {

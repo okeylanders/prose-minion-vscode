@@ -125,7 +125,7 @@ export async function runCraftFlags(host: CraftFlagsCommandHost, runner: CraftFl
       return { kind: 'declined' };
     }
     const { model, reasoningBudgeted } = plan.estimate;
-    const approval: CraftFlagsApproval = { model, ...(reasoningBudgeted === undefined ? {} : { reasoningBudgeted }) };
+    const approval: CraftFlagsApproval = { model, reasoningBudgeted };
     const outcome = await host.withProgress(
       `Craft Flags: reading ${editor.label}${editor.selection ? ' (selection)' : ''}…`,
       (signal) => runner.run(gesture, approval, signal)
