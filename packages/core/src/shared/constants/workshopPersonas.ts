@@ -142,6 +142,10 @@ export const WORKSHOP_TODO_STATUS_PROMPT_PATH =
 export const WORKSHOP_PASSAGE_SEARCH_REQUEST_PROMPT_PATH =
   'workshop-personas/passage-search-request.md';
 
+/** The ask-only highlights trailer, available to hosts and guests with a file-backed excerpt. */
+export const WORKSHOP_HIGHLIGHTS_PROMPT_PATH =
+  'workshop-personas/highlights.md';
+
 /**
  * The `memory.*` grammar (ADR 2026-11-04 D1, D8): in the system prompt
  * only while project memory is open (the mode on and the workspace
@@ -283,7 +287,9 @@ export function workshopPersonaSystemPromptPaths(
     ...(participant && options.fileEdits ? [WORKSHOP_FILE_EDIT_PROPOSALS_PROMPT_PATH, WORKSHOP_REPLY_EDIT_OFFERS_PROMPT_PATH] : []),
     // A persona may mark the writer's to-dos, here and in saved sessions (ADR 2026-11-19 D2): host and guest, always.
     // And may ask for a passage search, which only the writer runs (ADR 2026-11-20 D16).
-    ...(participant ? [WORKSHOP_TODO_STATUS_PROMPT_PATH, WORKSHOP_PASSAGE_SEARCH_REQUEST_PROMPT_PATH] : []),
+    ...(participant
+      ? [WORKSHOP_TODO_STATUS_PROMPT_PATH, WORKSHOP_PASSAGE_SEARCH_REQUEST_PROMPT_PATH, WORKSHOP_HIGHLIGHTS_PROMPT_PATH]
+      : []),
     // Unconditional capability grammars for host and guest alike (ADR 2026-11-17 D16).
     ...(participant
       ? [WORKSHOP_HELP_CAPABILITY_PROMPT_PATH, WORKSHOP_LOCATIONS_CAPABILITY_PROMPT_PATH,
