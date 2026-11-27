@@ -17,6 +17,8 @@ const reply: WorkshopTurn = {
 };
 
 function rig() {
+  const tabCloseEvents: string[] = [];
+  const disposeCapture = jest.fn();
   const room = new WorkshopOpenRoomInstance(jest.fn());
   const turns = new Map([[reply.id, reply], ['turn-3', { ...reply, id: 'turn-3' }]]);
   let revision = 9;
@@ -26,6 +28,10 @@ function rig() {
     readHighlightTurnIds: () => new Set(turns.keys())
   };
   const editor = {
+    captureTabClosures: jest.fn(() => {
+      const start = tabCloseEvents.length;
+      return { current: (fsPath: string) => !tabCloseEvents.includes(fsPath, start), dispose: disposeCapture };
+    }),
     clearGeneration: 0, showOpen: jest.fn(), clear: jest.fn(), retain: jest.fn(),
     show: jest.fn<ReturnType<WorkshopHighlightEditor['show']>, Parameters<WorkshopHighlightEditor['show']>>()
       .mockResolvedValue({ placed: 1, dropped: { ambiguous: 0, unanchored: 0, unordered: 0, protected: 0 } })
@@ -47,7 +53,7 @@ function rig() {
       room.replaced();
     }
   };
-  return { editor, authorizeExcerptReread, handler, turns, status, send, replace };
+  return { editor, authorizeExcerptReread, handler, turns, status, send, replace, disposeCapture, tabCloseEvents };
 }
 
 describe('Workshop highlight gestures and room lifetime', () => {
@@ -75,6 +81,7 @@ describe('Workshop highlight gestures and room lifetime', () => {
     expect(r.editor.show).not.toHaveBeenCalled();
     expect(r.editor.clear).not.toHaveBeenCalled();
     expect(r.status.mock.calls.flat().join(' ')).not.toMatch(/private|chapter/);
+    expect(r.disposeCapture).toHaveBeenCalledTimes(1);
   });
 
   it.each(['clear', 'clear all', 'rewind', 'remove', 'reopen', 'dispose'] as const)('%s supersedes a pending authorization', async (event) => {
@@ -94,6 +101,40 @@ describe('Workshop highlight gestures and room lifetime', () => {
     await pending;
     expect(r.editor.show).not.toHaveBeenCalled();
     expect(r.status).not.toHaveBeenCalled();
+  });
+
+  it('honors the last tab close during authorization, including when the saved source moved', async () => {
+    const r = rig();
+    let authorize!: (answer: WorkshopExcerptRereadAuthorization) => void;
+    r.authorizeExcerptReread.mockImplementationOnce(() => new Promise((done) => { authorize = done; }));
+    const pending = r.send(SHOW);
+    expect(r.editor.captureTabClosures).toHaveBeenCalledTimes(1);
+    // The current host resolves /current/chapter.md, although the saved URI names /old/chapter.md.
+    r.tabCloseEvents.push(authorized.fsPath);
+    authorize(authorized);
+    await pending;
+    expect(r.editor.show).not.toHaveBeenCalled();
+    expect(r.status).not.toHaveBeenCalled();
+    expect(r.disposeCapture).toHaveBeenCalledTimes(1);
+
+    // A later explicit Show can open the source even though it started closed.
+    await r.send(SHOW);
+    expect(r.editor.show).toHaveBeenCalledTimes(1);
+    expect(r.disposeCapture).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps monitoring the authorized path through Show and ignores unrelated tab closes', async () => {
+    const r = rig();
+    r.editor.show.mockImplementationOnce(async (_id, fsPath, _persona, _set, current) => {
+      r.tabCloseEvents.push('/other.md');
+      expect(current()).toBe(true);
+      r.tabCloseEvents.push(fsPath);
+      expect(current()).toBe(false);
+      return undefined;
+    });
+    await r.send(SHOW);
+    expect(r.status).not.toHaveBeenCalled();
+    expect(r.disposeCapture).toHaveBeenCalledTimes(1);
   });
 
   it('checks membership again after opening, and withdraws only removed sets on rewind', async () => {

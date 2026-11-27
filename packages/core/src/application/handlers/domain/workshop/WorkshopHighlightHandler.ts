@@ -59,11 +59,18 @@ export class WorkshopHighlightHandler {
     const token = Symbol();
     const { source, set } = turn.highlights;
     const generation = editor.clearGeneration;
+    // Authorization may rebind a moved file. Observe closes now and check the resolved path once known.
+    const tabClosures = editor.captureTabClosures?.();
+    let authorizedPath: string | undefined;
     this.pending.set(turn.id, token);
     const current = () => this.pending.get(turn.id) === token && generation === editor.clearGeneration
-      && !!this.lookup(identity)?.highlights;
+      && !!this.lookup(identity)?.highlights
+      && (authorizedPath === undefined || !tabClosures || tabClosures.current(authorizedPath));
     try {
       const authorization = await this.intake.authorizeExcerptReread({ kind: 'file', ...source });
+      if (authorization.kind === 'authorized') {
+        authorizedPath = authorization.fsPath;
+      }
       if (!current()) {
         return;
       }
@@ -87,6 +94,7 @@ export class WorkshopHighlightHandler {
         this.status('The excerpt file could not be opened for highlights.');
       }
     } finally {
+      tabClosures?.dispose();
       if (this.pending.get(turn.id) === token) {
         this.pending.delete(turn.id);
       }
