@@ -22,9 +22,6 @@ import {
   optionalNumberAt,
   shapeError
 } from '@/application/services/workshop/persistedValidation';
-import type {
-  WorkshopWidgetDraftRecoveryResult
-} from '@/application/services/workshop/widgets/WorkshopWidgetCheckpointRecoveryContracts';
 export {
   assertCreativeVariationsDraftIntegrity
 } from '@/application/services/workshop/widgets/creativeVariations/CreativeVariationsConfigIntegrity';
@@ -32,16 +29,6 @@ export {
 export interface CreativeVariationsDraftSummary {
   subjectPreview: string;
   selectionCount: number;
-}
-
-/** Creative Variations has never shipped, so no checkpoint defaults exist. */
-export type CreativeVariationsCheckpointNormalization = never;
-
-export function assertCreativeVariationsDraftCheckpointShape(
-  value: unknown,
-  path: string
-): void {
-  assertCreativeVariationsDraftShape(value, path);
 }
 
 export function assertCreativeVariationsDraftShape(value: unknown, path: string): void {
@@ -475,20 +462,5 @@ export function summarizeCreativeVariationsDraft(
       PROMPT_BUDGETS.workshopWidgets.creativeSubjectPreviewCharacters
     ),
     selectionCount: draft.selections.length
-  };
-}
-
-export function normalizeCreativeVariationsDraftForHydration(
-  value: unknown
-): WorkshopWidgetDraftRecoveryResult<
-  WorkshopCreativeVariationsDraft,
-  CreativeVariationsCheckpointNormalization
-> {
-  assertCreativeVariationsDraftCheckpointShape(value, 'Creative Variations checkpoint draft');
-  const draft = value as WorkshopCreativeVariationsDraft;
-  return {
-    draft: cloneCreativeVariationsDraft(draft),
-    normalizations: [],
-    notices: []
   };
 }
