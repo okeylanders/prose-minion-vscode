@@ -606,6 +606,13 @@
   min-height: 0;
   overflow-y: auto;
 }
+[data-pm-surface="workshop"] .pm-ws-sent-attachment-body {
+  margin: 0;
+  padding: 22px 26px 24px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: inherit;
+}
 [data-pm-surface="workshop"] .pm-ws-text-sheet-notice {
   display: flex;
   align-items: center;

@@ -5,7 +5,7 @@
 import { describeCraftFlagsOutcome, describeCraftFlagsPlan } from '@/application/services/draftEdit/craftFlagsSummary';
 import type { CraftFlagsOutcome } from '@/domain/models/CraftFlag';
 
-const ESTIMATE = { model: 'anthropic/claude-sonnet-5', calls: 1, inputTokens: 9000, outputTokens: 1500 };
+const ESTIMATE = { model: 'anthropic/claude-sonnet-5', reasoningBudgeted: true, calls: 1, inputTokens: 9000, outputTokens: 1500 };
 const NONE = { unanchored: 0, protected: 0, dialogue: 0, acrossBreak: 0, overlapping: 0, stale: 0, malformed: 0 };
 const completed = (extra: Partial<Extract<CraftFlagsOutcome, { kind: 'completed' }>> = {}): CraftFlagsOutcome => ({
   kind: 'completed',

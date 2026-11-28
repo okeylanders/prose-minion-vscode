@@ -1,15 +1,19 @@
 # Feature: Reads That Fit the Window, and Multi-File `resource.read`
 
 **Date Identified:** 2026-11-06
-**Status:** Planned; Okey answered the open questions on 2026-11-06 ([below](#okeys-answers-2026-11-06)). Okey: "we need to add the guard and make sure we fit the window on reads." ADR first: the engine's guard changes how every capability-bearing run ends.
-**Shipped so far (2026-11-17):** part 3 (multi-file `resource.read`) and part 1's `resource.read` window fit, in v2.14.0 as Everyday Conveniences item A (PR #263; [ADR 2026-11-14](../../../docs/adr/2026-11-14-everyday-conveniences.md)). Still open: part 1's `memory.read` fit and part 2's engine backstop.
+**Status:** Implemented for review on `sprint/highlights-read-guard`. The writer's decisions are recorded [below](#okeys-answers-2026-11-06).
+
+**Previously shipped:** Multi-file `resource.read` and its half-window fit shipped in v2.14.0, in Everyday Conveniences item A (PR #263, [ADR 2026-11-14](../../../docs/adr/2026-11-14-everyday-conveniences.md)).
+
+**This sprint:** Whole-note `memory.read` fitting, an unknown-window allowance shared across a turn's memory reads, and the common engine check before delivering capability evidence. A withheld Workshop result records a private rejection and lets the persona retry or answer. The release containing these additions is pending. [ADR 2026-11-27](../../../docs/adr/2026-11-27-capability-evidence-window.md)
+
 **Priority:** High. The bookmark recall live pass raised a persona's turn to 15 calls and more reads ([ADR 2026-11-05 D11](../../../docs/adr/2026-11-05-workshop-bookmark-recall.md#d11-a-personas-turn-allows-15-capability-calls-and-more-reads-2026-11-06)). That made this gap reachable.
 **Related:**
 - [ADR 2026-10-05](../../../docs/adr/2026-10-05-workshop-session-transcript-recall.md) D9 and D11: how recall fits its reads to the window.
 - [ADR 2026-11-04](../../../docs/adr/2026-11-04-workshop-project-memory.md): memory reads name a note that does not fit, and never cut it.
 - `infrastructure/api/orchestration/RequestContextPreflight.ts`: `measureContextWindow`, `assertRequestFitsContext`.
 
-## Problem
+## Problem at proposal time
 
 Only session recall fits its reads to the context window. Everything else a persona reads lands whole, and the turn fails when the window fills.
 
@@ -85,13 +89,13 @@ The capabilities' fits are estimates. The engine still needs a last resort, so t
 
 ## Completion Criteria
 
-- [ ] An ADR records the shared fitting rule (half the room left), the engine's backstop, the ledger's record of withheld evidence, and the multi-file grammar and bounds, with Okey's answers.
-- [ ] `resource.read` and `memory.read` take the window, fit to it with recall's rule, and say when they were limited. A memory note is never cut.
-- [ ] With an unknown window, each kind of read shares one read's worth per turn, and says so.
-- [ ] A capability round whose evidence would not fit sends a notice instead and never fails with `context-window-exceeded`. The persona can then ask for a narrower read within its remaining calls. The capability card says the evidence was withheld.
-- [ ] A full entry or an analysis run that does not fit gets a notice that it has no smaller form.
-- [ ] A turn whose history alone does not fit still fails with today's message.
-- [ ] `resource.read` reads up to `readPaths` files in one call, each under its own header with its own continuation, and reports a bad path in its own section.
-- [ ] The persona instruction states the new grammar and bounds, pinned by tests to the constants.
-- [ ] Engine tests fill a known window with reads across several rounds and get a reply, not an error. One test has a withheld read followed by a narrower read that lands. Each read kind has a test of its fit at the window's edge.
-- [ ] `boundaries.test.ts` lists the shared fitting module, and `recall/` still imports nothing outside its list.
+- [x] An ADR records the shared fitting rule (half the room left), the engine's backstop, the ledger's record of withheld evidence, and the multi-file grammar and bounds, with Okey's answers.
+- [x] `resource.read` and `memory.read` take the window, fit to it with recall's rule, and say when they were limited. A memory note is never cut.
+- [x] With an unknown window, each kind of read shares one read's worth per turn, and says so.
+- [x] A capability round whose evidence would not fit sends a notice instead and never fails with `context-window-exceeded`. The persona can then ask for a narrower read within its remaining calls. The capability card says the evidence was withheld.
+- [x] A full entry or an analysis run that does not fit gets a notice that it has no smaller form.
+- [x] A turn whose history alone does not fit still fails with today's message.
+- [x] `resource.read` reads up to `readPaths` files in one call, each under its own header with its own continuation, and reports a bad path in its own section.
+- [x] The persona instruction states the new grammar and bounds, pinned by tests to the constants.
+- [x] Engine tests fill a known window with reads across several rounds and get a reply, not an error. One test has a withheld read followed by a narrower read that lands. Each read kind has a test of its fit at the window's edge.
+- [x] `boundaries.test.ts` lists the shared fitting module, and `recall/` still imports nothing outside its list.

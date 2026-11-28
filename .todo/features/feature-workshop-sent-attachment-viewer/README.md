@@ -1,7 +1,7 @@
 # Feature: Click a Sent Attachment Pill to See What Was Sent
 
 **Date Identified:** 2026-11-23
-**Status:** Idea. Small: one correlated read route and a read-only case of the existing text sheet.
+**Status:** Implemented with the paste pill on `sprint/highlights-attachment-conveniences`. A sent pill in the live room or its earlier pages opens a read-only text sheet.
 **Priority:** Medium
 **Origin:** Okey, 2026-11-23
 
@@ -81,19 +81,27 @@
 
 ## Completion Criteria
 
-- [ ] Every message attachment pill on a sent bubble is a button with an
+- [x] Every message attachment pill on a sent bubble is a button with an
       accessible name ("Show the Selected Text that was sent"), and opens
       the read-only sheet (test).
-- [ ] The sheet shows the stored body, its source (file and lines, path,
+- [x] The sheet shows the stored body, its source (file and lines, path,
       or tile) and any cut, never the current file or selection (test).
-- [ ] Neutralized frame markers are decoded for display, through the same
+- [x] Neutralized frame markers are decoded for display, through the same
       rule that encoded them, and the header says so (V1, test).
-- [ ] The route carries ids only, compares `roomRevision`, refuses a
+- [x] The route carries ids only, compares `roomRevision`, refuses a
       widget artifact and a rewound turn in host words, and only the
       pending answer is taken (tests).
-- [ ] Export and recall are unchanged: label only (the existing projection
+- [x] Export and recall are unchanged: label only (the existing projection
       test still passes).
-- [ ] Logs carry ids, kinds and counts, never the text, a path or lines.
+- [x] Logs carry ids, kinds and counts, never the text, a path or lines.
+
+## Implementation and verification
+
+The host checks the request id, room revision, owning turn and artifact together. Only successful room deliveries publish a retained copy. The active writer turn’s attachment buttons say “Available after the reply” until that copy is committed. Previously sent attachments remain readable during the run. Private instrument messages and messages without a committed body explain why no copy is available. Configured files and safely identified files under a single workspace root offer **Open current file**. Historical external picks identified only by a display name and ambiguous workspace paths cannot be reopened by that name.
+
+The retained body already holds the original bounded characters. The send-time frame encodes reserved delimiters separately. The sheet therefore preserves both literal tags and deliberately typed HTML entities. It shows the bounded body as selectable plain text.
+
+`WorkshopSentAttachmentRoutes.test.ts` covers normal file, selection and Lightbox sends, restored data, source authorization, and rejected private, widget and stale requests. `WorkshopApp.earlierTurns.test.tsx` covers clicking a pill on an earlier page and literal rendering. `useWorkshopSentAttachments.test.ts` covers overlapping requests, closing, reopening and room replacement. The transcript projection still exposes the label only.
 
 ## Related
 

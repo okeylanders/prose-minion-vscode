@@ -40,8 +40,33 @@ describe('live catalog reasoning marks', () => {
     expect(OpenRouterModels.getCachedAlwaysReasons(' ~test/always:nitro ')).toBe(true);
   });
 
+  it('distinguishes supported reasoning, known non-support and missing metadata', async () => {
+    /* eslint-disable @typescript-eslint/naming-convention -- OpenRouter's wire fields. */
+    await catalog([
+      { id: 'test/required', reasoning: { mandatory: true } },
+      { id: 'test/optional', reasoning: { mandatory: false }, supported_parameters: ['temperature'] },
+      { id: 'test/budget', supported_parameters: ['temperature', 'reasoning'] },
+      { id: 'test/effort', supported_parameters: ['reasoning_effort'] },
+      { id: 'test/plain', supported_parameters: ['temperature', 'max_tokens'] },
+      { id: 'test/partial', supported_parameters: [] },
+      { id: 'test/malformed', supported_parameters: ['temperature', 1] },
+      { id: 'test/empty-param', supported_parameters: [''] },
+      { id: 'test/fallback', isFallback: true, supported_parameters: ['temperature'] }
+    ]);
+    /* eslint-enable @typescript-eslint/naming-convention */
+
+    for (const model of ['test/required', 'test/optional', 'test/budget', 'test/effort:nitro']) {
+      expect(OpenRouterModels.getCachedSupportsReasoning(model)).toBe(true);
+    }
+    expect(OpenRouterModels.getCachedSupportsReasoning('test/plain')).toBe(false);
+    for (const model of ['test/partial', 'test/malformed', 'test/empty-param', 'test/fallback', 'test/unlisted']) {
+      expect(OpenRouterModels.getCachedSupportsReasoning(model)).toBeUndefined();
+    }
+  });
+
   it('is unknown before the catalog is read, and for the offline fallback', async () => {
     expect(OpenRouterModels.getCachedAlwaysReasons('anthropic/claude-haiku-5.5')).toBeUndefined();
+    expect(OpenRouterModels.getCachedSupportsReasoning('anthropic/claude-haiku-5.5')).toBeUndefined();
 
     global.fetch = jest.fn().mockRejectedValue(new Error('offline')) as never;
     const consoleError = jest.spyOn(console, 'error').mockImplementation(() => undefined);

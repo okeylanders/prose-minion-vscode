@@ -85,6 +85,26 @@ describe('a Selected Text send that lands after its room was replaced', () => {
       .toContainEqual(expect.objectContaining({ selectedText: expect.objectContaining({ snapshotId: 'snap-1' }) }));
   });
 
+  it('accepts a live-selection-only send after publishing the running snapshot, and settles a gated send', async () => {
+    const { real, routes, shownIn } = await roomWithAPillShown();
+    const send = (id: string) => routes.router.route(message(MessageType.WORKSHOP_SEND_MESSAGE, {
+      text: '', selectedTextSnapshotId: 'snap-1', roomRevision: shownIn, submissionId: id
+    }) as never);
+    await send('first');
+    expect(real.session.readRoomLedger().find((turn) => turn.role === 'user' && turn.messageAttachments?.length))
+      .toMatchObject({ content: '', messageAttachments: [expect.objectContaining({ selectedText: expect.objectContaining({ snapshotId: 'snap-1' }) })] });
+    expect(routes.posted(MessageType.WORKSHOP_SEND_ACKNOWLEDGED).map((entry) => entry.payload)).toEqual([
+      { submissionId: 'first', roomRevision: shownIn, accepted: true }
+    ]);
+    const messages = routes.postMessage.mock.calls.map(([entry]) => entry.type);
+    expect(messages.indexOf(MessageType.STREAM_STARTED)).toBeLessThan(messages.indexOf(MessageType.WORKSHOP_SEND_ACKNOWLEDGED));
+    routes.persistence.isSessionOperationPending.mockReturnValue(true);
+    await send('next');
+    expect(routes.posted(MessageType.WORKSHOP_SEND_ACKNOWLEDGED).at(-1)?.payload).toEqual({
+      submissionId: 'next', roomRevision: shownIn, accepted: false
+    });
+  });
+
   it.each(REPLACEMENTS)('%s: the delayed send is refused on its room, with the snapshot still held', async (_name, replace) => {
     const shown = await roomWithAPillShown();
     const { real, routes, snapshots } = shown;

@@ -12,14 +12,12 @@ jest.mock('@prose-minion/core', () => ({
   craftFlagCategoriesOf: jest.requireActual('@/domain/models/CraftFlag').craftFlagCategoriesOf,
   // eslint-disable-next-line @typescript-eslint/naming-convention -- the mocked barrel's export name.
   DRAFT_EDIT_LANGUAGE_IDS: jest.requireActual('@/domain/models/DraftEdit').DRAFT_EDIT_LANGUAGE_IDS,
-  // eslint-disable-next-line @typescript-eslint/naming-convention -- the mocked barrel's export name.
-  DRAFT_EDIT_PASS_POLICIES: jest.requireActual('@/domain/models/DraftEdit').DRAFT_EDIT_PASS_POLICIES,
-  reasoningLevelOf: jest.requireActual('@/domain/models/ReasoningLevel').reasoningLevelOf,
+  craftFlagsReasoningLevelOf: jest.requireActual('@/domain/models/ReasoningLevel').craftFlagsReasoningLevelOf,
   describeCraftFlagsOutcome: jest.requireActual('@/application/services/draftEdit/craftFlagsSummary').describeCraftFlagsOutcome,
   describeCraftFlagsPlan: jest.requireActual('@/application/services/draftEdit/craftFlagsSummary').describeCraftFlagsPlan
 }));
 
-import type { CraftFlagsBegin, CraftFlagsGesture, CraftFlagsOutcome, CraftFlagsRunPlan, DraftEditTarget } from '@prose-minion/core';
+import type { CraftFlagsApproval, CraftFlagsBegin, CraftFlagsGesture, CraftFlagsOutcome, CraftFlagsRunPlan, DraftEditTarget } from '@prose-minion/core';
 import { OPEN_SETTINGS_COMMAND, SHOW_PROBLEMS_COMMAND, type ProofreadEditorSnapshot } from '@app/application/commands/proofreadCommands';
 import {
   clearCraftFlags,
@@ -32,7 +30,7 @@ import {
 const TEXT = 'When the Rabbit took a watch out of its waistcoat-pocket, a chill ran down her spine.';
 const READY: CraftFlagsRunPlan = {
   kind: 'ready', words: 16, reads: 'document', selection: false,
-  estimate: { model: 'anthropic/claude-sonnet-5', calls: 1, inputTokens: 900, outputTokens: 1500, usd: 0.031 }
+  estimate: { model: 'anthropic/claude-sonnet-5', reasoningBudgeted: true, calls: 1, inputTokens: 900, outputTokens: 1500, usd: 0.031 }
 };
 const COMPLETED: CraftFlagsOutcome = {
   kind: 'completed', flagged: 1, reads: 'document',
@@ -80,7 +78,7 @@ function setup(options: {
       return options.begin ?? { kind: 'gesture', gesture };
     }),
     plan: jest.fn(async (_gesture: CraftFlagsGesture): Promise<CraftFlagsRunPlan> => options.plan ?? READY),
-    run: jest.fn(async (_gesture: CraftFlagsGesture, _approval: { model: string }): Promise<CraftFlagsOutcome> => options.outcome ?? COMPLETED),
+    run: jest.fn(async (_gesture: CraftFlagsGesture, _approval: CraftFlagsApproval): Promise<CraftFlagsOutcome> => options.outcome ?? COMPLETED),
     release: jest.fn((_gesture: CraftFlagsGesture) => {
       calls.push('release');
     }),
@@ -122,7 +120,7 @@ describe('Craft Flags', () => {
       { uri: 'file:///workspace/chapter-01.md', version: 4, text: TEXT, languageId: 'markdown', relativePath: 'chapter-01.md', range: selection },
       { kind: 'craft', categories: ['cliche', 'register', 'gesture', 'continuity'], reasoning: 'standard' }
     );
-    expect(runner.run).toHaveBeenCalledWith(gesture, { model: 'anthropic/claude-sonnet-5' }, expect.any(AbortSignal));
+    expect(runner.run).toHaveBeenCalledWith(gesture, { model: 'anthropic/claude-sonnet-5', reasoningBudgeted: true }, expect.any(AbortSignal));
     expect(calls[2]).toBe('progress:Craft Flags: reading chapter-01.md (selection)…');
     expect(calls[calls.length - 1]).toBe('release');
     expect(result).toEqual({ kind: 'ran', outcome: COMPLETED });
@@ -145,7 +143,8 @@ describe('Craft Flags', () => {
   });
 
   it.each([
-    ['off', 'off'],
+    ['off', 'standard'],
+    ['light', 'light'],
     ['deep', 'deep'],
     [undefined, 'standard'],
     ['Standard', 'standard'],
@@ -196,15 +195,14 @@ describe('Craft Flags', () => {
     expect(changed.runner.run).not.toHaveBeenCalled();
   });
 
-  it('shows no confirmation, and says what to change, when reasoning off meets a model that always reasons (PR #181 F-01)', async () => {
-    const refused = setup({ active: editor(), plan: { kind: 'reasoning-required', model: 'test/always-reasons' } });
-    expect(await runCraftFlags(refused.host, refused.runner)).toEqual({ kind: 'ran', outcome: { kind: 'reasoning-required', model: 'test/always-reasons' } });
-    expect(refused.host.confirm).not.toHaveBeenCalled();
-    expect(refused.runner.run).not.toHaveBeenCalled();
-    expect(refused.runner.release).toHaveBeenCalled();
-    expect(refused.host.showWarning).toHaveBeenCalledWith(
-      'Craft Flags sent nothing: the model catalog says test/always-reasons always reasons, so it cannot be asked for reasoning off. '
-        + 'Set proseMinion.craftFlags.reasoning to light or higher, or choose another model in proseMinion.craftModel.'
+  it('uses the estimate without a reasoning budget when the writer approves it', async () => {
+    const plan = { ...READY, estimate: { ...READY.estimate, reasoningBudgeted: false } };
+    const { host, runner, gesture } = setup({ active: editor(), plan, confirm: true });
+    const outcome = await runCraftFlags(host, runner);
+
+    expect(outcome).toEqual({ kind: 'ran', outcome: COMPLETED });
+    expect(runner.run).toHaveBeenCalledWith(
+      gesture, { model: plan.estimate.model, reasoningBudgeted: false }, expect.any(AbortSignal)
     );
   });
 

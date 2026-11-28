@@ -664,3 +664,11 @@ Two slices, two PRs into `epic/everyday-conveniences`, in either order.
   reason.
 - **`CoreServices` grows by one service,** and the Workshop by one route
   owner and one seed kind. AGENTS.md's counts change at the epic's close.
+
+### D16 addendum, 2026-11-27. Inspecting a sent attachment
+
+The writer may inspect one committed message attachment from its bubble, including an earlier page or a reopened session. The read identifies the room generation, writer turn and artifact together. A failed send can leave its attachment ID available to a later retry. The owning turn and its matching attachment reference distinguish the two. Direct instrument conversations keep their private delivery boundary. Widget frames, staged bodies and conversation archives are outside this read.
+
+The retained body is already the writer's bounded text. The frame builder encodes reserved tags when it constructs the model prompt. The sheet renders the stored characters as plain text, preserving both literal tags and text the writer entered as HTML entities. The body exists in the webview only for the current request. Export, recall and the saved bookmark reader retain their label-only projection.
+
+Open current file uses the same room, turn and artifact identity. The host resolves a configured pair through its authoritative listing or reauthorizes a safe relative path under a single workspace root. A basename for an external pick cannot identify a current file. Reading the sent copy works independently of that file.

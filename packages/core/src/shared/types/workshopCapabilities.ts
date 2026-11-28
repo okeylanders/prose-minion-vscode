@@ -39,7 +39,8 @@ export const WORKSHOP_CAPABILITY_OPERATIONS = [
   // ADR 2026-11-19 D26: the project's context paths, read-only.
   'locations.current',
   'locations.folders',
-  'locations.check'
+  'locations.check',
+  'problems.read'
 ] as const;
 
 export type WorkshopCapabilityOperation = typeof WORKSHOP_CAPABILITY_OPERATIONS[number];
@@ -56,7 +57,7 @@ export const isWorkshopCapabilityOperation = (value: unknown): value is Workshop
  */
 export type WorkshopCapabilityFamily =
   | 'dictionary' | 'analysis' | 'resource' | 'transcript' | 'memory' | 'lens' | 'help' | 'history'
-  | 'locations';
+  | 'locations' | 'problems';
 
 export function workshopCapabilityFamily(
   operation: WorkshopCapabilityOperation
@@ -94,6 +95,8 @@ export function workshopCapabilityFamily(
     case 'locations.folders':
     case 'locations.check':
       return 'locations';
+    case 'problems.read':
+      return 'problems';
     default: {
       const unhandled: never = operation;
       throw new Error(`Unhandled Workshop capability operation: ${String(unhandled)}`);
@@ -220,7 +223,8 @@ export type WorkshopCapabilityRequest =
   | WorkshopLensRequest
   | WorkshopHelpRequest
   | WorkshopHistoryRequest
-  | WorkshopLocationsRequest;
+  | WorkshopLocationsRequest
+  | WorkshopProblemsRequest;
 
 /** One `<pattern group="…">` of `locations.check`, as the codec read it. */
 export interface WorkshopLocationsCheckPattern {
@@ -239,13 +243,22 @@ export type WorkshopLocationsRequest =
   | { capability: 'locations.check'; patterns: WorkshopLocationsCheckPattern[] };
 
 /**
- * The file a `history.*` call names (ADR 2026-11-19 D11): the room's excerpt
+ * The file a `history.*` or `problems.read` call names: the room's excerpt
  * file (`<group>excerpt</group>` alone), or a configured file by group and
  * path, as `resource.read` names one. Never a free path.
  */
-export type WorkshopHistoryFile =
+export type WorkshopCapabilityFileTarget =
   | { kind: 'excerpt' }
   | { kind: 'configured'; group: ContextPathGroup; path: string };
+
+export type WorkshopHistoryFile = WorkshopCapabilityFileTarget;
+
+export interface WorkshopProblemsRequest {
+  capability: 'problems.read';
+  file: WorkshopCapabilityFileTarget;
+  /** First diagnostic to show, in snapshot order from 1. */
+  start?: number;
+}
 
 /** `<to>` on `history.diff`: a commit, or the file as saved on disk. */
 export type WorkshopHistoryDiffTarget =

@@ -190,7 +190,7 @@ export class WorkshopPanelProvider implements vscode.Disposable, vscode.WebviewP
       // If close preserved the work under a different identity, leave it in its room
       // and open the named session the writer actually selected in a separate tab.
     }
-    const target = this.createPanel(randomUUID(), { sessionId, drafts: [] }, column);
+    const target = this.createPanel(randomUUID(), { purpose: 'reopen', sessionId }, column);
     const targetNavigation = this.navigation;
     await target.ready;
     if (!current(targetNavigation)) { return superseded; }
@@ -370,7 +370,7 @@ export class WorkshopPanelProvider implements vscode.Disposable, vscode.WebviewP
           if (this.tabs.get(roomId) !== tab || !services.workshopSessionPersistenceCoordinator.recallScope().available) {
             throw new Error('The source room closed or its workspace changed.');
           }
-          const target = this.createPanel(randomUUID(), { sessionId, drafts }, tab.panel.viewColumn);
+          const target = this.createPanel(randomUUID(), { purpose: 'new-branch', sessionId, drafts }, tab.panel.viewColumn);
           await target.ready;
           if (this.tabs.get(target.roomId) !== target) {
             throw new Error('The new Workshop tab could not open the branch.');

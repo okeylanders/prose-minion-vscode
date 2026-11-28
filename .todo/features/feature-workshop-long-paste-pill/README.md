@@ -1,7 +1,7 @@
 # Feature: A Long Paste Becomes a "Pasted Text" Pill
 
 **Date Identified:** 2026-11-23 (planned 2026-09-03 as Sprint 02 of the Multimodal Composer epic; split out here)
-**Status:** Idea. Small to medium. Buildable now on the message-attachment kinds Selected Text added, without the epic's schema-v3 work. Short ADR section, or an addendum to ADR 2026-11-14.
+**Status:** Implemented on the Workshop conveniences sprint. The [pasted-text ADR](../../../docs/adr/2026-11-27-workshop-pasted-text.md) records the request, storage and restore contracts.
 **Priority:** Medium
 **Origin:** Okey, 2026-11-23 ("do we already have pasted text showing up as a pill instead of filling up the message bubble?")
 
@@ -82,18 +82,18 @@ work (binary assets, multipart messages) keeps its own path.
 
 ## Completion Criteria
 
-- [ ] A paste under 500 characters behaves natively. One at or over it
+- [x] A paste under 500 characters behaves natively. One at or over it
       stages one host-owned "Pasted text" pill and leaves the draft alone
       (tests at 499 and 500).
-- [ ] "Insert into message" puts the text into the composer at the cursor
+- [x] "Insert into message" puts the text into the composer at the cursor
       without replacing newer typing, and releases the pill (test).
-- [ ] The pill can be inspected, edited, removed, sent, and kept through a
+- [x] The pill can be inspected, edited, removed, sent, and kept through a
       refused or failed send, without losing it (tests).
-- [ ] `pasted-text` joins `workshopThreadArtifactKinds`. The session codec
+- [x] `pasted-text` joins `workshopThreadArtifactKinds`. The session codec
       change is optional and additive, and an authentic fixture from before
       it still reads.
-- [ ] Export and recall show the label only.
-- [ ] Logs carry counts only, never the pasted text.
+- [x] Export and recall show the label only.
+- [x] Logs carry counts only, never the pasted text.
 
 ## Related
 

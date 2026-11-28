@@ -20,6 +20,10 @@
 import { estimateTextTokens } from '@orchestration/RequestContextPreflight';
 import type { WorkshopCapabilityResult } from '@shared/types/workshopCapabilities';
 
+/** The persona engine admits read bodies at settlement. Direct consumers accept the result immediately. */
+export type StageWorkshopReadDelivery = (recordDelivery: () => void) => void;
+export const acceptWorkshopReadDelivery: StageWorkshopReadDelivery = recordDelivery => recordDelivery();
+
 /** Renders one read may take to find the largest that fits the window. */
 export const WORKSHOP_READ_FIT_RENDERS = 6;
 /**
@@ -77,6 +81,36 @@ export function fitWorkshopReadToWindow<Outcome = WorkshopCapabilityResult>(
     next = nextCandidate(fit, miss, half, minimum, renders, measuredMinimum !== undefined);
   }
   return { ...(fit ? { fit } : {}), ...(measuredMinimum ? { minimum: measuredMinimum } : {}), renders };
+}
+
+/**
+ * Whole independent items may skip an earlier one that is too large. Try the
+ * complete read first, then admit items in request order, measuring each
+ * candidate with all its omission notices. At most one render per item
+ * plus the complete read (memory.read names at most five).
+ */
+export function fitWorkshopWholeItemsToWindow<Item, Outcome>(
+  items: readonly Item[],
+  render: (included: ReadonlySet<Item>) => Outcome,
+  tokens: (outcome: Outcome) => number,
+  half: number
+): Outcome | undefined {
+  const whole = render(new Set(items));
+  if (tokens(whole) <= half) {
+    return whole;
+  }
+  const included = new Set<Item>();
+  let fitted: Outcome | undefined;
+  for (const item of items) {
+    included.add(item);
+    const candidate = included.size === items.length ? whole : render(included);
+    if (tokens(candidate) <= half) {
+      fitted = candidate;
+    } else {
+      included.delete(item);
+    }
+  }
+  return fitted;
 }
 
 /** What a result costs as evidence: its text and metadata, escaped as formatEvidence escapes them. */

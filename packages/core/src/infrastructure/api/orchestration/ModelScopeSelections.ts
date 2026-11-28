@@ -19,33 +19,16 @@
  */
 
 import type { SettingsStore } from '@/platform';
+import { DEFAULT_MODEL_SELECTIONS } from '@shared/constants/defaultModelSelections';
 import {
   MODEL_SCOPE_FOLLOWS,
   type FollowingModelScope,
-  type ModelScope
-} from '@shared/types';
-import { DEFAULT_CATEGORY_MODEL } from '@providers/OpenRouterModels';
+  type ModelScope,
+  type OwnModelScope
+} from '@messages';
 
 /** The settings these rules read. */
 export type ModelSettingsReader = Pick<SettingsStore, 'get'>;
-
-/** The scopes that read only their own setting. */
-export type OwnModelScope = Exclude<ModelScope, FollowingModelScope>;
-
-/**
- * Quality-first default for the `widget` scope. Conversation Widgets are
- * occasional, bounded creative workflows, so output usefulness matters more
- * than minimizing the small per-run cost.
- */
-export const DEFAULT_WIDGET_MODEL = 'anthropic/claude-sonnet-5';
-/**
- * Precision-first default for the `proofread` scope (ADR 2026-10-21 D6): a
- * fast, inexpensive model, because proofreading wants exact, repeatable
- * corrections across many small calls, not the Workshop's quality-first
- * model. An own scope, so it never follows the assistant model.
- */
-export const DEFAULT_PROOFREAD_MODEL = 'anthropic/claude-haiku-5.5';
-const DEFAULT_SCOPE_MODEL = 'anthropic/claude-sonnet-5';
 
 /** Each scope's setting under `proseMinion.*`. */
 export const MODEL_SCOPE_SETTING_KEYS: Readonly<Record<ModelScope, string>> = {
@@ -62,6 +45,7 @@ export const MODEL_SCOPE_SETTING_KEYS: Readonly<Record<ModelScope, string>> = {
 };
 
 const FOLLOWING_SCOPES = Object.keys(MODEL_SCOPE_FOLLOWS) as FollowingModelScope[];
+const OWN_SCOPES = Object.keys(DEFAULT_MODEL_SELECTIONS) as OwnModelScope[];
 
 /** A following scope's own model as its setting names it, trimmed; undefined while it has none. */
 export function ownFollowingModel(settings: ModelSettingsReader, scope: FollowingModelScope): string | undefined {
@@ -75,7 +59,7 @@ export function followingModelScopes(settings: ModelSettingsReader): FollowingMo
 }
 
 /** Every following scope's model, from the own scopes' models already resolved. */
-export function resolveFollowingModels(
+function resolveFollowingModels(
   settings: ModelSettingsReader,
   own: Readonly<Record<OwnModelScope, string>>
 ): Record<FollowingModelScope, string> {
@@ -87,14 +71,9 @@ export function resolveFollowingModels(
 
 /** The model every scope runs on, as the AI resource manager builds and hot-swaps them. */
 export function resolveModelScopeSelections(settings: ModelSettingsReader): Record<ModelScope, string> {
-  const read = (scope: OwnModelScope) => settings.get<string>('proseMinion', MODEL_SCOPE_SETTING_KEYS[scope]);
-  const own: Record<OwnModelScope, string> = {
-    assistant: read('assistant') ?? DEFAULT_SCOPE_MODEL,
-    dictionary: read('dictionary') ?? DEFAULT_SCOPE_MODEL,
-    context: read('context') ?? DEFAULT_SCOPE_MODEL,
-    category: read('category') ?? DEFAULT_CATEGORY_MODEL,
-    widget: read('widget') ?? DEFAULT_WIDGET_MODEL,
-    proofread: read('proofread') ?? DEFAULT_PROOFREAD_MODEL
-  };
+  const own = Object.fromEntries(OWN_SCOPES.map((scope) => [
+    scope,
+    settings.get<string>('proseMinion', MODEL_SCOPE_SETTING_KEYS[scope]) ?? DEFAULT_MODEL_SELECTIONS[scope]
+  ])) as Record<OwnModelScope, string>;
   return { ...own, ...resolveFollowingModels(settings, own) };
 }

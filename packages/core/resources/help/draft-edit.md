@@ -14,4 +14,4 @@ In the editor's **Prose Minion** submenu choose **Craft Flags**. The confirmatio
 
 With a selection in a chapter within the 25,000-word limit, the pass reads the chapter for context and flags the selected passage. For a larger chapter, select a part within the limit to read alone. Findings appear as information under **Prose Minion Craft**. Dismiss an individual note or run **Clear Craft Flags**. Craft Flags leaves the prose in place and has its own findings, independent of Proofread.
 
-Choose categories and reasoning in Craft Flags settings. The Craft Flags model follows the assistant model until you pick a separate one.
+Choose categories and reasoning in Craft Flags settings. Light, Standard and Deep set the reasoning budget for each category. Standard is the default and also applies to an older Off setting. A model without reasoning support can still flag the passage. The Craft Flags model follows the Assistant model until you pick a separate one.

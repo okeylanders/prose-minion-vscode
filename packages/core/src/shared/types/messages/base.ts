@@ -157,6 +157,7 @@ export enum MessageType {
   WORKSHOP_RUN_TOOL = 'workshop_run_tool',
   WORKSHOP_QUICK_ACTION = 'workshop_quick_action',
   WORKSHOP_SEND_MESSAGE = 'workshop_send_message',
+  WORKSHOP_SEND_ACKNOWLEDGED = 'workshop_send_acknowledged',
   WORKSHOP_INVITE_GUEST = 'workshop_invite_guest',
   WORKSHOP_DISMISS_GUEST = 'workshop_dismiss_guest',
   WORKSHOP_SELECT_PERSONA = 'workshop_select_persona',
@@ -173,6 +174,9 @@ export enum MessageType {
   WORKSHOP_OPEN_CONTEXT_ATTACHMENT_FILE = 'workshop_open_context_attachment_file',
   // Read in reader: a file a persona read, by { group, path } (ADR 2026-11-03 D4)
   /* eslint-disable @typescript-eslint/naming-convention -- members match their UPPER_CASE neighbours; the rule's camelCase default predates the enum. */
+  WORKSHOP_REQUEST_MESSAGE_ATTACHMENT = 'workshop_request_message_attachment',
+  WORKSHOP_MESSAGE_ATTACHMENT_CONTENT = 'workshop_message_attachment_content',
+  WORKSHOP_OPEN_MESSAGE_ATTACHMENT_FILE = 'workshop_open_message_attachment_file',
   WORKSHOP_REQUEST_READ_IN_RESOURCE = 'workshop_request_read_in_resource',
   WORKSHOP_READ_IN_RESOURCE_CONTENT = 'workshop_read_in_resource_content',
   WORKSHOP_OPEN_READ_IN_RESOURCE = 'workshop_open_read_in_resource',
@@ -184,6 +188,8 @@ export enum MessageType {
   WORKSHOP_ADD_CONTEXT_RESOURCES = 'workshop_add_context_resources',
   WORKSHOP_ATTACH_MESSAGE_RESOURCES = 'workshop_attach_message_resources',
   WORKSHOP_ATTACH_MESSAGE_FILE = 'workshop_attach_message_file',
+  WORKSHOP_STAGE_MESSAGE_TEXT = 'workshop_stage_message_text',
+  WORKSHOP_MESSAGE_TEXT_RESULT = 'workshop_message_text_result',
   WORKSHOP_REMOVE_MESSAGE_ATTACHMENT = 'workshop_remove_message_attachment',
   WORKSHOP_SET_EXCERPT_RESOURCE = 'workshop_set_excerpt_resource',
   WORKSHOP_RUN_CONTEXT_WIZARD = 'workshop_run_context_wizard',
@@ -194,6 +200,9 @@ export enum MessageType {
   // A persona's context-paths proposal card applied or declined by the writer (ADR 2026-11-19 D27).
   WORKSHOP_APPLY_LOCATIONS_PROPOSAL = 'workshop_apply_locations_proposal',
   WORKSHOP_LOCATIONS_PROPOSAL_RESULT = 'workshop_locations_proposal_result',
+  WORKSHOP_SHOW_HIGHLIGHTS = 'workshop_show_highlights',
+  WORKSHOP_CLEAR_HIGHLIGHTS = 'workshop_clear_highlights',
+  WORKSHOP_ANSWER_HIGHLIGHT_PROMPT = 'workshop_answer_highlight_prompt',
   // A persona's passage-search card: its price, Run, Stop, Cancel, Send, Discard and Open report (ADR 2026-11-20 D20).
   WORKSHOP_PASSAGE_SEARCH_ESTIMATE = 'workshop_passage_search_estimate',
   WORKSHOP_PASSAGE_SEARCH_RUN = 'workshop_passage_search_run',

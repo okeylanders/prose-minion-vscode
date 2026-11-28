@@ -74,7 +74,7 @@ jest.mock('@prose-minion/core', () => ({
   craftFlagCategoriesOf: jest.requireActual('@/domain/models/CraftFlag').craftFlagCategoriesOf,
   DRAFT_EDIT_LANGUAGE_IDS: jest.requireActual('@/domain/models/DraftEdit').DRAFT_EDIT_LANGUAGE_IDS,
   DRAFT_EDIT_PASS_POLICIES: jest.requireActual('@/domain/models/DraftEdit').DRAFT_EDIT_PASS_POLICIES,
-  reasoningLevelOf: jest.requireActual('@/domain/models/ReasoningLevel').reasoningLevelOf,
+  craftFlagsReasoningLevelOf: jest.requireActual('@/domain/models/ReasoningLevel').craftFlagsReasoningLevelOf,
   shiftRanges: jest.requireActual('@/utils/draftEdit/shiftRanges').shiftRanges,
   CraftFlagsUseCase: jest.requireActual('@/application/services/draftEdit/CraftFlagsUseCase').CraftFlagsUseCase,
   describeCraftFlagsOutcome: jest.requireActual('@/application/services/draftEdit/craftFlagsSummary').describeCraftFlagsOutcome,
@@ -151,7 +151,7 @@ const CHILL = {
   kind: 'cliche' as const,
   why: 'A borrowed shiver stands in for what the watch means to her.'
 };
-const ESTIMATE = { model: 'placeholder/craft-model', calls: 1, inputTokens: 900, outputTokens: 1500, usd: 0.03 };
+const ESTIMATE = { model: 'placeholder/craft-model', reasoningBudgeted: true, calls: 1, inputTokens: 900, outputTokens: 1500, usd: 0.03 };
 
 /** The command over the real adapters, its price and its confirmation each held until the test lets them go. */
 function start(document: FakeDocument) {
@@ -162,7 +162,6 @@ function start(document: FakeDocument) {
       await pricing.promise;
       return ESTIMATE;
     }),
-    refusesReasoning: jest.fn(async () => false),
     flag: jest.fn(async (request: { passage: string; stillCurrent?: () => boolean }) => {
       if (request.stillCurrent && !request.stillCurrent()) {
         return { kind: 'ended' as const };

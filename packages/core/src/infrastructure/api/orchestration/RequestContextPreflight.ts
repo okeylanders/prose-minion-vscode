@@ -50,11 +50,23 @@ export class AgentContextWindowExceededError extends Error {
   }
 }
 
+export function exceedsContextWindow(window: CapabilityContextWindow): boolean {
+  return window.requestTokens + window.outputTokens + window.headroomTokens > window.contextLength;
+}
+
 export function assertRequestFitsContext(
   messages: readonly OpenRouterMessage[], contextLength: number, outputTokens?: number, tools?: unknown
 ): void {
   const window = measureContextWindow(messages, contextLength, outputTokens, tools);
-  if (window.requestTokens + window.outputTokens + window.headroomTokens > contextLength) {
+  if (exceedsContextWindow(window)) {
     throw new AgentContextWindowExceededError(window.requestTokens, window.outputTokens, contextLength);
   }
+}
+
+/** The only evidence sent for an oversized result. No text from the withheld result is repeated. */
+export function withheldEvidenceNotice(operation: string, tokens: number, indivisible: boolean): string {
+  const characters = tokens * PROMPT_BUDGETS.inferenceContext.bytesPerToken;
+  const next = indivisible ? 'This result has no smaller form. Answer without it or ask the writer.'
+    : 'Request a narrower read or answer with the evidence you already have.';
+  return `The ${operation} result did not fit the context window. Room left: ${tokens} tokens (about ${characters} characters). ${next}`;
 }

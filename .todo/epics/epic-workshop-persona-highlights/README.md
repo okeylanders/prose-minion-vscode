@@ -1,9 +1,20 @@
 # Feature: Personas Highlight the Excerpt's File
 
 **Date Identified:** 2026-11-26
-**Status:** Idea, ready to build: H0–H2 decided. Medium. A short ADR: a new reply trailer, and a second door to the editor's annotations, amending ADR 2026-10-21 D10.
+**Status:** In development on `epic/workshop-persona-highlights`. See the [architecture runway](runway.md).
 **Priority:** Medium
 **Origin:** Okey, 2026-11-26
+
+## Sprint branches
+
+Each sprint targets `epic/workshop-persona-highlights`. The common base contains the reply codec, quote placement rules and the editor service contract.
+
+| Branch | Deliverable | Review case |
+|---|---|---|
+| `sprint/highlights-persona` | Persona instructions and writer help | Ask for any passage or accept an offer in a file-backed room |
+| `sprint/highlights-editor` | VS Code diagnostics, per-room ownership and window-wide Clear All | Stack sets in one file, edit their text, then clear one set |
+| `sprint/highlights-settlement` | Run binding, committed reply, persistence, projection and outcomes | Switch rooms during a reply, reload an older session and inspect the exported transcript |
+| `sprint/highlights-controls` | Footer actions, routing and lifecycle cleanup | Show a retained set after Clear or reload, then rewind away its turn |
 
 ## In Okey's words
 
@@ -75,8 +86,8 @@ file.**
 6. **When they show.**
    - They're drawn at once if the file is open; otherwise the chip opens it
      and draws them.
-   - Diagnostics are session-only, so the chip redraws a set after a Clear,
-     a close or a reload, anchored afresh.
+   - A valid proposed set opens a confirmation over its Workshop chat. **Apply highlights** keeps it. **Show** on a saved reply redraws the set directly.
+   - Reopening a session offers to restore its eligible sets for the current excerpt after the startup release notice closes. **Not now** defers for this opening. **Don’t ask again for these highlights** remembers the choice for the displayed sets. Newly kept sets remain eligible on the next opening.
    - A Rewind that removes the reply clears its set.
 7. **Read-only.** Highlights never change the text. If the writer then
    wants changes, the persona's existing edit-offer chip and Persona File
@@ -91,7 +102,7 @@ file.**
 | # | Decision | By |
 |---|---|---|
 | H0 | **General purpose.** Any passage, any note, about anything the writer asks, in the open excerpt's file. | Okey, 2026-11-26 |
-| H1 | **Only when the writer asks.** Otherwise a persona may offer ("Want me to highlight them?"), never highlight unasked. | Okey, 2026-11-27 (Ada's lean) |
+| H1 | **Confirm before applying.** An express request or a concrete persona proposal may produce a set for the writer to accept in chat. A general offer in prose needs no dialog. | Okey, 2026-11-27 (Ada's lean) |
 | H2 | **The excerpt's file first.** Other project files come later, named as file edits name them. | Okey, 2026-11-27 (Ada's lean) |
 
 
@@ -100,7 +111,7 @@ file.**
 - **"All" means all the persona found.** It reads the excerpt, and in a
   long chapter it can miss one.
 - **Across many files,** finding every instance is
-  [Passage Search](../feature-passage-search/README.md)'s job. Showing a
+  [Passage Search](../../features/feature-passage-search/README.md)'s job. Showing a
   search's results as highlights would be a natural follow-up.
 
 ## Completion Criteria
@@ -130,7 +141,7 @@ file.**
 - [Persona File Edits](../../../docs/adr/2026-11-05-workshop-persona-file-edits.md)
   and [reply edit actions](../../archive/features/feature-workshop-reply-edit-actions/README.md):
   the one write path.
-- [Passage Search](../feature-passage-search/README.md) (#29).
+- [Passage Search](../../features/feature-passage-search/README.md) (#29).
 
 ## Related Files
 

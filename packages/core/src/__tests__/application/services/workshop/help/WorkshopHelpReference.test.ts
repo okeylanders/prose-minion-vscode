@@ -59,6 +59,48 @@ describe('the shipped help reference', () => {
     expect(result.content!.indexOf(sections[0])).toBeLessThan(result.content!.indexOf(sections[2]));
   });
 
+  it('finds the instructions for asking a Workshop persona to highlight passages', async () => {
+    const { reference, capability } = await realReference();
+    const loaded = await reference.load();
+    if (!loaded) {
+      throw new Error('Bundled Workshop help could not be loaded');
+    }
+
+    const id = 'workshop#highlight-passages-in-the-excerpt-file';
+    const { hits } = searchWorkshopHelp(loaded.sections, 'Workshop highlight passages');
+    expect(hits.map(hit => hit.id)).toContain(id);
+    const result = await capability.fulfill({ capability: 'help.read', sections: [id] });
+    expect(result.status).toBe('success');
+    expect(result.content).toContain('**Send to New Workshop Excerpt**');
+    expect(result.content).toContain(`A reply can propose up to ${PROMPT_BUDGETS.workshopHighlights.placesPerSet} places.`);
+    expect(result.content).toContain('If the persona finds more, it tells you and waits for you to ask for another set.');
+    expect(result.content).toContain('A persona can also propose a set when specific passages would help');
+    expect(result.content).toContain('**Apply highlights** to save it with the reply or **Skip** to discard it');
+    expect(result.content).toContain('**Show**');
+    expect(result.content).toContain('**Clear**');
+    expect(result.content).toContain('**Prose Minion: Clear All Workshop Highlights**');
+    expect(result.content).toContain('If the release notice is open, close it to see the question.');
+    expect(result.content).toContain('**Restore highlights** to redraw the offered sets');
+    expect(result.content).toContain('**Not now** to skip this opening');
+    expect(result.content).toContain('**Don’t ask again for these highlights** to skip future prompts for the offered sets');
+    expect(result.content).toContain('New sets you keep can still appear in a future restore prompt.');
+    expect(result.content).toContain('**Show** remains available on each saved reply.');
+  });
+
+  it('finds and reads how to ask a Workshop persona about current file Problems', async () => {
+    const { reference, capability } = await realReference();
+    const loaded = await reference.load();
+    if (!loaded) {
+      throw new Error('Bundled Workshop help could not be loaded');
+    }
+    const id = 'workshop#read-file-problems';
+    expect(searchWorkshopHelp(loaded.sections, 'read file Problems').hits[0].id).toBe(id);
+    const result = await capability.fulfill({ capability: 'help.read', sections: [id] });
+    expect(result.status).toBe('success');
+    expect(result.content).toContain('another Workshop tab in the same VS Code window');
+    expect(result.content).toContain('a short quote from the current marked text, including unsaved changes');
+  });
+
   it('fits whole sections including the cost of the exact call, and refuses a section when no room remains', async () => {
     const { reference, capability } = await realReference();
     const loaded = (await reference.load())!;

@@ -34,6 +34,7 @@ import { assertWorkshopMemoryProposalShape } from '@/application/services/worksh
 import { assertWorkshopFileEditProposalShape } from '@/application/services/workshop/session/WorkshopFileEditProposalRecords';
 import { assertWorkshopEditOfferPressShape, assertWorkshopEditOfferShape } from '@/application/services/workshop/session/WorkshopEditOfferRecords';
 import { assertWorkshopMemoryReceiptShape } from '@/application/services/workshop/session/WorkshopMemoryReceiptRecords';
+import { assertWorkshopPastedTextRecord } from './WorkshopPastedText';
 import { assertOptionalWorkshopSelectedTextMeta } from '@/application/services/workshop/selection/WorkshopSelectedTextAttachment';
 import {
   isLiveWorkshopWidgetId,
@@ -65,6 +66,7 @@ import {
 import { assertWorkshopProjectMemoryDeliveryShape } from '@/application/services/workshop/session/WorkshopProjectMemoryDeliveryRecords';
 import { assertWorkshopReactionDeliveryShape } from '@/application/services/workshop/session/WorkshopReactionDeliveryRecords';
 import { assertWorkshopLocationsProposalShape } from '@/application/services/workshop/locations/WorkshopLocationsProposalRecords';
+import { assertWorkshopHighlightRecord } from './highlights/WorkshopHighlightRecord';
 import { assertWorkshopPassageSearchShapes } from '@/application/services/workshop/passageSearch/WorkshopPassageSearchRecords';
 import { assertWorkshopTrailerOutcomesShape } from '@/application/services/workshop/session/WorkshopTrailerOutcomeRecords';
 import { assertWorkshopTodoClosedByShape, assertWorkshopTodoStatusChangesShape } from '@/application/services/workshop/session/WorkshopTodoStatusRecords';
@@ -362,7 +364,7 @@ function assertMessageAttachment(value: unknown, path: string): void {
     value,
     path,
     ['id', 'label', 'words', 'content'],
-    ['relativePath', 'configuredResource', 'truncation', 'sourceUri', 'lightboxTile', 'selectedText']
+    ['relativePath', 'configuredResource', 'truncation', 'sourceUri', 'lightboxTile', 'selectedText', 'pastedText']
   );
   stringAt(attachment.id, `${path}.id`);
   stringAt(attachment.label, `${path}.label`);
@@ -375,6 +377,7 @@ function assertMessageAttachment(value: unknown, path: string): void {
     assertKeptWordTruncation(attachment.truncation, `${path}.truncation`);
   }
   assertOptionalLightboxTileMeta(attachment.lightboxTile, `${path}.lightboxTile`);
+  assertWorkshopPastedTextRecord(attachment, path);
   assertOptionalWorkshopSelectedTextMeta(attachment.selectedText, `${path}.selectedText`);
 }
 
@@ -627,6 +630,7 @@ function assertTurn(value: unknown, path: string, checkpoint: boolean): void {
       'todoStatusChanges',
       // A persona's context-paths card (ADR 2026-11-19 D27; additive).
       'locationsProposal',
+      'highlights',
       // A persona's passage-search card, a delivery's request turn and its receipt (ADR 2026-11-20 D17–D19a; additive).
       'passageSearchRequest',
       'passageSearchResults',
@@ -714,6 +718,9 @@ function assertTurn(value: unknown, path: string, checkpoint: boolean): void {
   }
   if (turn.locationsProposal !== undefined) {
     assertWorkshopLocationsProposalShape(turn.locationsProposal, `${path}.locationsProposal`, turn);
+  }
+  if (turn.highlights !== undefined) {
+    assertWorkshopHighlightRecord(turn, path);
   }
   assertWorkshopPassageSearchShapes(turn, path);
   if (turn.todoStatusChanges !== undefined) {
@@ -891,7 +898,7 @@ function assertMessageAttachmentSnapshot(value: unknown, path: string): void {
     value,
     path,
     ['id', 'label', 'words'],
-    ['relativePath', 'configuredResource', 'truncation', 'lightboxTile', 'selectedText']
+    ['relativePath', 'configuredResource', 'truncation', 'lightboxTile', 'selectedText', 'pastedText']
   );
   stringAt(attachment.id, `${path}.id`);
   stringAt(attachment.label, `${path}.label`);
@@ -902,6 +909,7 @@ function assertMessageAttachmentSnapshot(value: unknown, path: string): void {
     assertKeptWordTruncation(attachment.truncation, `${path}.truncation`);
   }
   assertOptionalLightboxTileMeta(attachment.lightboxTile, `${path}.lightboxTile`);
+  assertWorkshopPastedTextRecord(attachment, path);
   assertOptionalWorkshopSelectedTextMeta(attachment.selectedText, `${path}.selectedText`);
 }
 

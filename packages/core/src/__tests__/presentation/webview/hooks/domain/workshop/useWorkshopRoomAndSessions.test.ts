@@ -865,7 +865,7 @@ describe('useWorkshopRoom + useWorkshopSessions', () => {
     });
     expect(posted(MessageType.WORKSHOP_RESET_SESSION)).toHaveLength(1);
     expect(posted(MessageType.WORKSHOP_SEND_MESSAGE)[0].payload).toEqual({
-      text: 'Now tighten variation two.'
+      text: 'Now tighten variation two.', submissionId: expect.any(String), roomRevision: expect.any(Number)
     });
     expect(posted(MessageType.WORKSHOP_PICK_EXCERPT_FILE)).toHaveLength(1);
     expect(posted(MessageType.WORKSHOP_REREAD_EXCERPT)).toHaveLength(1);
@@ -1273,4 +1273,46 @@ describe('useWorkshopRoom + useWorkshopSessions', () => {
     });
   });
 
+  it.each([true, false])('settles a draft from a replaced room once without unlocking a new submission (accepted=%s)', (accepted) => {
+    const { result } = renderHook(() => useWorkshop());
+    const acknowledge = (submissionId: string, roomRevision: number, accepted: boolean) =>
+      act(() => result.current.handleSendAcknowledged({
+        type: MessageType.WORKSHOP_SEND_ACKNOWLEDGED, source: 'extension.workshop', timestamp: 0,
+        payload: { submissionId, roomRevision, accepted }
+      }));
+    act(() => {
+      result.current.handleSessionState(sessionState({ roomRevision: 7 }));
+      expect(result.current.sendMessage('Draft in the first room.', undefined, 7)).toBe(true);
+      expect(result.current.sendMessage('duplicate', undefined, 7)).toBe(false);
+    });
+    const first = posted(MessageType.WORKSHOP_SEND_MESSAGE)[0].payload;
+    expect(first).toMatchObject({ text: 'Draft in the first room.', roomRevision: 7 });
+    act(() => result.current.handleSessionState(sessionState({ roomRevision: 8 })));
+    act(() => { result.current.sendMessage('Read this.', undefined, 8); });
+    const second = posted(MessageType.WORKSHOP_SEND_MESSAGE)[1].payload;
+    acknowledge(first.submissionId, 8, false);
+    expect(result.current.composerDraftSeed).toBeUndefined();
+    acknowledge(first.submissionId, 7, accepted);
+    const restored = result.current.composerDraftSeed;
+    if (accepted) {
+      expect(restored).toBeUndefined();
+    } else {
+      expect(restored).toMatchObject({ text: 'Draft in the first room.', keepDraft: true });
+    }
+    acknowledge(first.submissionId, 7, false);
+    expect(result.current.composerDraftSeed).toBe(restored);
+    act(() => { expect(result.current.sendMessage('Duplicate in second room')).toBe(false); });
+    expect(result.current.submissionPending).toBe(true);
+    acknowledge(second.submissionId, 7, false);
+    expect(result.current.submissionPending).toBe(true);
+    acknowledge(second.submissionId, 8, false);
+    expect(result.current.submissionPending).toBe(false);
+    expect(result.current.composerDraftSeed).toMatchObject({ text: 'Read this.', keepDraft: true });
+    act(() => { result.current.sendMessage('Retry', undefined, 8); });
+    const retry = posted(MessageType.WORKSHOP_SEND_MESSAGE)[2].payload;
+    acknowledge(second.submissionId, 8, true);
+    expect(result.current.submissionPending).toBe(true);
+    acknowledge(retry.submissionId, 8, true);
+    expect(result.current.submissionPending).toBe(false);
+  });
 });

@@ -11,7 +11,8 @@ import {
 } from '@messages';
 import { useVSCodeApi } from '../useVSCodeApi';
 import { usePersistedState } from '../usePersistence';
-import { CATEGORY_MODELS, DEFAULT_CATEGORY_MODEL } from '@providers/OpenRouterModels';
+import { CATEGORY_MODELS } from '@providers/OpenRouterModels';
+import { DEFAULT_MODEL_SELECTIONS } from '@shared/constants/defaultModelSelections';
 
 /**
  * Models Settings
@@ -128,11 +129,11 @@ export const useModelsSettings = (): UseModelsSettingsReturn => {
 
   const defaults: ModelsSettings = {
     // Model Selections
-    assistantModel: 'anthropic/claude-sonnet-5',
-    dictionaryModel: 'anthropic/claude-haiku-4.5',
-    contextModel: 'openai/gpt-5.4',
-    categoryModel: DEFAULT_CATEGORY_MODEL,
-    widgetModel: 'anthropic/claude-sonnet-5',
+    assistantModel: DEFAULT_MODEL_SELECTIONS.assistant,
+    dictionaryModel: DEFAULT_MODEL_SELECTIONS.dictionary,
+    contextModel: DEFAULT_MODEL_SELECTIONS.context,
+    categoryModel: DEFAULT_MODEL_SELECTIONS.category,
+    widgetModel: DEFAULT_MODEL_SELECTIONS.widget,
 
     // Agent Behavior
     includeCraftGuides: true,

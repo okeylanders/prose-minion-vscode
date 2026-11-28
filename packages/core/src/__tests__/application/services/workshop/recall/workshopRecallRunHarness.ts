@@ -8,6 +8,8 @@
  */
 
 import type { LogSink } from '@/platform';
+import type { OpenRouterToolCall } from '@providers/OpenRouterClient';
+import type { WorkshopProblemsPorts } from '@/application/services/workshop/problems/WorkshopProblemsPort';
 import { unavailableHelpReference } from '@/__tests__/application/services/workshop/help/unavailableHelpReference';
 import { unavailableProjectLocations } from '@/__tests__/application/services/workshop/locations/unavailableProjectLocations';
 import { unavailableFileHistory } from '@/__tests__/application/services/workshop/history/unavailableFileHistory';
@@ -30,7 +32,7 @@ import type { WorkshopHelpReferencePort } from '@/application/services/workshop/
 import type { WorkshopLensLibraryPort } from '@/application/services/workshop/lens/WorkshopLensCapability';
 import type { WorkshopHistoryPorts } from '@/application/services/workshop/history/WorkshopHistoryCapability';
 
-export type RecallRound = string | (() => string);
+export type RecallRound = string | (() => string) | { toolCalls: OpenRouterToolCall[] };
 
 export const recallCall = (operation: string, body: string): string =>
   `<prose-minion-tool-call name="${operation}">${body}</prose-minion-tool-call>`;
@@ -40,6 +42,7 @@ export function createRecallRunHarness(options: {
   lenses?: WorkshopLensLibraryPort;
   help?: (log: LogSink) => WorkshopHelpReferencePort;
   history?: WorkshopHistoryPorts;
+  problems?: WorkshopProblemsPorts;
 } = {}) {
   const harness = setupCoordinator();
   const { session, manager, coordinator, store, log, time } = harness;
@@ -60,7 +63,8 @@ export function createRecallRunHarness(options: {
     options.lenses ?? noProjectLenses,
     options.help?.(log) ?? unavailableHelpReference,
     options.history ?? unavailableFileHistory,
-    unavailableProjectLocations
+    unavailableProjectLocations,
+    options.problems
   );
   /** Everything every provider request carried, as one string. */
   const sent: string[] = [];
@@ -77,6 +81,9 @@ export function createRecallRunHarness(options: {
     for (const round of rounds) {
       client.createChatCompletion.mockImplementationOnce(async (...request: unknown[]) => {
         sent.push(JSON.stringify(request));
+        if (typeof round === 'object') {
+          return { content: '', toolCalls: round.toolCalls, finishReason: 'tool_calls' };
+        }
         return { content: typeof round === 'string' ? round : round(), finishReason: 'stop' };
       });
     }
@@ -84,6 +91,7 @@ export function createRecallRunHarness(options: {
       requestId,
       personaId: owner.kind === 'host' ? 'jill' : owner.personaId,
       owner,
+      excerpt: session.getExcerpt(),
       excerptVersion: session.getExcerptVersion(),
       signal: new AbortController().signal,
       events: { status: jest.fn(), turnCompleted: jest.fn(), sessionChanged: jest.fn() }

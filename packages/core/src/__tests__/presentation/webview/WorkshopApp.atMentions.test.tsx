@@ -206,4 +206,25 @@ describe('WorkshopApp @ mentions', () => {
       [MessageType.WORKSHOP_SEND_MESSAGE, 'compare with @02-the-station.md']
     ]);
   });
+  it('posts only the first Enter for a prompt with an attachment, and restores the draft after its refusal', () => {
+    const { input, posted } = open();
+    const state = session('open');
+    state.payload.session.pendingMessageAttachments = [{ id: 'ta-1', label: 'Pasted text', words: 2, pastedText: { truncated: false } }];
+    deliver(state);
+    posted();
+    fireEvent.change(input, { target: { value: 'Read this.' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    const sent = posted().filter((entry) => entry.type === MessageType.WORKSHOP_SEND_MESSAGE);
+    expect(sent).toHaveLength(1);
+    expect(sent[0].payload.text).toBe('Read this.');
+    expect(input.value).toBe('');
+    fireEvent.change(input, { target: { value: 'New typing.' } });
+    deliver({ type: MessageType.WORKSHOP_SEND_ACKNOWLEDGED, source: 'extension.workshop', timestamp: 1,
+      payload: { submissionId: sent[0].payload.submissionId, roomRevision: 1, accepted: false } });
+    expect(input.value).toBe('Read this.\n\nNew typing.');
+    fireEvent.keyDown(input, { key: 'Enter' });
+    expect(posted().filter((entry) => entry.type === MessageType.WORKSHOP_SEND_MESSAGE)).toHaveLength(1);
+  });
+
 });

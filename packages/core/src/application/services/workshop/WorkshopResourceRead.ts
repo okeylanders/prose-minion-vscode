@@ -28,6 +28,8 @@ import type {
   WorkshopCapabilityResult
 } from '@shared/types/workshopCapabilities';
 import {
+  acceptWorkshopReadDelivery,
+  type StageWorkshopReadDelivery,
   fitWorkshopReadToWindow,
   workshopReadEvidenceTokens,
   WorkshopMeasuredRead,
@@ -82,7 +84,11 @@ export class WorkshopResourceReadOperation {
 
   constructor(private readonly ports: WorkshopResourceReadPorts) {}
 
-  async run(request: ResourceReadRequest, window?: CapabilityContextWindow): Promise<WorkshopResourceReadOutcome> {
+  async run(
+    request: ResourceReadRequest,
+    window?: CapabilityContextWindow,
+    stageDelivery: StageWorkshopReadDelivery = acceptWorkshopReadDelivery
+  ): Promise<WorkshopResourceReadOutcome> {
     const budgets = PROMPT_BUDGETS.workshopResource;
     const prepared = await prepareWorkshopResourceFiles(this.ports, request.files, request);
     const single = prepared.length === 1;
@@ -113,12 +119,15 @@ export class WorkshopResourceReadOperation {
       return { result: this.windowTooSmall(request, minimum, half!, fitted.minimum) };
     }
     const { rendered, plan } = renderedOf.get(fitted.fit.outcome)!;
-    this.turnBytes += plan.deliveredBytes;
-    this.ports.log(
-      `read files=${prepared.length} delivered=${rendered.sources.length} status=${rendered.result.status} ` +
-      `limit=${plan.limit.bytes} by=${plan.limit.by} bytes=${plan.deliveredBytes} turnBytes=${this.turnBytes}` +
-      (half === undefined ? ' window=unknown' : ` tokens=${fitted.fit.tokens} halfWindow=${half} renders=${fitted.renders}`)
-    );
+    const { tokens } = fitted.fit;
+    stageDelivery(() => {
+      this.turnBytes += plan.deliveredBytes;
+      this.ports.log(
+        `read files=${prepared.length} delivered=${rendered.sources.length} status=${rendered.result.status} ` +
+        `limit=${plan.limit.bytes} by=${plan.limit.by} bytes=${plan.deliveredBytes} turnBytes=${this.turnBytes}` +
+        (half === undefined ? ' window=unknown' : ` tokens=${tokens} halfWindow=${half} renders=${fitted.renders}`)
+      );
+    });
     return { result: rendered.result, sources: rendered.sources };
   }
 

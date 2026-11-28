@@ -9,6 +9,12 @@ import {
   parseWorkshopPersistedSession,
   WorkshopPersistedSessionV2
 } from '@/application/services/workshop/WorkshopPersistedSession';
+import { projectWorkshopJoinSnapshotTurns, projectWorkshopRoomTurns } from '@/application/services/workshop/WorkshopRoomDeliveryService';
+import { projectWorkshopTranscript, projectWorkshopTranscriptTurn } from '@/application/services/workshop/transcript/WorkshopTranscript';
+import { renderWorkshopTranscriptMarkdown } from '@/application/services/workshop/export/WorkshopTranscriptMarkdown';
+import { renderWorkshopTranscriptHtml } from '@/application/services/workshop/export/WorkshopTranscriptHtml';
+import { renderWorkshopTranscriptJson } from '@/application/services/workshop/export/WorkshopTranscriptJson';
+import { workshopCapabilityResultLogSummary } from '@/application/services/workshop/WorkshopCapabilityResultLog';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import { messageAttachmentSnapshot } from '@/application/services/workshop/WorkshopSessionRecords';
 import {
@@ -26,7 +32,10 @@ const REQUEST = 'host-request';
  * artifact, plus an artifact for each of `recalled`, recorded by the real
  * aggregate as the capability records it.
  */
-const savedRoom = (recalled: readonly WorkshopCapabilityOperation[] = []): WorkshopPersistedSessionV2 => {
+const savedRoom = (
+  recalled: readonly WorkshopCapabilityOperation[] = [],
+  record?: (session: WorkshopSessionService) => void
+): WorkshopPersistedSessionV2 => {
   const workshop = new WorkshopSessionService(() => Date.parse('2026-10-05T14:00:00.000Z'));
   workshop.setExcerpt({ text: 'The tide came in.', source: { kind: 'manual' } });
   const added = workshop.addMessageAttachment({
@@ -72,6 +81,7 @@ const savedRoom = (recalled: readonly WorkshopCapabilityOperation[] = []): Works
       result: { capability: operation, status: 'success', requestSummary: '“Chapter 6.7” · turns 1-12', content: 'Quoted record.' }
     });
   }
+  record?.(workshop);
   workshop.completeRun(REQUEST, 'They are about the tide.', undefined, false, 'runtime-host');
   const state = workshop.exportCommittedState();
   const temporal = new WorkshopSessionTimeService({
@@ -115,6 +125,46 @@ const writerTurnWithAttachment = (turns: MutableTurn[]): MutableTurn =>
   turns.find((turn) => (turn.messageAttachments?.length ?? 0) > 0)!;
 
 describe('persisted Workshop turn guards', () => {
+  it.each([
+    ['success', { diagnosticCount: 2, shownCount: 2 }, '2 of 2 problems'],
+    ['partial', { diagnosticCount: 4, shownCount: 1 }, '1 of 4 problems'],
+    ['success', { diagnosticCount: 0, shownCount: 0 }, '0 of 0 problems'],
+    ['failed', {}, 'file problems'],
+    ['cancelled', {}, 'file problems'],
+    ['rejected', { reason: 'context-window-exceeded' }, 'file problems']
+  ] as const)('keeps only counts and status on a %s problems.read receipt, including after reopening', (status, counts, summary) => {
+    const privateText = 'PRIVATE-DIAGNOSTIC-';
+    const metadata = { ...counts, source: privateText + 'source', quote: privateText + 'live text', nextStart: 6 };
+    const result = { capability: 'problems.read' as const, status, requestSummary: privateText + 'file',
+      content: privateText + 'message', error: privateText + 'failure', metadata };
+    const saved = savedRoom([], session => {
+      session.recordCapabilityArtifact({
+        requestId: REQUEST, excerptVersion: session.getExcerptVersion(), result,
+        details: { operation: result.capability, status, requestSummary: result.requestSummary,
+          invokedBy: { kind: 'host' }, requestedByPersonaId: 'jill', metadata }
+      });
+    });
+    const reopened = decodeWorkshopPersistedSessionCheckpoint(JSON.parse(JSON.stringify(parseWorkshopPersistedSession(saved)))).session;
+    const turns = reopened.workshop.turns;
+    const receipt = turns.find(turn => turn.artifact === 'problems_read')!;
+    expect(receipt.toolLabel).toBe('File Problems');
+    expect(receipt.capability).toMatchObject({ status, requestSummary: summary });
+    expect(receipt.capability?.metadata).toEqual('shownCount' in counts ? counts : undefined);
+    expect(receipt.capability?.publishedWithTurnId).toBeUndefined();
+    if ('reason' in counts) {
+      expect(receipt.content).toContain('did not fit');
+    }
+    const guest = { kind: 'personaGuest' as const, personaId: 'cliff' as const };
+    expect(projectWorkshopJoinSnapshotTurns(turns, guest).map(turn => turn.id)).not.toContain(receipt.id);
+    expect(projectWorkshopRoomTurns(turns, guest).map(turn => turn.id)).not.toContain(receipt.id);
+    expect(projectWorkshopTranscriptTurn(receipt)).toMatchObject({ kind: 'event', text: expect.stringContaining(summary) });
+    const transcript = projectWorkshopTranscript(turns, { title: saved.title, exportedAt: 0 });
+    for (const text of [JSON.stringify(saved), JSON.stringify(reopened), renderWorkshopTranscriptMarkdown(transcript),
+      renderWorkshopTranscriptHtml(transcript), renderWorkshopTranscriptJson(transcript), workshopCapabilityResultLogSummary(result)]) {
+      expect(text).not.toContain(privateText);
+    }
+  });
+
   it('accepts the unedited room on load and save', () => {
     const raw = editedRoom(() => undefined);
 

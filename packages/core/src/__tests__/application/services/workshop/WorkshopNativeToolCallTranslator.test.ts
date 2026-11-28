@@ -79,6 +79,10 @@ const EVERY_OPERATION: Record<WorkshopCapabilityOperation, { args: unknown; requ
     args: { group: 'excerpt', from: '3F9A1C2B7E', to: 'current', startChange: 3, current: '0123456789ab' },
     request: { file: { kind: 'excerpt' }, from: '3f9a1c2b7e', to: { kind: 'current', fingerprint: '0123456789ab' }, startChange: 3 }
   },
+  'problems.read': {
+    args: { group: 'chapters', path: 'Drafts/Looking-Glass.md', start: 17 },
+    request: { file: { kind: 'configured', group: 'chapters', path: 'Drafts/Looking-Glass.md' }, start: 17 }
+  },
   'locations.current': { args: {}, request: {} },
   'locations.folders': { args: { page: 2 }, request: { page: 2 } },
   'locations.check': {

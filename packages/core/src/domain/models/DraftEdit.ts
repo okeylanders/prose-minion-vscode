@@ -15,7 +15,7 @@
 
 import type { ModelScope, TokenUsage } from '@messages';
 import type { CraftFlagsPass } from '@/domain/models/CraftFlag';
-import type { ReasoningLevel } from '@/domain/models/ReasoningLevel';
+import { DEFAULT_CRAFT_FLAGS_REASONING, type ReasoningLevel } from '@/domain/models/ReasoningLevel';
 
 /** How a fix reaches the document: through the writer's review, or at once. */
 export type DraftEditReview = 'preview' | 'direct';
@@ -83,7 +83,7 @@ export type DraftEditStructureMode = 'strict' | 'prose-paragraphs' | 'free';
 export const DRAFT_EDIT_PASS_POLICIES: Readonly<Record<DraftEditPassKind, DraftEditPassPolicy>> = {
   proofread: { modelScope: 'proofread', allowsNewlineChanges: false, structure: 'strict', reasoning: 'light' },
   // Craft Flags never writes: nothing reads its fix rules, which take the strictest values should that change.
-  craft: { modelScope: 'craft', allowsNewlineChanges: false, structure: 'strict', reasoning: 'standard' }
+  craft: { modelScope: 'craft', allowsNewlineChanges: false, structure: 'strict', reasoning: DEFAULT_CRAFT_FLAGS_REASONING }
 };
 
 /** A half-open span of UTF-16 code units: `start` included, `end` excluded. */

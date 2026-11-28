@@ -9,6 +9,7 @@ import { UrlCitation } from '../citations';
 import type { LabeledContextBudgetSnapshot } from '../inferenceContext';
 import type { ModelScope } from '../configuration';
 import type { WorkshopBookmarkSummary } from './bookmarks';
+import type { WorkshopHighlightPrompt } from './highlights';
 import type { WorkshopReactionDelivery, WorkshopTurnReactionSummary } from './reactions';
 import type { WorkshopTrailerOutcomes } from '../../workshopTrailerOutcomes';
 import type { WorkshopTodoClosedBy, WorkshopTodoStatusChange } from './todoStatus';
@@ -183,6 +184,7 @@ export const WORKSHOP_TURN_ARTIFACTS = [
   'locations_current',
   'locations_folders',
   'locations_check',
+  'problems_read',
   'excerpt_revision',
   'context_change',
   'standing_directive_change',
@@ -435,6 +437,8 @@ export interface WorkshopTurn {
    * host/guest through room delivery. Ids are the `ta-N` addresses.
    */
   messageAttachments?: WorkshopMessageAttachmentSnapshot[];
+  /** Webview-only. This writer turn's attachment bodies await a successful room reply. */
+  sentAttachmentsPending?: true;
   content: string;
   /** Epoch ms when the turn was appended (host-stamped). */
   timestamp: number;
@@ -521,6 +525,15 @@ export interface WorkshopTurn {
    * replies only. Apply is the writer's.
    */
   locationsProposal?: WorkshopLocationsProposalCard;
+  /** Host-owned redraw data. The webview receives only highlightSummary. */
+  highlights?: {
+    source: { sourceUri: string; relativePath: string };
+    set: import('../../../../utils/workshopReplyHighlights').WorkshopHighlightsDraft;
+    /** The writer declined future restore prompts for this saved set. Manual Show still works. */
+    suppressRestorePrompt?: true;
+  };
+  /** Display projection of a set. Never persisted. */
+  highlightSummary?: { title: string; count: number };
   /**
    * A persona's passage-search request, settled (ADR 2026-11-20 D17): one
    * card, committed with the reply (optional, additive). Host and guest
@@ -1039,6 +1052,8 @@ export interface WorkshopEarlierTurnsMessage extends MessageEnvelope<WorkshopEar
 }
 
 export interface WorkshopSessionStatePayload {
+  /** Pane-local question replayed on readiness. Never part of the saved room snapshot. */
+  highlightPrompt?: WorkshopHighlightPrompt;
   session: WorkshopSessionSnapshot;
   /** Global writer setting, deliberately outside the serializable session aggregate. */
   writerProfile: WorkshopWriterProfile;

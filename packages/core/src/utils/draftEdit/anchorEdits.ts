@@ -25,24 +25,31 @@ export type AnchorResult =
 
 /** Locate `anchor.quote` in `text`. */
 export function anchorQuote(text: string, anchor: DraftEditAnchor): AnchorResult {
-  if (anchor.quote.length === 0) {
+  return createQuoteLocator(text)(anchor);
+}
+
+/** Locate any number of anchors in one snapshot, building its normalized offset map only on a fallback. */
+export function createQuoteLocator(text: string): (anchor: DraftEditAnchor) => AnchorResult {
+  let normalizedText: NormalizedText | undefined;
+  return (anchor) => {
+    if (anchor.quote.length === 0) {
+      return { kind: 'unanchored' };
+    }
+    for (const form of anchorForms(anchor)) {
+      const exact = quoteStarts(text, form.prefix, form.quote, form.suffix);
+      if (exact.length > 1) {
+        return { kind: 'ambiguous' };
+      }
+      if (exact.length === 1) {
+        return { kind: 'anchored', start: exact[0], end: exact[0] + anchor.quote.length };
+      }
+      const normalized = locateNormalized(normalizedText ??= normalizeForMatching(text), form);
+      if (normalized.kind !== 'unanchored') {
+        return normalized;
+      }
+    }
     return { kind: 'unanchored' };
-  }
-  const normalizedText = normalizeForMatching(text);
-  for (const form of anchorForms(anchor)) {
-    const exact = quoteStarts(text, form.prefix, form.quote, form.suffix);
-    if (exact.length > 1) {
-      return { kind: 'ambiguous' };
-    }
-    if (exact.length === 1) {
-      return { kind: 'anchored', start: exact[0], end: exact[0] + anchor.quote.length };
-    }
-    const normalized = locateNormalized(normalizedText, form);
-    if (normalized.kind !== 'unanchored') {
-      return normalized;
-    }
-  }
-  return { kind: 'unanchored' };
+  };
 }
 
 interface AnchorForm {
@@ -63,8 +70,10 @@ function quoteStarts(haystack: string, prefix: string, quote: string, suffix: st
   const starts = new Set<number>();
   for (const before of separators(prefix, /\s$/u, /^\s/u)) {
     for (const after of separators(suffix, /^\s/u, /\s$/u)) {
-      for (const index of findAll(haystack, prefix + before + quote + after + suffix)) {
+      const needle = prefix + before + quote + after + suffix;
+      for (let index = haystack.indexOf(needle); index >= 0; index = haystack.indexOf(needle, index + 1)) {
         starts.add(index + prefix.length + before.length);
+        if (starts.size > 1) { return [...starts]; }
       }
     }
   }
@@ -87,20 +96,6 @@ function anchorForms(anchor: DraftEditAnchor): AnchorForm[] {
     forms.push({ prefix, quote: anchor.quote, suffix });
   }
   return forms;
-}
-
-/** Every start index of `needle` in `haystack`, overlapping matches included. */
-function findAll(haystack: string, needle: string): number[] {
-  const found: number[] = [];
-  let from = 0;
-  for (;;) {
-    const index = haystack.indexOf(needle, from);
-    if (index === -1) {
-      return found;
-    }
-    found.push(index);
-    from = index + 1;
-  }
 }
 
 function locateNormalized(normalizedText: NormalizedText, form: AnchorForm): AnchorResult {

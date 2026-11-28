@@ -14,6 +14,9 @@ const UNDISCLOSED_PARAMETER_COUNT: ModelParameterCount = {
  * benchmark behavior.
  */
 export const MODEL_PARAMETER_METADATA: Readonly<Record<string, ModelParameterCount>> = {
+  'anthropic/claude-haiku-5.5': UNDISCLOSED_PARAMETER_COUNT,
+  'anthropic/claude-sonnet-5.5': UNDISCLOSED_PARAMETER_COUNT,
+  'openai/gpt-6.2-sol': UNDISCLOSED_PARAMETER_COUNT,
   'deepseek/deepseek-v3.1-terminus': { label: '≈685B params', confidence: 'estimated' },
   'deepseek/deepseek-v3.2-exp': { label: '≈685B params', confidence: 'estimated' },
   'deepseek/deepseek-v3.2': { label: '≈685B params', confidence: 'estimated' },

@@ -186,8 +186,21 @@ export interface WorkshopPassageSearchTrailerOutcomes {
   dropped: WorkshopTrailerDrop<WorkshopPassageSearchTrailerDropReason>[];
 }
 
+export const WORKSHOP_HIGHLIGHT_FRAME_REASONS = ['malformed', 'misplaced', 'extra', 'unavailable', 'skipped'] as const;
+export const WORKSHOP_HIGHLIGHT_PLACE_REASONS = ['unanchored', 'ambiguous', 'unordered', 'protected', 'display-failed'] as const;
+export type WorkshopHighlightFrameReason = typeof WORKSHOP_HIGHLIGHT_FRAME_REASONS[number];
+
+/** Rejected frames and dropped places are different units. Closed counts places held for an explicit Show. */
+export interface WorkshopHighlightTrailerOutcomes {
+  placed: number;
+  closed: number;
+  dropped: { reason: typeof WORKSHOP_HIGHLIGHT_PLACE_REASONS[number]; count: number }[];
+  rejected: { reason: WorkshopHighlightFrameReason; count: number }[];
+}
+
 /** A side is present only when the reply carried that kind of trailer; a reply with none has no record. */
 export interface WorkshopTrailerOutcomes {
+  highlights?: WorkshopHighlightTrailerOutcomes;
   memory?: WorkshopMemoryTrailerOutcomes;
   fileEdits?: WorkshopFileEditTrailerOutcomes;
   todos?: WorkshopTodoTrailerOutcomes;

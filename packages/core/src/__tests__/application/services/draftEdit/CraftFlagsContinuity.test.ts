@@ -12,7 +12,7 @@
  */
 import type { CraftFlagFinding } from '@/domain/models/CraftFlag';
 import { decodeCraftFlagsReply, readCraftFlagsFrame, CRAFT_FLAGS_CLOSING_SENTINEL, CRAFT_FLAGS_OPENING_SENTINEL } from '@services/craftFlags/CraftFlagsResponseCodec';
-import { MODEL, PASS, flag, read, setup } from '@/__tests__/application/services/draftEdit/craftFlagsHarness';
+import { APPROVAL, PASS, flag, read, setup } from '@/__tests__/application/services/draftEdit/craftFlagsHarness';
 
 const pair = (later: string, earlier: string, extra: Partial<CraftFlagFinding> = {}): CraftFlagFinding => flag(later, {
   category: 'continuity',
@@ -60,7 +60,7 @@ describe('A continuity pair (Slice 3c part 4)', () => {
       throw new Error('no gesture');
     }
     await useCase.plan(begun.gesture);
-    await useCase.run(begun.gesture, { model: MODEL });
+    await useCase.run(begun.gesture, APPROVAL);
     expect(pass.estimate).toHaveBeenCalledWith(expect.objectContaining({ breaks: ['* * *'] }));
     expect(requests[0].breaks).toEqual(['* * *']);
   });

@@ -276,6 +276,15 @@ export * from '@/domain/models/FileEditStaging';
 export { workshopExcerptFileEditDocument } from '@/application/services/workshop/WorkshopExcerptFileEditDocument';
 export { workshopHistoryExcerptFile } from '@/application/services/workshop/history/WorkshopHistoryFiles';
 export { WORKSHOP_HISTORY_GIT_READY_MS } from '@/application/services/workshop/history/WorkshopHistoryCapability';
+export { WorkshopHighlightService, type WorkshopHighlightDocuments } from '@/application/services/workshop/highlights/WorkshopHighlightService';
+export {
+  WORKSHOP_PROBLEMS_BOUNDS,
+  workshopProblemTextPrefix,
+  type WorkshopProblemRow,
+  type WorkshopProblemsPage,
+  type WorkshopProblemsReader,
+  type WorkshopProblemsPorts
+} from '@/application/services/workshop/problems/WorkshopProblemsPort';
 export { WorkshopHistoryDiffCache } from '@/application/services/workshop/history/WorkshopHistoryDiffCache';
 export { describeDraftEditOutcome, describeQuickFixOutcome, type DraftEditSummary } from '@/application/services/draftEdit/draftEditSummary';
 export {
@@ -293,5 +302,5 @@ export {
   type ProofreadSpellingConvention
 } from '@/domain/models/DraftEdit';
 export { proofreadWordList } from '@/utils/proofread/proofreadWordList';
-export { REASONING_LEVELS, reasoningLevelOf, type ReasoningLevel } from '@/domain/models/ReasoningLevel';
+export { CRAFT_FLAGS_REASONING_LEVELS, REASONING_LEVELS, craftFlagsReasoningLevelOf, reasoningLevelOf, type ReasoningLevel } from '@/domain/models/ReasoningLevel';
 export { shiftRanges, type TextChange } from '@/utils/draftEdit/shiftRanges';

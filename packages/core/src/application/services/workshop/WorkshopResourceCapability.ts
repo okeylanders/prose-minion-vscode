@@ -5,6 +5,7 @@
  * (`WorkshopResourceCatalog`; ADR 2026-11-20 S46).
  */
 
+import type { StageWorkshopReadDelivery } from '@/application/services/workshop/reads/WorkshopReadWindowFit';
 import {
   ContextResourceContent,
   ContextResourceProvider,
@@ -94,7 +95,9 @@ export class WorkshopResourceCapability {
    * Catalog and search ignore the window. A read is fitted to half the room
    * it leaves (ADR 2026-11-14 D2).
    */
-  async fulfill(request: ResourceRequest, window?: CapabilityContextWindow): Promise<WorkshopCapabilityResult> {
+  async fulfill(
+    request: ResourceRequest, window?: CapabilityContextWindow, stageDelivery?: StageWorkshopReadDelivery
+  ): Promise<WorkshopCapabilityResult> {
     this.throwIfAborted();
     switch (request.capability) {
       case 'resource.catalog':
@@ -102,7 +105,7 @@ export class WorkshopResourceCapability {
       case 'resource.search':
         return this.search(request);
       case 'resource.read':
-        return this.read(request, window);
+        return this.read(request, window, stageDelivery);
       default:
         return this.assertNever(request);
     }
@@ -119,9 +122,10 @@ export class WorkshopResourceCapability {
 
   private async read(
     request: Extract<ResourceRequest, { capability: 'resource.read' }>,
-    window: CapabilityContextWindow | undefined
+    window: CapabilityContextWindow | undefined,
+    stageDelivery?: StageWorkshopReadDelivery
   ): Promise<WorkshopCapabilityResult> {
-    const outcome = await this.readOperation.run(request, window);
+    const outcome = await this.readOperation.run(request, window, stageDelivery);
     if (outcome.sources) {
       this.sources.set(outcome.result, outcome.sources);
     }

@@ -15,6 +15,7 @@
   "prose-minion.proofreadFix": "draft-edit#proofread",
   "prose-minion.clearProofreadFlags": "draft-edit#proofread",
   "prose-minion.craftFlags": "draft-edit#craft-flags",
+  "prose-minion.clearWorkshopHighlights": "workshop#clear-workshop-highlights",
   "prose-minion.clearCraftFlags": "draft-edit#craft-flags",
   "proseMinion.assistantModel": "sidebar-tools#assistant",
   "proseMinion.dictionaryModel": "sidebar-tools#dictionary",

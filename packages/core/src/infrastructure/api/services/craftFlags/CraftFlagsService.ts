@@ -25,10 +25,8 @@
  * that changes while the writer reads the price never receives the chapter
  * (PR #177 F-01).
  *
- * At reasoning `off`, `refusesReasoning` asks the catalog whether that model
- * always reasons, before the writer is shown a price, and `flag` asks again
- * before it sends anything: such a model is refused, never sent `off`, and
- * never swapped for another (PR #181 F-01).
+ * The estimate includes the selected reasoning budget unless the live catalog
+ * shows the model lacks reasoning. The approved run uses that same budget.
  *
  * The writer's text travels only as a JSON string value, never as
  * instructions. Nothing here knows about documents or offsets: a passage in,
@@ -39,7 +37,7 @@ import type { TokenUsage } from '@messages';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { DRAFT_EDIT_PASS_POLICIES } from '@/domain/models/DraftEdit';
 import type { CraftFlagCategory, CraftFlagFinding } from '@/domain/models/CraftFlag';
-import type { ReasoningLevel } from '@/domain/models/ReasoningLevel';
+import { craftFlagsReasoningLevelOf, type ReasoningLevel } from '@/domain/models/ReasoningLevel';
 import { AIResourceManager } from '@orchestration/AIResourceManager';
 import { AGENT_RUN_POLICIES } from '@orchestration/AgentRunPolicies';
 import type { ExecutionResult } from '@orchestration/AgentRunContracts';
@@ -62,7 +60,7 @@ import {
   reportedThinking,
   type DraftEditInterruption
 } from '@services/draftEdit/DraftEditCalls';
-import { refusesReasoningOff, type ReasoningCatalog } from '@orchestration/ReasoningCatalog';
+import type { ReasoningSupportCatalog } from '@orchestration/ReasoningCatalog';
 import { decodeCraftFlagsReply, readCraftFlagsFrame } from '@services/craftFlags/CraftFlagsResponseCodec';
 import { sumTokenUsage } from '@/utils/tokenUsage';
 
@@ -116,13 +114,14 @@ export interface CraftFlagsRunRequest {
   /** Names the run in logs and recovery files: a path, never the text. */
   readonly label: string;
   /**
-   * The model the writer approved with its price (the estimate's): every call
-   * goes to it, whatever the craft engine's model is by dispatch (PR #177
-   * F-01).
+   * Every call goes to this model. A priced run uses the model from the
+   * approved estimate even if the craft engine's model changes (PR #177 F-01).
    */
   readonly model: string;
   /** How much the model may think per call (2026-10-27); absent, the pass's default. Priced in the estimate. */
   readonly reasoning?: ReasoningLevel;
+  /** Whether the approved estimate included reasoning. Direct unpriced calls resolve support themselves. */
+  readonly reasoningBudgeted?: boolean;
   /**
    * Whether the gesture's document is still the lifetime it read: asked once
    * the prompts are ready, just before the calls are sent, with nothing
@@ -132,15 +131,26 @@ export interface CraftFlagsRunRequest {
   readonly signal?: AbortSignal;
 }
 
-export interface CraftFlagsEstimate {
-  /** The model the calls are priced for, and go to once approved; absent with no key. */
-  readonly model?: string;
+interface CraftFlagsEstimateCounts {
   readonly calls: number;
   readonly inputTokens: number;
   readonly outputTokens: number;
+}
+
+export interface CraftFlagsModelEstimate extends CraftFlagsEstimateCounts {
+  /** The model the calls are priced for and go to once approved. */
+  readonly model: string;
+  /** Whether the estimate included reasoning. */
+  readonly reasoningBudgeted: boolean;
   /** Absent when the catalog has no live prices for the model. */
   readonly usd?: number;
 }
+
+export type CraftFlagsEstimate = CraftFlagsModelEstimate | (CraftFlagsEstimateCounts & {
+  readonly model?: never;
+  readonly reasoningBudgeted?: never;
+  readonly usd?: never;
+});
 
 export type CraftFlagsCallResult =
   | {
@@ -156,8 +166,6 @@ export type CraftFlagsCallResult =
 
 export type CraftFlagsRunResult =
   | { readonly kind: 'unconfigured' }
-  /** The level was `off`, and the catalog marks the approved model as always reasoning: nothing was sent (PR #181 F-01). */
-  | { readonly kind: 'reasoning-required'; readonly model: string }
   /** The gesture's document closed, reopened or changed language before anything was sent. */
   | { readonly kind: 'ended' }
   | { readonly kind: 'cancelled'; readonly usage?: TokenUsage }
@@ -174,7 +182,7 @@ export class CraftFlagsService {
     private readonly aiResourceManager: AIResourceManager,
     private readonly promptLoader: PromptLoader,
     private readonly prices: CraftFlagsPriceSource,
-    private readonly reasoningCatalog: ReasoningCatalog,
+    private readonly reasoningCatalog: ReasoningSupportCatalog,
     private readonly recovery: RejectedModelResponseRecovery,
     private readonly recoveryPresenter: RejectedModelResponseRecoveryPresenter,
     private readonly log: LogSink
@@ -183,7 +191,7 @@ export class CraftFlagsService {
   async estimate(request: Pick<CraftFlagsRunRequest, 'passage' | 'categories' | 'breaks' | 'reasoning'>): Promise<CraftFlagsEstimate> {
     await this.aiResourceManager.ensureInitialized();
     // Read once, before anything is awaited: the price and the confirmation name this model, and the run goes to it.
-    const model = this.aiResourceManager.getEngine(DRAFT_EDIT_PASS_POLICIES.craft.modelScope)?.getModel() || undefined;
+    const model = this.aiResourceManager.getEngine(DRAFT_EDIT_PASS_POLICIES.craft.modelScope)?.getModel();
     let inputTokens = 0;
     for (const category of request.categories) {
       const systemMessage = await this.systemMessage(category);
@@ -192,26 +200,24 @@ export class CraftFlagsService {
         { role: 'user', content: buildCraftFlagsMessage(category, request.passage, request.breaks) }
       ]);
     }
-    // Typical thinking is half the level's budget: an assumption the fixture run revisits, priced, never a cap.
-    const thinking = Math.round(reasoningBudget(this.levelOf(request)) / 2);
-    const outputTokens = request.categories.length * (PROMPT_BUDGETS.craftFlags.typicalOutputTokens + thinking);
-    const pricing = model ? await this.pricingOf(model) : undefined;
+    const calls = request.categories.length;
+    const typicalOutput = PROMPT_BUDGETS.craftFlags.typicalOutputTokens;
+    if (!model) {
+      return { calls, inputTokens, outputTokens: calls * typicalOutput };
+    }
+    const reasoningBudgeted = await this.shouldBudgetReasoning(model);
+    // Typical thinking is half the level's budget, an assumption for pricing.
+    const thinking = reasoningBudgeted ? Math.round(reasoningBudget(craftFlagsReasoningLevelOf(request.reasoning)) / 2) : 0;
+    const outputTokens = calls * (typicalOutput + thinking);
+    const pricing = await this.pricingOf(model);
     return {
-      ...(model ? { model } : {}),
-      calls: request.categories.length,
+      model,
+      calls,
       inputTokens,
       outputTokens,
+      reasoningBudgeted,
       ...(pricing ? { usd: inputTokens * pricing.promptUsdPerToken + outputTokens * pricing.completionUsdPerToken } : {})
     };
-  }
-
-  /**
-   * Whether a run at the request's level must refuse `model`, the one it would
-   * be approved for: only at `off`, on a model the catalog marks as always
-   * reasoning (PR #181 F-01).
-   */
-  refusesReasoning(request: Pick<CraftFlagsRunRequest, 'model' | 'reasoning' | 'label'>): Promise<boolean> {
-    return refusesReasoningOff(this.levelOf(request), request.model, this.reasoningCatalog, this.log, `[CraftFlags] ${request.label}`);
   }
 
   async flag(request: CraftFlagsRunRequest): Promise<CraftFlagsRunResult> {
@@ -220,17 +226,17 @@ export class CraftFlagsService {
     if (!engine) {
       return { kind: 'unconfigured' };
     }
-    // Asked again of the approved model: the catalog may have been read since the plan asked.
-    if (await this.refusesReasoning(request)) {
-      return { kind: 'reasoning-required', model: request.model };
-    }
+    const reasoningBudgeted = request.reasoningBudgeted ?? await this.shouldBudgetReasoning(request.model);
+    const replyTokens = PROMPT_BUDGETS.craftFlags.outputTokens;
+    const ask = reasoningBudgeted
+      ? reasoningRequest(craftFlagsReasoningLevelOf(request.reasoning), replyTokens)
+      : { maxTokens: replyTokens };
     const systemMessages = await Promise.all(request.categories.map((category) => this.systemMessage(category)));
     // The calls below start in this same turn, so this answers for every one of them.
     if (request.stillCurrent && !request.stillCurrent()) {
       return { kind: 'ended' };
     }
     const presenter = presentOnce(this.recoveryPresenter);
-    const ask = reasoningRequest(this.levelOf(request), PROMPT_BUDGETS.craftFlags.outputTokens);
     const usages: Array<TokenUsage | undefined> = [];
     const answered: ExecutionResult[] = [];
     let interrupted: DraftEditInterruption | undefined;
@@ -266,8 +272,17 @@ export class CraftFlagsService {
     return { kind: 'completed', calls, ...(interrupted ? { interrupted } : {}), ...(usage ? { usage } : {}) };
   }
 
-  private levelOf(request: Pick<CraftFlagsRunRequest, 'reasoning'>): ReasoningLevel {
-    return request.reasoning ?? DRAFT_EDIT_PASS_POLICIES.craft.reasoning;
+  private async shouldBudgetReasoning(model: string): Promise<boolean> {
+    try {
+      const supported = await this.reasoningCatalog.supportsReasoning(model);
+      if (supported !== undefined) {
+        return supported;
+      }
+    } catch (error) {
+      this.log.appendLine(`[CraftFlags] Model catalog unavailable: ${error instanceof Error ? error.message : String(error)}`);
+    }
+    this.log.appendLine(`[CraftFlags] The model catalog cannot say whether ${model} supports reasoning. Using the selected budget.`);
+    return true;
   }
 
   private systemMessage(category: CraftFlagCategory): Promise<string> {
@@ -283,7 +298,7 @@ export class CraftFlagsService {
     }
   }
 
-  private call(engine: AgentRunEngine, model: string, ask: ReasoningRequest, systemMessage: string, userMessage: string, signal?: AbortSignal): Promise<ExecutionResult> {
+  private call(engine: AgentRunEngine, model: string, ask: ReasoningRequest | { readonly maxTokens: number; readonly reasoning?: never }, systemMessage: string, userMessage: string, signal?: AbortSignal): Promise<ExecutionResult> {
     return engine.runInitial({
       toolName: 'craft-flags',
       systemMessage,
@@ -293,7 +308,7 @@ export class CraftFlagsService {
         model,
         temperature: CRAFT_FLAGS_TEMPERATURE,
         maxTokens: ask.maxTokens,
-        reasoning: ask.reasoning,
+        ...(ask.reasoning ? { reasoning: ask.reasoning } : {}),
         ...(signal ? { signal } : {})
       }
     });

@@ -34,7 +34,8 @@ describe('workshopCapabilityFamily', () => {
       ['history.diff', 'history'],
       ['locations.current', 'locations'],
       ['locations.folders', 'locations'],
-      ['locations.check', 'locations']
+      ['locations.check', 'locations'],
+      ['problems.read', 'problems']
     ]);
   });
 
@@ -71,5 +72,6 @@ describe('workshopCapabilityFamily', () => {
     expect(workshopCapabilityFamilyLabel('lens.read', 'Continuity')).toBe('Lens Library');
     expect(workshopCapabilityFamilyLabel('lens.catalog')).toBe('Lens Library');
     expect(workshopCapabilityFamilyLabel('history.diff')).toBe('File History');
+    expect(workshopCapabilityFamilyLabel('problems.read')).toBe('File Problems');
   });
 });

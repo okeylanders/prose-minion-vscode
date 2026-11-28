@@ -99,6 +99,7 @@ export const WORKSHOP_NATIVE_CALL_FIELDS: Readonly<Record<
   'lens.read': { lens: TEXT, section: { repeatable: true, plural: 'sections' } },
   'history.log': { group: TEXT, path: TEXT, page: TEXT },
   'history.diff': { group: TEXT, path: TEXT, from: TEXT, to: TEXT, startChange: TEXT, current: TEXT },
+  'problems.read': { group: TEXT, path: TEXT, start: TEXT },
   'locations.current': {},
   'locations.folders': { page: TEXT },
   'locations.check': { pattern: { repeatable: true, plural: 'patterns', attributes: ['group'] } }
