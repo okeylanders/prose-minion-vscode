@@ -71,6 +71,19 @@ describe('WorkshopComposer — Selected Text', () => {
     return props;
   };
 
+  it.each([true, false])('a live selection alone can submit only when it will ride the message (eligible=%s)', (eligible) => {
+    const { onSend } = renderComposer({ selectedText: { includeSelectedText: true, onIncludeSelectedTextChange: jest.fn(),
+      livePill: { selection: selection(), ...(eligible ? {} : { disabledReason: WORKSHOP_SELECTED_TEXT_FULL_REASON }) } } });
+    const button = screen.getByRole<HTMLButtonElement>('button', { name: 'Send message to Jill' });
+    expect(button.disabled).toBe(!eligible);
+    fireEvent.keyDown(screen.getByRole('textbox', { name: 'Message Jill' }), { key: 'Enter' });
+    if (eligible) {
+      expect(onSend).toHaveBeenCalledWith('');
+    } else {
+      expect(onSend).not.toHaveBeenCalled();
+    }
+  });
+
   it('draws no toggle and no pill when it is given no Selected Text', () => {
     renderComposer();
     expect(screen.queryByRole('switch')).toBeNull();

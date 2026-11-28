@@ -144,6 +144,8 @@ export interface ResultCache {
  * application layer. This is intentionally a plain bundle, not a DI container.
  */
 export interface CoreServices {
+  /** This room's read-only Workshop diagnostic sets, when the host supports them. */
+  workshopHighlights?: import('@/application/services/workshop/highlights/WorkshopHighlightEditor').WorkshopHighlightEditor;
   assistantToolService: AssistantToolService;
   dictionaryService: DictionaryService;
   /** Shared Dictionary-tab lookup history, persisted under prose-minion/history (ADR 2026-10-14). */

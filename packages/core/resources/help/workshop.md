@@ -44,6 +44,10 @@ You can react to a message with an emoji. The reply's author hears about your re
 
 Select text in the editor, open the Prose Minion submenu and choose **Send to New Workshop Excerpt** to make it the room's excerpt. **Add Selection to Workshop Message** stages a Selected Text pill for just your next message. In the composer, **Include selected text** lets you stage a selection directly. Review the pills before sending. When continuing with a chapter carried into another room, **Continue** re-reads it from file. Use **Re-read from file** to pick up subsequent edits.
 
+Pasting 500 or more characters into the composer creates a **Pasted text** pill and keeps your draft in place. Click the pill to inspect or edit it. Choose **Insert into message** to move its text to the cursor, or send the pill on its own. The pill shows how much was kept if the paste exceeds 5,000 words or 40,000 characters.
+
+Click a pill on a sent writer message, including one in **Show earlier turns**, to inspect the copy that went with that message. The sheet shows its source and any cut. **Open current file** opens the file as it is now when the project can identify it. A private instrument message has no attachment copy in the room.
+
 Type @ in the composer and start a file name. The list groups matching configured files and offers **Browse project…** for the full picker. Use Up or Down to move, Enter or Tab to pick, or Escape to close. Picking adds a text token and stages a pill for that message. Picking an already staged file inserts its token again without duplicating the pill. To remove the attachment, remove its pill. Deleting only the token leaves the attachment staged.
 
 ## Pinned context
@@ -94,6 +98,22 @@ When the search has read every file it planned, in full, and the room is free, t
 
 Each Workshop room can hold up to four results that have not been sent. With four waiting, **Run** on another card says so and searches nothing: send or discard one first. The results stay with their room while its tab is open, even when you switch tabs. A rewind that keeps the card unchanged keeps its results, so they can be sent again; opening a session, even the same one again, or starting a new room drops them. A branch opens its own tab. Unsent results stay in the original tab. After a reload the card can be run again, and a delivered card says the report is no longer held.
 
+## Highlight passages in the excerpt file
+
+Pin a file as your Workshop excerpt, or select text from a file and choose **Send to New Workshop Excerpt**. Ask your host or guest to “Highlight the lines Fresh called predictable and leave a note on each” or “Highlight where Mara puts on the blue sweater.” A persona can also propose a set when specific passages would help with the writing task you are discussing. It can use the conversation, an attached report or a Lightbox reading to find places in the excerpt's file. A reply can propose up to 24 places. If the persona finds more, it tells you and waits for you to ask for another set.
+
+When Workshop offers the set in chat, choose **Apply highlights** to save it with the reply or **Skip** to discard it. If the excerpt's file is already open, applying the set draws its read-only marks in the editor. Hover a mark to read its note, or use the **Problems** panel and **F8** to visit the marks.
+
+Sets from different replies can appear together. Use **Clear** on a reply's chip to remove its current marks, or run **Prose Minion: Clear All Workshop Highlights** from the Command Palette to clear all Workshop marks in the window. **Show** on a reply opens the source file if needed and directly redraws that set against the live text.
+
+When you reopen a saved conversation, Workshop may offer to restore its kept sets for the excerpt. If the release notice is open, close it to see the question. Choose **Restore highlights** to redraw the offered sets, **Not now** to skip this opening, or **Don’t ask again for these highlights** to skip future prompts for the offered sets. New sets you keep can still appear in a future restore prompt. **Show** remains available on each saved reply.
+
+## Read file Problems
+
+Ask a Workshop host or guest “What’s marked in the editor for this excerpt?” or “Read the Problems for Chapter Two.” The persona can read the current **Problems** for the excerpt's file or a configured project file, including highlights made in another Workshop tab in the same VS Code window. It can distinguish Workshop highlights, Proofread, Craft Flags, and other publishers by source.
+
+The read uses the diagnostics published for that file. When the file is open, the persona may also see a short quote from the current marked text, including unsaved changes. The **File Problems** card records a count. Ask again for an updated read after editing or clearing marks.
+
 ## Suggested file edits
 
 Under **Conversation settings → Behavior**, **Suggested file edits** controls whether a persona may propose changes to project files. Each card shows changes against a specific file. Inspect the card and choose **Apply**, **Review in editor…**, or **Decline**. Apply makes an undoable change. Saving the document remains your choice. When a reply describes small fixes or offers a rewrite, select its footer chip to ask that author to turn the offer into edit cards.
@@ -113,3 +133,7 @@ Ask a host or guest what lenses are available. The persona uses lens.catalog to 
 ## A file's git history
 
 If the project is a git repository, a host or guest can read the history of the excerpt's file or of any configured project file. There is no setting: ask, for example, what you cut from a chapter since last week, or how a new ending differs from the one you committed in March. The persona uses history.log to list a file's commits, newest first, 20 per page, with each commit's short id, date, author and subject. It uses history.diff to compare two commits, or a commit with the file as currently saved on disk. Unsaved changes in the editor are not included. A diff matches paragraphs first, then marks the words that changed inside a paragraph, and continues across calls when the conversation window is short. A diff is shared with the room when the reply commits and appears under **Read in**; the list of commits stays private to the persona. History is read through VS Code's built-in Git extension, so git must be installed and enabled, and the workspace must be trusted. The history does not follow a file across a rename: a renamed file's history starts at its rename.
+
+## Clear Workshop highlights
+
+Run **Prose Minion: Clear All Workshop Highlights** from the Command Palette to clear Workshop highlights in every file in the current window. Use **Show** on a reply to bring its set back.

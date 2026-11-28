@@ -159,6 +159,13 @@ export interface PromptBudgets {
     catalogItems: number;
     readSections: number;
   }>;
+  /** Bounds for a page of current file diagnostics. Text limits use UTF-16 code units. */
+  readonly workshopProblems: Readonly<{
+    rowsPerPage: number;
+    sourceCharacters: number;
+    messageCharacters: number;
+    quoteCharacters: number;
+  }>;
   /**
    * A file's git history for personas (ADR 2026-11-19 D17). `history.log`
    * lists `logPageCommits` a page and reads at most `logScanCommits` back;
@@ -295,6 +302,7 @@ export interface PromptBudgets {
    * newest `snapshots`; a watching composer hears at most one selection per
    * `pushIntervalMs`, trailing edge included.
    */
+  readonly workshopPastedText: Readonly<{ thresholdCharacters: number; words: number; characters: number }>;
   readonly workshopSelectedText: Readonly<{
     words: number;
     characters: number;
@@ -330,6 +338,12 @@ export interface PromptBudgets {
    * A persona's passage-search request and the delivery of its results
    * (ADR 2026-11-20 D16, D21). The search's own bounds are `passageSearch`.
    */
+  readonly workshopHighlights: Readonly<{
+    placesPerSet: number;
+    quoteCharacters: number;
+    titleCharacters: number;
+    noteCharacters: number;
+  }>;
   readonly workshopPassageSearch: Readonly<{
     /** Places one request may name: groups, files and the excerpt together. */
     scopes: number;
@@ -929,6 +943,7 @@ export const PROMPT_BUDGETS: PromptBudgets = {
   },
   workshopCapabilityPaging: { pageDigits: 9 },
   workshopLens: { catalogItems: 50, readSections: 7 },
+  workshopProblems: { rowsPerPage: 16, sourceCharacters: 80, messageCharacters: 800, quoteCharacters: 240 },
   workshopHistory: {
     logPageCommits: 20,
     logScanCommits: 1_000,
@@ -1003,10 +1018,12 @@ export const PROMPT_BUDGETS: PromptBudgets = {
     optionsPerOffer: 4,
     optionCharacters: 40
   },
+  workshopPastedText: { thresholdCharacters: 500, words: 5_000, characters: 40_000 },
   workshopSelectedText: { words: 5_000, characters: 40_000, previewCharacters: 120, snapshots: 8, pushIntervalMs: 150 },
   workshopThread: { pageTurns: 100, pageBytes: 1024 * 1024, jumpPages: 3 },
   workshopTodos: { items: 12, characters: 12_000, headerAllowanceCharacters: 600 },
   workshopTodoStatus: { changesPerReply: 20, savedSessionsPerReply: 10, noteCharacters: 160 },
+  workshopHighlights: { placesPerSet: 24, quoteCharacters: 400, titleCharacters: 80, noteCharacters: 300 },
   workshopPassageSearch: { scopes: 8, questionCharacters: 300, resultsTokens: 6_000, heldResults: 4 },
   guestJoinSnapshot: {
     turns: 100,

@@ -2,6 +2,7 @@
  * Semantic and referential invariants for structurally valid V1 Workshop state.
  */
 
+import { assertWorkshopPastedTextRecord } from './WorkshopPastedText';
 import { WorkshopPersonaId, WorkshopToolId } from '@messages';
 import { isWorkshopPersonaId } from '@shared/constants/workshopPersonas';
 import { isWorkshopToolId } from '@shared/constants/workshopTools';
@@ -260,6 +261,12 @@ export function validateWorkshopSessionStateV1(
       throw new Error(
         `Persisted Workshop thread artifact ${artifact.id} has the wrong attachment kind`
       );
+    }
+    if (attachment?.pastedText) {
+      if (artifact.name !== attachment.label || artifact.sourcePath !== undefined || artifact.truncation !== undefined) {
+        throw new Error('A pasted-text artifact must keep its attachment label and carry no file provenance');
+      }
+      assertWorkshopPastedTextRecord({ ...attachment, content: artifact.content }, 'Workshop pasted-text artifact');
     }
   }
   // Conversation Widgets (ADR 2026-07-22): `wc-N` ids are monotonic like

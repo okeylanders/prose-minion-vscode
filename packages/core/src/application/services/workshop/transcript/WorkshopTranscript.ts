@@ -200,7 +200,7 @@ export function projectWorkshopTranscript(
     }
     const marked = meta.bookmarkedTurnIds?.has(turn.id) ? { ...entry, bookmarked: true as const } : entry;
     return [...pending.splice(0), withFileEdits(withModel(marked, turn), turn), ...todoReceipt(entry, turn), ...locationsCard(entry, turn),
-      ...passageSearchCard(entry, turn)];
+      ...passageSearchCard(entry, turn), ...highlightSet(entry, turn)];
   });
   // A slice whose turns all print nothing still closes the transcript.
   entries.push(...pending);
@@ -289,6 +289,13 @@ function locationsCard(entry: WorkshopTranscriptEntry, turn: WorkshopTurn): Work
     : [];
 }
 
+function highlightSet(entry: WorkshopTranscriptEntry, turn: WorkshopTurn): WorkshopTranscriptEventEntry[] {
+  const count = turn.highlights?.set.places.length;
+  return entry.kind === 'reply' && count
+    ? [{ kind: 'event', turnId: turn.id, timestamp: turn.timestamp, text: `Kept ${count} ${count === 1 ? 'highlight' : 'highlights'}.` }]
+    : [];
+}
+
 /** A reply's passage-search card as one event line that counts its scopes (ADR 2026-11-20 D21): never the question or a path. */
 function passageSearchCard(entry: WorkshopTranscriptEntry, turn: WorkshopTurn): WorkshopTranscriptEventEntry[] {
   return entry.kind === 'reply' && turn.passageSearchRequest
@@ -350,7 +357,7 @@ function event(turn: WorkshopTurn, text: string): WorkshopTranscriptEventEntry |
 
 function writerEntry(turn: WorkshopTurn): WorkshopTranscriptWriterEntry | undefined {
   const widgetCommit = turn.widgetCommit?.rail === 'thread-artifact' ? turn.widgetCommit : undefined;
-  if (!turn.content.trim() && !widgetCommit) {
+  if (!turn.content.trim() && !widgetCommit && !turn.messageAttachments?.length) {
     return undefined;
   }
   return {

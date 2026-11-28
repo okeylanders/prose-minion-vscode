@@ -26,6 +26,7 @@ describe('useStartupNotice', () => {
   it('asks the host for per-machine notice visibility', () => {
     const { result } = renderHook(() => useStartupNotice('webview.workshop'));
 
+    expect(result.current.noticeResolved).toBe(false);
     act(() => result.current.requestStartupNotice());
 
     expect(mockVSCode.postMessage).toHaveBeenCalledWith(expect.objectContaining({
@@ -46,6 +47,7 @@ describe('useStartupNotice', () => {
 
     act(() => result.current.handleStartupNoticeData(data(true)));
     expect(result.current.noticeOpen).toBe(true);
+    expect(result.current.noticeResolved).toBe(true);
 
     act(() => result.current.handleStartupNoticeData(data(false)));
     expect(result.current.noticeOpen).toBe(false);

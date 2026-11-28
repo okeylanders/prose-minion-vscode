@@ -18,7 +18,7 @@ import {
   type CraftFlagsPriceSource
 } from '@services/craftFlags/CraftFlagsService';
 import { CRAFT_FLAGS_CLOSING_SENTINEL, CRAFT_FLAGS_OPENING_SENTINEL } from '@services/craftFlags/CraftFlagsResponseCodec';
-import type { ReasoningCatalog } from '@orchestration/ReasoningCatalog';
+import type { ReasoningSupportCatalog } from '@orchestration/ReasoningCatalog';
 
 const USAGE = { promptTokens: 4000, completionTokens: 600, totalTokens: 4600, costUsd: 0.02 };
 const PASSAGE = 'But when the Rabbit actually took a watch out of its waistcoat-pocket, a chill ran down her spine.';
@@ -28,7 +28,7 @@ const replyOf = (...flags: unknown[]) =>
 
 type Reply = { content: string; finishReason?: string; usage?: typeof USAGE; cancelled?: boolean; reasoningTokens?: number } | Error;
 
-function createService(replies: Reply[], options: { engine?: boolean; prices?: CraftFlagsPriceSource; model?: string; catalog?: ReasoningCatalog } = {}) {
+function createService(replies: Reply[], options: { engine?: boolean; prices?: CraftFlagsPriceSource; model?: string; catalog?: ReasoningSupportCatalog } = {}) {
   const queue = [...replies];
   const runInitial = jest.fn(async () => {
     const next = queue.shift();
@@ -50,7 +50,7 @@ function createService(replies: Reply[], options: { engine?: boolean; prices?: C
   const recovery = { capture: jest.fn(async () => ({ filePath: '/project/prose-minion/recovery/x.txt', toolName: 'craft-flags', storageScope: 'project' })) };
   const presenter = { present: jest.fn(async () => undefined) };
   const log = { appendLine: jest.fn() };
-  const catalog = options.catalog ?? { alwaysReasons: jest.fn(async () => undefined) };
+  const catalog = options.catalog ?? { supportsReasoning: jest.fn(async () => undefined) };
   const service = new CraftFlagsService(manager as never, promptLoader as never, prices, catalog, recovery as never, presenter, log as never);
   return { service, runInitial, engine, manager, catalog, promptLoader, prices, recovery, presenter, log };
 }
@@ -187,7 +187,8 @@ describe('CraftFlagsService.flag', () => {
   });
 
   it.each([
-    ['off', PROMPT_BUDGETS.craftFlags.outputTokens, { effort: 'none' }],
+    ['off', PROMPT_BUDGETS.craftFlags.outputTokens + PROMPT_BUDGETS.reasoning.standard, { maxTokens: PROMPT_BUDGETS.reasoning.standard }],
+    ['standard', PROMPT_BUDGETS.craftFlags.outputTokens + PROMPT_BUDGETS.reasoning.standard, { maxTokens: PROMPT_BUDGETS.reasoning.standard }],
     ['light', PROMPT_BUDGETS.craftFlags.outputTokens + PROMPT_BUDGETS.reasoning.light, { maxTokens: PROMPT_BUDGETS.reasoning.light }],
     ['deep', PROMPT_BUDGETS.craftFlags.outputTokens + PROMPT_BUDGETS.reasoning.deep, { maxTokens: PROMPT_BUDGETS.reasoning.deep }]
   ] as const)('sends the %s level the writer set, its budget on top of the reply\'s ceiling (2026-10-27)', async (reasoning, maxTokens, sent) => {
@@ -262,14 +263,16 @@ describe('CraftFlagsService.estimate', () => {
       calls: 1,
       inputTokens,
       outputTokens,
+      reasoningBudgeted: true,
       usd: inputTokens * 0.000003 + outputTokens * 0.000015
     });
   });
 
-  it('prices the level the writer set: no thinking at off, half the deep budget at deep', async () => {
+  it('prices a historical Off as Standard and leaves the larger Deep budget available', async () => {
     const { service } = createService([]);
     const typical = PROMPT_BUDGETS.craftFlags.typicalOutputTokens;
-    await expect(service.estimate({ ...request, reasoning: 'off' })).resolves.toMatchObject({ outputTokens: typical });
+    await expect(service.estimate({ ...request, reasoning: 'off' }))
+      .resolves.toMatchObject({ outputTokens: typical + PROMPT_BUDGETS.reasoning.standard / 2 });
     await expect(service.estimate({ ...request, categories: ['cliche', 'gesture'], reasoning: 'deep' }))
       .resolves.toMatchObject({ outputTokens: 2 * (typical + PROMPT_BUDGETS.reasoning.deep / 2) });
   });
@@ -287,61 +290,48 @@ describe('CraftFlagsService.estimate', () => {
   });
 
   it('leaves the price out when the catalog has none, or cannot be read, and names no model without an engine', async () => {
-    expect(await createService([], { prices: { pricing: async () => undefined } }).service.estimate(request)).not.toHaveProperty('usd');
+    const unknownPrice = await createService([], { prices: { pricing: async () => undefined } }).service.estimate(request);
+    expect(unknownPrice).toMatchObject({ model: 'placeholder/craft-model', reasoningBudgeted: true });
+    expect(unknownPrice).not.toHaveProperty('usd');
     const failing = createService([], { prices: { pricing: async () => { throw new Error('offline'); } } });
     expect(await failing.service.estimate(request)).not.toHaveProperty('usd');
     expect(failing.log.appendLine).toHaveBeenCalledWith(expect.stringContaining('offline'));
     const unconfigured = await createService([], { engine: false }).service.estimate(request);
     expect(unconfigured).not.toHaveProperty('model');
+    expect(unconfigured).not.toHaveProperty('reasoningBudgeted');
     expect(unconfigured).not.toHaveProperty('usd');
   });
 });
 
-describe('CraftFlagsService at reasoning off on a model that always reasons (PR #181 F-01)', () => {
-  type SentOptions = { options: { model?: string; reasoning?: unknown } };
-  const sentOptions = (runInitial: jest.Mock) => (runInitial.mock.calls as unknown as Array<[SentOptions]>).map(([call]) => call.options);
-  const ALL = ['cliche', 'register', 'gesture', 'continuity'] as const;
-  const replies = () => ALL.map(() => ({ content: replyOf() }));
+describe('Craft Flags model reasoning support', () => {
+  it('looks up the approved model when running without a previous estimate', async () => {
+    const catalog = { supportsReasoning: jest.fn(async (model: string) => model !== APPROVED) };
+    const { service, runInitial } = createService([{ content: replyOf() }], { catalog });
+    const result = await service.flag({ ...request, reasoning: 'deep' });
 
-  it('asks about the approved model at off, and at no other level', async () => {
-    const catalog = { alwaysReasons: jest.fn(async (model: string) => model === APPROVED) };
-    const { service } = createService([], { catalog, model: 'placeholder/engine-model' });
-
-    await expect(service.refusesReasoning({ model: APPROVED, label: 'chapter-01.md', reasoning: 'off' })).resolves.toBe(true);
-    expect(catalog.alwaysReasons.mock.calls).toEqual([[APPROVED]]);
-    for (const reasoning of ['light', 'standard', 'deep', undefined] as const) {
-      await expect(service.refusesReasoning({ model: APPROVED, label: 'chapter-01.md', ...(reasoning ? { reasoning } : {}) })).resolves.toBe(false);
-    }
-    expect(catalog.alwaysReasons).toHaveBeenCalledTimes(1);
+    expect(result).toMatchObject({ kind: 'completed' });
+    expect(catalog.supportsReasoning.mock.calls).toEqual([[APPROVED]]);
+    const [call] = runInitial.mock.calls[0] as unknown as [{ options: Record<string, unknown> }];
+    expect(call.options).toMatchObject({ model: APPROVED, maxTokens: PROMPT_BUDGETS.craftFlags.outputTokens });
+    expect(call.options).not.toHaveProperty('reasoning');
   });
 
-  it('sends none of the four calls to an approved model that always reasons', async () => {
-    const catalog = { alwaysReasons: jest.fn(async () => true) };
-    const stillCurrent = jest.fn(() => true);
-    const { service, runInitial, promptLoader } = createService(replies(), { catalog });
-    const result = await service.flag({ ...request, categories: [...ALL], reasoning: 'off', stillCurrent });
+  it('omits thinking from the price when the live model lacks reasoning', async () => {
+    const catalog = { supportsReasoning: jest.fn(async () => false) };
+    const { service } = createService([], { catalog });
+    const estimate = await service.estimate({ ...request, reasoning: 'deep' });
 
-    expect(result).toEqual({ kind: 'reasoning-required', model: APPROVED });
-    expect(runInitial).not.toHaveBeenCalled();
-    expect(promptLoader.loadPrompts).not.toHaveBeenCalled();
-    expect(stillCurrent).not.toHaveBeenCalled();
+    expect(estimate.reasoningBudgeted).toBe(false);
+    expect(estimate.outputTokens).toBe(PROMPT_BUDGETS.craftFlags.typicalOutputTokens);
+    expect(estimate.usd).toBe(estimate.inputTokens * 0.000003 + estimate.outputTokens * 0.000015);
   });
 
-  it('sends all four calls at off to an approved model that can stop, though the engine\'s model now always reasons', async () => {
-    const catalog = { alwaysReasons: jest.fn(async (model: string) => model !== APPROVED) };
-    const { service, runInitial } = createService(replies(), { catalog, model: 'placeholder/always-reasons' });
-    const result = await service.flag({ ...request, categories: [...ALL], reasoning: 'off' });
+  it('retains the selected budget and logs why when the catalog cannot say', async () => {
+    const { service, runInitial, log } = createService([{ content: replyOf() }]);
+    await service.flag({ ...request, reasoning: 'light' });
 
-    expect(result).toMatchObject({ kind: 'completed', calls: ALL.map(() => ({ kind: 'read' })) });
-    expect(catalog.alwaysReasons.mock.calls).toEqual([[APPROVED]]);
-    expect(sentOptions(runInitial)).toEqual(ALL.map(() => expect.objectContaining({ model: APPROVED, reasoning: { effort: 'none' } })));
-  });
-
-  it('sends off as asked when the catalog cannot say', async () => {
-    const { service, runInitial, log } = createService(replies(), { catalog: { alwaysReasons: async () => undefined } });
-    await service.flag({ ...request, categories: [...ALL], reasoning: 'off' });
-
-    expect(runInitial).toHaveBeenCalledTimes(ALL.length);
-    expect(log.appendLine).toHaveBeenCalledWith(expect.stringContaining('cannot say whether placeholder/approved-model can stop reasoning'));
+    const [call] = runInitial.mock.calls[0] as unknown as [{ options: Record<string, unknown> }];
+    expect(call.options).toMatchObject({ reasoning: { maxTokens: PROMPT_BUDGETS.reasoning.light } });
+    expect(log.appendLine).toHaveBeenCalledWith(expect.stringContaining('cannot say whether placeholder/approved-model supports reasoning'));
   });
 });

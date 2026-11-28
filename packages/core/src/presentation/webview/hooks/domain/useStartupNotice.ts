@@ -13,6 +13,7 @@ import { useVSCodeApi } from '../useVSCodeApi';
 
 export interface StartupNoticeState {
   noticeOpen: boolean;
+  noticeResolved: boolean;
 }
 
 export interface StartupNoticeActions {
@@ -40,7 +41,8 @@ export type UseStartupNoticeReturn = StartupNoticeState & StartupNoticeActions &
 export function useStartupNotice(source: `webview.${string}`): UseStartupNoticeReturn {
   const vscode = useVSCodeApi();
 
-  const [noticeOpen, setNoticeOpen] = React.useState(false);
+  const [noticeOpen, setNoticeOpen] = React.useState<boolean>();
+  const dismissedVersion = React.useRef<string>();
   /** The host-declared content version, echoed back on a recorded dismissal. */
   const noticeVersionRef = React.useRef<string | null>(null);
 
@@ -55,13 +57,17 @@ export function useStartupNotice(source: `webview.${string}`): UseStartupNoticeR
 
   const handleStartupNoticeData = React.useCallback((message: StartupNoticeDataMessage) => {
     noticeVersionRef.current = message.payload.noticeVersion;
-    setNoticeOpen(message.payload.shouldShow);
+    setNoticeOpen(message.payload.shouldShow && dismissedVersion.current !== message.payload.noticeVersion);
   }, []);
 
   const dismissStartupNotice = React.useCallback(
     (dontShowAgain: boolean) => {
+      if (noticeVersionRef.current === null) {
+        return;
+      }
+      dismissedVersion.current = noticeVersionRef.current;
       setNoticeOpen(false);
-      if (dontShowAgain && noticeVersionRef.current !== null) {
+      if (dontShowAgain) {
         vscode.postMessage({
           type: MessageType.DISMISS_STARTUP_NOTICE,
           source,
@@ -74,7 +80,8 @@ export function useStartupNotice(source: `webview.${string}`): UseStartupNoticeR
   );
 
   return {
-    noticeOpen,
+    noticeOpen: noticeOpen === true,
+    noticeResolved: noticeOpen !== undefined,
     requestStartupNotice,
     handleStartupNoticeData,
     dismissStartupNotice,

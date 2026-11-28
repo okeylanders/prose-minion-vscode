@@ -20,8 +20,8 @@ jest.mock('p-limit', () => ({
   }
 }));
 
+import { DEFAULT_MODEL_SELECTIONS } from '@shared/constants/defaultModelSelections';
 import { AIResourceManager } from '@orchestration/AIResourceManager';
-import { DEFAULT_CATEGORY_MODEL } from '@providers/OpenRouterModels';
 import { OpenRouterClient } from '@providers/OpenRouterClient';
 import { PassageSearchService } from '@services/search/passage/PassageSearchService';
 import {
@@ -55,7 +55,7 @@ describe('AIResourceManager: the passageSearch scope (ADR 2026-11-20 D14)', () =
     const engine = manager.getEngine('passageSearch');
     expect(engine).toBeDefined();
     expect(engine).not.toBe(manager.getEngine('category'));
-    expect(engine?.getModel()).toBe(DEFAULT_CATEGORY_MODEL);
+    expect(engine?.getModel()).toBe(DEFAULT_MODEL_SELECTIONS.category);
     manager.dispose();
   });
 

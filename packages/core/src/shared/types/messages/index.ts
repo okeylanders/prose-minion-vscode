@@ -164,6 +164,7 @@ import {
   WorkshopRunToolMessage,
   WorkshopQuickActionMessage,
   WorkshopSendMessageMessage,
+  WorkshopSendAcknowledgedMessage,
   WorkshopInviteGuestMessage,
   WorkshopDismissGuestMessage,
   WorkshopSelectPersonaMessage,
@@ -178,6 +179,9 @@ import {
   WorkshopRequestContextAttachmentMessage,
   WorkshopContextAttachmentContentMessage,
   WorkshopOpenContextAttachmentFileMessage,
+  WorkshopRequestMessageAttachmentMessage,
+  WorkshopOpenMessageAttachmentMessage,
+  WorkshopMessageAttachmentContentMessage,
   WorkshopRequestReadInResourceMessage,
   WorkshopReadInResourceContentMessage,
   WorkshopOpenReadInResourceMessage,
@@ -196,6 +200,8 @@ import {
   WorkshopTodoStatusUndoResultMessage,
   WorkshopApplyLocationsProposalMessage,
   WorkshopLocationsProposalResultMessage,
+  WorkshopHighlightMessage,
+  WorkshopAnswerHighlightPromptMessage,
   WorkshopPassageSearchWebviewMessage,
   WorkshopPassageSearchExtensionMessage,
   WorkshopRecoverNamedSessionMessage,
@@ -303,6 +309,8 @@ import {
   WorkshopAcceptLightboxTileMessage,
   WorkshopLightboxTileStagedMessage,
   WorkshopStageSelectedTextMessage,
+  WorkshopStageMessageTextMessage,
+  WorkshopMessageTextResultMessage,
   WorkshopSelectedTextOfferedMessage,
   WorkshopAcceptSelectedTextMessage,
   WorkshopSelectedTextStagedMessage,
@@ -391,6 +399,8 @@ export type WebviewToExtensionMessage =
   | WorkshopUpdateContextTextMessage
   | WorkshopRequestContextAttachmentMessage
   | WorkshopOpenContextAttachmentFileMessage
+  | WorkshopRequestMessageAttachmentMessage
+  | WorkshopOpenMessageAttachmentMessage
   | WorkshopRequestReadInResourceMessage
   | WorkshopOpenReadInResourceMessage
   | WorkshopRequestContextCatalogMessage
@@ -406,6 +416,8 @@ export type WebviewToExtensionMessage =
   | WorkshopTodoActionMessage
   | WorkshopUndoTodoStatusMessage
   | WorkshopApplyLocationsProposalMessage
+  | WorkshopHighlightMessage
+  | WorkshopAnswerHighlightPromptMessage
   | WorkshopPassageSearchWebviewMessage
   | WorkshopRecoverNamedSessionMessage
   | WorkshopSetTurnBookmarkMessage
@@ -473,6 +485,7 @@ export type WebviewToExtensionMessage =
   | WorkshopStageLightboxTileMessage
   | WorkshopAcceptLightboxTileMessage
   | WorkshopStageSelectedTextMessage
+  | WorkshopStageMessageTextMessage
   | WorkshopAcceptSelectedTextMessage
   | WorkshopSelectedTextWatchMessage
   | WorkshopRequestWidgetConfigMessage
@@ -523,6 +536,7 @@ export type ExtensionToWebviewMessage =
   | StreamCompleteMessage
   | WorkshopTurnMessage
   | WorkshopComposerDraftRestoredMessage
+  | WorkshopSendAcknowledgedMessage
   | WorkshopSessionStateMessage
   | WorkshopSessionsDataMessage
   | WorkshopSessionActionResultMessage
@@ -532,6 +546,7 @@ export type ExtensionToWebviewMessage =
   | WorkshopContextCatalogMessage
   | WorkshopContextSearchResultsMessage
   | WorkshopContextAttachmentContentMessage
+  | WorkshopMessageAttachmentContentMessage
   | WorkshopReadInResourceContentMessage
   | WorkshopTurnPreviewMessage
   | WorkshopEarlierTurnsMessage
@@ -569,6 +584,7 @@ export type ExtensionToWebviewMessage =
   | WorkshopLightboxTileStagedMessage
   | WorkshopSelectedTextOfferedMessage
   | WorkshopSelectedTextStagedMessage
+  | WorkshopMessageTextResultMessage
   | WorkshopSelectedTextCurrentMessage
   | WorkshopWidgetConfigDataMessage
   | WorkshopWidgetConfigRestoredMessage

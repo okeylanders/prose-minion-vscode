@@ -47,6 +47,7 @@ export interface WorkshopEditOfferRoomView {
   readonly fileEditsOpen: boolean;
   /** A reply is running. */
   readonly runActive: boolean;
+  readonly pendingSentAttachmentTurnId?: string;
   /** The full ledger, not the snapshot's window. */
   readonly ledger: () => readonly WorkshopTurn[];
   /** Whether the persona who wrote this reply is still in the room, as host or guest. */
@@ -64,12 +65,19 @@ export function workshopEditOfferRoomViewOnce(view: WorkshopEditOfferRoomView): 
 }
 
 export function workshopTurnForWebview(turn: WorkshopTurn, room?: WorkshopEditOfferRoomView): WorkshopTurn {
-  if (!turn.fileEditProposals && !turn.editOffers && !turn.reactionDelivery && !turn.trailerOutcomes && !turn.todoStatusChanges
+  if (turn.role === 'user' && turn.messageAttachments?.length) {
+    const count = turn.messageAttachments.length;
+    turn = {
+      ...turn, content: turn.content || `Shared ${count} ${count === 1 ? 'attachment' : 'attachments'}`,
+      ...(turn.id === room?.pendingSentAttachmentTurnId && { sentAttachmentsPending: true as const })
+    };
+  }
+  if (!turn.highlights && !turn.fileEditProposals && !turn.editOffers && !turn.reactionDelivery && !turn.trailerOutcomes && !turn.todoStatusChanges
     && !turn.passageSearchRequest && !turn.passageSearchDelivery) {
     return turn;
   }
   const {
-    editOffers, reactionDelivery: _hostOnly, trailerOutcomes: _hostOnlyOutcomes, todoStatusChanges,
+    highlights, editOffers, reactionDelivery: _hostOnly, trailerOutcomes: _hostOnlyOutcomes, todoStatusChanges,
     passageSearchRequest: _card, passageSearchDelivery: _receipt, ...rest
   } = turn;
   const passageSearchRequest = workshopPassageSearchRequestForWebview(turn, room && {
@@ -80,6 +88,7 @@ export function workshopTurnForWebview(turn: WorkshopTurn, room?: WorkshopEditOf
   const offers = editOffers && (!room || room.fileEditsOpen) ? editOffers : undefined;
   return {
     ...rest,
+    ...(highlights ? { highlightSummary: { title: highlights.set.title, count: highlights.set.places.length } } : {}),
     ...(passageSearchRequest ? { passageSearchRequest } : {}),
     ...(turn.fileEditProposals ? { fileEditProposals: turn.fileEditProposals.map(workshopFileEditProposalForWebview) } : {}),
     ...(todoStatusChanges ? { todoStatusChanges: workshopTodoStatusChangesForWebview(todoStatusChanges, room?.liveSessionId?.()) } : {}),

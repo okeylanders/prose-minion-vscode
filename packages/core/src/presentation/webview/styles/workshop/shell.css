@@ -2426,6 +2426,27 @@
   font-size: 11px;
   color: var(--pm-text);
 }
+[data-pm-surface="workshop"] .pm-ws-comp-attachment-paste {
+  max-width: 100%;
+  flex-wrap: wrap;
+}
+[data-pm-surface="workshop"] .pm-ws-comp-paste-action {
+  color: var(--pm-text);
+  font: inherit;
+  background: transparent;
+  border: 0;
+  padding: 2px;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+[data-pm-surface="workshop"] .pm-ws-comp-paste-action:disabled {
+  color: var(--pm-muted);
+  cursor: default;
+}
+[data-pm-surface="workshop"] .pm-ws-comp-paste-action:focus-visible {
+  outline: 2px solid var(--pm-accent-hi);
+}
 [data-pm-surface="workshop"] .pm-ws-comp-attachment-size {
   color: var(--pm-muted);
 }
@@ -2492,6 +2513,9 @@
   flex-wrap: wrap;
   gap: 6px;
   margin-bottom: 6px;
+}
+[data-pm-surface="workshop"] button.pm-ws-turn-attachment:not(:disabled) {
+  cursor: pointer;
 }
 [data-pm-surface="workshop"] .pm-ws-turn-attachment {
   display: inline-flex;
@@ -2842,6 +2866,12 @@
 }
 [data-pm-surface="workshop"] .pm-ws-confirm-foot {
   justify-content: flex-end;
+}
+[data-pm-surface="workshop"] .pm-ws-highlight-prompt .pm-ws-confirm-head {
+  overflow-wrap: anywhere;
+}
+[data-pm-surface="workshop"] .pm-ws-highlight-prompt .pm-ws-confirm-foot {
+  flex-wrap: wrap;
 }
 [data-pm-surface="workshop"] .pm-ws-save-session-manifest {
   display: grid;

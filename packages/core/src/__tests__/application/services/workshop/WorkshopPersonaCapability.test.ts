@@ -17,6 +17,8 @@ import type { WorkshopResourceSources } from '@/application/services/workshop/Wo
 import { groupListingOver, withAbsolutePaths } from '@/__tests__/application/services/workshop/resource/groupListingFixtures';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import type { WorkshopTranscriptRecallPort } from '@/application/services/workshop/recall/WorkshopTranscriptRecallCapability';
+import { OpenRouterModels } from '@providers/OpenRouterModels';
+import { projectWorkshopJoinSnapshotTurns, projectWorkshopRoomTurns } from '@/application/services/workshop/WorkshopRoomDeliveryService';
 import { AgentRunEngine } from '@orchestration/AgentRunEngine';
 import { ConversationManager } from '@orchestration/ConversationManager';
 import { AGENT_RUN_POLICIES } from '@orchestration/AgentRunPolicies';
@@ -194,6 +196,57 @@ describe('WorkshopPersonaCapability', () => {
       expect(text).toContain(header);
       expect(text).not.toContain('reference, version 2.15.0');
     }
+  });
+
+  it('settles an oversized full dictionary entry as one private refusal before publishing the reply', async () => {
+    const call = '<prose-minion-tool-call name="dictionary.full-entry"><word>liminal</word><context>Threshold scene.</context><purpose>Check tone.</purpose></prose-minion-tool-call>';
+    const secret = 'UNDISPATCHED_DICTIONARY_BODY';
+    dictionary.generateParallelDictionary.mockResolvedValueOnce({
+      word: 'liminal', result: secret.repeat(30_000), modelIds: [], metadata: { totalDuration: 0, blockDurations: {}, partialFailures: [], successCount: 1, totalBlocks: 1 }, usage
+    });
+    const window = jest.spyOn(OpenRouterModels, 'getCachedContextLength').mockReturnValue(100_000);
+    const client = { createChatCompletion: jest.fn().mockResolvedValueOnce({ content: call }).mockResolvedValueOnce({ content: 'My reply.' }) };
+    const conversations = new ConversationManager();
+    const engine = new AgentRunEngine(client as never, conversations, undefined, log);
+    try {
+      const result = await engine.runInitial({ toolName: 'host', systemMessage: 'System', userMessage: 'Help.',
+        policy: AGENT_RUN_POLICIES.workshopHost, capability: capability() });
+      expect(result.content).toBe('My reply.');
+      expect(result.artifacts).toEqual([]);
+      expect(result.usage).toMatchObject(usage);
+      const card = events.turnCompleted.mock.calls[0][0];
+      expect(events.turnCompleted).toHaveBeenCalledTimes(1);
+      expect(card).toMatchObject({ capability: { operation: 'dictionary.full-entry', status: 'rejected', metadata: { reason: 'context-window-exceeded' } }, usage });
+      expect(card.content).toMatch(/dictionary.full-entry.*did not fit.*no smaller form/);
+      expect(client.createChatCompletion.mock.calls[1][0].at(-1).content).toContain(card.content);
+      session.completeRun('host-request', result.content, undefined, false, result.conversationId);
+      const ledger = session.readRoomLedger();
+      expect(ledger.find(turn => turn.id === card.id)?.capability?.publishedWithTurnId).toBeUndefined();
+      const guest = { kind: 'personaGuest' as const, personaId: 'jill' as const };
+      for (const turns of [projectWorkshopRoomTurns(ledger, guest), projectWorkshopJoinSnapshotTurns(ledger, guest)]) {
+        expect(turns.some(turn => turn.id === card.id)).toBe(false);
+      }
+      expect(conversations.getContextSources(result.conversationId)).toEqual([]);
+      expect(JSON.stringify([ledger, events.turnCompleted.mock.calls, client.createChatCompletion.mock.calls, conversations.getMessages(result.conversationId!)])).not.toContain(secret);
+    } finally {
+      engine.dispose();
+      window.mockRestore();
+    }
+  });
+
+  it('waits for the window decision before adopting an indivisible analysis report', async () => {
+    const prepared = await capability().prepareEvidence(inheritedAnalysisRequest);
+    expect(prepared.indivisible).toBe(true);
+    expect(prepared.evidence).toContain('Verbatim continuity report');
+    expect(analysis.adoptPersonaReport).not.toHaveBeenCalled();
+    expect(events.turnCompleted).not.toHaveBeenCalled();
+    const notice = 'The analysis.run result did not fit. This result has no smaller form.';
+    const result = prepared.settle(notice);
+    expect(result).toMatchObject({ evidence: notice, usage, deliveredSources: [] });
+    const [input] = analysis.adoptPersonaReport.mock.calls[0];
+    expect(input.details.status).toBe('rejected');
+    expect(input.result.error).toBe(notice);
+    expect(JSON.stringify(input)).not.toContain('Verbatim continuity report');
   });
 
   it('corrects a bundle of calls before executing the model’s single retry', async () => {

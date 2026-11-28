@@ -31,6 +31,8 @@ const SELECTED_TEXT_SOURCE_SCHEME = 'selected-text:';
 
 /** What identifies an attachment's source, on a staged input, a pending copy or a sent reference. */
 export interface WorkshopMessageAttachmentSource {
+  id?: string;
+  pastedText?: { truncated: boolean };
   sourceUri?: string;
   configuredResource?: ConfiguredResourceRef;
   lightboxTile?: Pick<WorkshopLightboxTileAttachmentMeta, 'boardId' | 'tileId'>;
@@ -52,6 +54,9 @@ export function sameWorkshopMessageAttachmentSource(
   candidate: WorkshopMessageAttachmentSource,
   existing: WorkshopMessageAttachmentSource
 ): boolean {
+  if (candidate.pastedText || existing.pastedText) {
+    return !!candidate.pastedText && !!existing.pastedText && candidate.id !== undefined && candidate.id === existing.id;
+  }
   if (candidate.lightboxTile || existing.lightboxTile) {
     return candidate.lightboxTile !== undefined
       && existing.lightboxTile !== undefined

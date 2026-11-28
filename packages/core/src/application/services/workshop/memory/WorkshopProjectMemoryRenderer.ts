@@ -119,24 +119,41 @@ export interface WorkshopProjectMemoryRenderedRead {
   readonly read: readonly ProjectMemoryListed[];
   /** Whole memories left out because the read's character budget ran out. */
   readonly notReadForSpace: readonly string[];
+  /** Whole note blocks, the unit of the per-call and unknown-window allowances. */
+  readonly noteCharacters: number;
 }
+
+export type WorkshopProjectMemoryReadLimit =
+  | { halfWindowTokens: number; included: ReadonlySet<string> }
+  | { unknownWindow: true };
 
 /** Each named memory whole, in the order asked, up to `readCharacters` across the call; none is cut. */
 export function renderWorkshopProjectMemoryRead(
   items: readonly ProjectMemoryReadItem[],
-  readCharacters: number = PROMPT_BUDGETS.workshopProjectMemory.readCharacters
+  readCharacters: number = PROMPT_BUDGETS.workshopProjectMemory.readCharacters,
+  limit?: WorkshopProjectMemoryReadLimit
 ): WorkshopProjectMemoryRenderedRead {
   const blocks: string[] = [];
   const read: ProjectMemoryListed[] = [];
   const notReadForSpace: string[] = [];
   let spent = 0;
+  let windowLimited = false;
+  let characterLimited = false;
   for (const item of items) {
     switch (item.kind) {
       case 'memory': {
         const block = memoryBlock(item);
         if (spent + block.length > readCharacters) {
           notReadForSpace.push(item.listed.memory.id);
-          blocks.push(`${item.listed.memory.id}: not shown; this read reached its ${readCharacters.toLocaleString('en-US')}-character limit. Read it on its own.`);
+          characterLimited = true;
+          blocks.push(`${item.listed.memory.id}: not shown within the character allowance. ` +
+            (limit && 'unknownWindow' in limit ? 'Read it in a later turn.' : 'Read it on its own.'));
+          continue;
+        }
+        if (limit && 'included' in limit && !limit.included.has(item.listed.memory.id)) {
+          windowLimited = true;
+          notReadForSpace.push(item.listed.memory.id);
+          blocks.push(`${item.listed.memory.id}: did not fit the room left in your context window. Read it on its own, or in a later turn.`);
           continue;
         }
         spent += block.length;
@@ -157,7 +174,17 @@ export function renderWorkshopProjectMemoryRead(
         return assertNever(item);
     }
   }
-  return { content: memoryBody(blocks), read, notReadForSpace };
+  const notices: string[] = [];
+  if (windowLimited && limit && 'halfWindowTokens' in limit) {
+    notices.push(`This read had ${number(limit.halfWindowTokens)} tokens, half the room left in your context window.`);
+  }
+  if (characterLimited) {
+    notices.push(limit && 'unknownWindow' in limit
+      ? `Your context window size is unknown. This turn's memory reads share ${number(PROMPT_BUDGETS.workshopProjectMemory.readCharacters)} characters. ` +
+        `${number(readCharacters)} remained before this read.`
+      : `This read reached its ${number(readCharacters)}-character limit.`);
+  }
+  return { content: memoryBody([...notices, ...blocks]), read, notReadForSpace, noteCharacters: spent };
 }
 
 function memoryBlock(item: Extract<ProjectMemoryReadItem, { kind: 'memory' }>): string {

@@ -17,7 +17,7 @@
 
 import type { LogSink } from '@/platform';
 import type { WorkshopPersonaId } from '@messages';
-import type { CapabilityDeliveredSource } from '@orchestration/AgentRunContracts';
+import type { CapabilityContextWindow, CapabilityDeliveredSource } from '@orchestration/AgentRunContracts';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import type {
   WorkshopCapabilityPrincipal,
@@ -28,7 +28,8 @@ import type { WorkshopSessionService } from '@/application/services/workshop/Wor
 import { projectMemoryDeliveredView } from '@/application/services/workshop/memory/ProjectMemoryDeliveredView';
 import { workshopProjectMemoryDeliveryOf } from '@/application/services/workshop/session/WorkshopProjectMemoryDeliveryRecords';
 import type { ProjectMemoryLibrary, ProjectMemorySnapshot } from '@/application/services/workshop/memory/ProjectMemoryLibrary';
-import type { ProjectMemoryRefusal } from '@/application/services/workshop/memory/ProjectMemoryLibraryContracts';
+import { fitWorkshopWholeItemsToWindow } from '@/application/services/workshop/reads/WorkshopReadWindowFit';
+import type { ProjectMemoryReadItem, ProjectMemoryRefusal } from '@/application/services/workshop/memory/ProjectMemoryLibraryContracts';
 import {
   memoryBody,
   projectMemoryClosedLine,
@@ -37,7 +38,9 @@ import {
 import {
   renderWorkshopProjectMemoryCatalog,
   renderWorkshopProjectMemoryRead,
-  renderWorkshopProjectMemorySearch
+  renderWorkshopProjectMemorySearch,
+  type WorkshopProjectMemoryReadLimit,
+  type WorkshopProjectMemoryRenderedRead
 } from '@/application/services/workshop/memory/WorkshopProjectMemoryRenderer';
 import { workshopProjectMemoryRequestSummary } from '@/application/services/workshop/memory/WorkshopProjectMemoryRequestCopy';
 import { recallLabel, recallLabelList } from '@/application/services/workshop/recall/WorkshopRecallText';
@@ -69,7 +72,11 @@ const LABEL_CHARACTERS = 200;
 
 export class WorkshopProjectMemoryCapability {
   private reads = 0;
-  private readonly sources = new WeakMap<WorkshopCapabilityResult, CapabilityDeliveredSource[]>();
+  private noteCharacters = 0;
+  private readonly pendingReads = new WeakMap<WorkshopCapabilityResult, {
+    noteCharacters: number;
+    sources: CapabilityDeliveredSource[];
+  }>();
 
   constructor(
     private readonly library: WorkshopProjectMemoryPort,
@@ -78,7 +85,11 @@ export class WorkshopProjectMemoryCapability {
     private readonly turn: WorkshopProjectMemoryTurnContext
   ) {}
 
-  async fulfill(request: WorkshopProjectMemoryRequest): Promise<WorkshopCapabilityResult> {
+  async fulfill(
+    request: WorkshopProjectMemoryRequest,
+    window: CapabilityContextWindow | undefined,
+    evidenceTokens: (result: WorkshopCapabilityResult) => number
+  ): Promise<WorkshopCapabilityResult> {
     this.throwIfAborted();
     switch (request.capability) {
       case 'memory.catalog':
@@ -86,7 +97,7 @@ export class WorkshopProjectMemoryCapability {
       case 'memory.search':
         return this.search(request);
       case 'memory.read':
-        return this.read(request);
+        return this.read(request, window, evidenceTokens);
       default:
         return assertNever(request);
     }
@@ -164,9 +175,15 @@ export class WorkshopProjectMemoryCapability {
     }
   }
 
-  /** Manifest rows for what a result put in context: one per memory a read showed whole. */
-  deliveredSources(result: WorkshopCapabilityResult): readonly CapabilityDeliveredSource[] {
-    return this.sources.get(result) ?? [];
+  /** Charge only notes admitted to context, including when window metadata changes during a read. */
+  recordReadDelivery(result: WorkshopCapabilityResult): readonly CapabilityDeliveredSource[] {
+    const delivery = this.pendingReads.get(result);
+    if (!delivery) {
+      return [];
+    }
+    this.pendingReads.delete(result);
+    this.noteCharacters += delivery.noteCharacters;
+    return delivery.sources;
   }
 
   private async catalog(request: Request<'memory.catalog'>): Promise<WorkshopCapabilityResult> {
@@ -208,7 +225,11 @@ export class WorkshopProjectMemoryCapability {
     });
   }
 
-  private async read(request: Request<'memory.read'>): Promise<WorkshopCapabilityResult> {
+  private async read(
+    request: Request<'memory.read'>,
+    window: CapabilityContextWindow | undefined,
+    evidenceTokens: (result: WorkshopCapabilityResult) => number
+  ): Promise<WorkshopCapabilityResult> {
     const budgets = PROMPT_BUDGETS.workshopProjectMemory;
     if (this.reads >= budgets.readsPerTurn) {
       return this.rejected(request, 'memory-read-limit',
@@ -221,9 +242,44 @@ export class WorkshopProjectMemoryCapability {
     if (result.kind !== 'read') {
       return this.refused(request, result);
     }
-    const rendered = renderWorkshopProjectMemoryRead(result.items);
+    const render = (limit: WorkshopProjectMemoryReadLimit, characters = budgets.readCharacters) => {
+      const rendered = renderWorkshopProjectMemoryRead(result.items, characters, limit);
+      return { rendered, outcome: this.readResult(request, result.items, rendered) };
+    };
+    let fitted: ReturnType<typeof render>;
+    if (window) {
+      const half = Math.floor(window.freeInputTokens / 2);
+      const measured = fitWorkshopWholeItemsToWindow(request.memories,
+        included => render({ halfWindowTokens: half, included }), ({ outcome }) => evidenceTokens(outcome), half);
+      if (!measured) {
+        return this.rejected(request, 'memory-context-window',
+          `This read did not fit the room left in your context window. It had ${half.toLocaleString('en-US')} tokens, ` +
+          'half the room left. Read a note on its own, or in a later turn.');
+      }
+      fitted = measured;
+    } else {
+      fitted = render({ unknownWindow: true }, Math.max(0, budgets.readCharacters - this.noteCharacters));
+    }
+    const { outcome, rendered } = fitted;
+    this.pendingReads.set(outcome, {
+      noteCharacters: rendered.noteCharacters,
+      sources: rendered.read.map(({ memory }) => ({
+        kind: 'memory',
+        label: recallLabel(memory.title),
+        sizeChars: memory.body.length + memory.title.length + memory.summary.length
+      }))
+    });
+    this.log(`read named=${request.memories.length} read=${rendered.read.length} characters=${rendered.content.length}`);
+    return outcome;
+  }
+
+  private readResult(
+    request: Request<'memory.read'>,
+    items: readonly ProjectMemoryReadItem[],
+    rendered: WorkshopProjectMemoryRenderedRead
+  ): WorkshopCapabilityResult {
     const titles = rendered.read.map(({ memory }) => `“${recallLabel(memory.title)}”`);
-    const outcome: WorkshopCapabilityResult = {
+    return {
       capability: request.capability,
       status: rendered.read.length === 0 ? 'failed' : rendered.read.length < request.memories.length ? 'partial' : 'success',
       requestSummary: titles.length > 0 ? recallLabelList(titles, LABEL_CHARACTERS) : workshopProjectMemoryRequestSummary(request),
@@ -232,7 +288,7 @@ export class WorkshopProjectMemoryCapability {
         outcome: 'read',
         memoryCount: rendered.read.length,
         memoriesNamed: request.memories.length,
-        memories: result.items.map((item) => ({
+        memories: items.map((item) => ({
           id: item.kind === 'memory' ? item.listed.memory.id : item.id,
           outcome: item.kind === 'memory' && rendered.notReadForSpace.includes(item.listed.memory.id) ? 'not-read-for-space' : item.kind
         })),
@@ -241,14 +297,6 @@ export class WorkshopProjectMemoryCapability {
       },
       ...(rendered.read.length === 0 ? { error: 'None of the named notes could be read.' } : {})
     };
-    // One "Project note" row per memory the read showed whole (D12).
-    this.sources.set(outcome, rendered.read.map(({ memory }) => ({
-      kind: 'memory' as const,
-      label: recallLabel(memory.title),
-      sizeChars: memory.body.length + memory.title.length + memory.summary.length
-    })));
-    this.log(`read named=${request.memories.length} read=${rendered.read.length} characters=${rendered.content.length}`);
-    return outcome;
   }
 
   private success(

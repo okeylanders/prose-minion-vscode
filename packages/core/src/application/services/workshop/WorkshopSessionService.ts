@@ -102,6 +102,8 @@ import {
 import {
   normalizeWorkshopSessionCheckpointForHydration
 } from '@/application/services/workshop/WorkshopSessionCheckpointNormalization';
+import type { WorkshopStageMessageTextPayload } from '@messages';
+import { workshopPastedTextInput } from './WorkshopPastedText';
 import { sameWorkshopMessageAttachmentSource } from '@/application/services/workshop/WorkshopMessageAttachmentIdentity';
 import type {
   WorkshopThreadArtifact,
@@ -206,7 +208,8 @@ import {
   cloneTurn,
   cloneWidgetRecommendation,
   excerptSnapshot,
-  messageAttachmentSnapshot
+  messageAttachmentSnapshot,
+  workshopProblemsReadReceipt
 } from '@/application/services/workshop/WorkshopSessionRecords';
 import type {
   WorkshopActiveRun,
@@ -769,11 +772,50 @@ export class WorkshopSessionService {
     return { ok: true, attachment: cloneMessageAttachment(attachment) };
   }
 
+  applyPendingPastedText(request: WorkshopStageMessageTextPayload):
+    { ok: true; attachmentId: string; text?: string } | { ok: false; reason: string } {
+    if (this.readRoomRevision() !== request.roomRevision) {
+      return { ok: false, reason: 'The Workshop room changed. Paste into the current room.' };
+    }
+    if (this.activeRun && request.action !== 'read') {
+      return { ok: false, reason: 'Wait for the current reply before changing pasted text.' };
+    }
+    if (request.action === 'stage' || request.action === 'update') {
+      if (typeof request.text !== 'string' || !request.text.length) {
+        return { ok: false, reason: 'Paste or enter some text first.' };
+      }
+      if (request.action === 'stage') {
+        if (request.text.length < PROMPT_BUDGETS.workshopPastedText.thresholdCharacters) {
+          return { ok: false, reason: 'This paste is short enough for the message itself.' };
+        }
+        const staged = this.addMessageAttachment(workshopPastedTextInput(request.text));
+        return staged.ok ? { ok: true, attachmentId: staged.attachment.id } : { ok: false, reason: 'The attachment tray is full.' };
+      }
+    }
+    const index = this.pendingMessageAttachments.findIndex((item) => item.id === request.attachmentId && item.pastedText !== undefined);
+    const item = this.pendingMessageAttachments[index];
+    if (!item) {
+      return { ok: false, reason: 'That pasted text is no longer in the tray.' };
+    }
+    if (request.action === 'update') {
+      this.pendingMessageAttachments[index] = { id: item.id, ...workshopPastedTextInput(request.text) };
+      this.announcePendingMessageAttachments();
+    } else if (request.action === 'remove' || request.action === 'take') {
+      this.removePendingMessageAttachmentAt(index);
+    }
+    return { ok: true, attachmentId: item.id, ...(request.action === 'read' || request.action === 'take' ? { text: item.content } : {}) };
+  }
+
   removeMessageAttachment(id: string): WorkshopMessageAttachment | undefined {
-    const index = this.pendingMessageAttachments.findIndex((attachment) => attachment.id === id);
+    // Pasted text is removed only by a room-bound request, including Take.
+    const index = this.pendingMessageAttachments.findIndex((attachment) => attachment.id === id && !attachment.pastedText);
     if (index === -1) {
       return undefined;
     }
+    return this.removePendingMessageAttachmentAt(index);
+  }
+
+  private removePendingMessageAttachmentAt(index: number): WorkshopMessageAttachment {
     const [removed] = this.pendingMessageAttachments.splice(index, 1);
     this.announcePendingMessageAttachments();
     return cloneMessageAttachment(removed);
@@ -806,6 +848,10 @@ export class WorkshopSessionService {
         }
       }
     });
+  }
+
+  hasPendingMessageAttachments(): boolean {
+    return this.pendingMessageAttachments.length > 0;
   }
 
   /** Pure read for send assembly — nothing is consumed until the turn succeeds. */
@@ -885,6 +931,29 @@ export class WorkshopSessionService {
     this.threadArtifacts.push(
       ...artifacts.map((artifact) => cloneThreadArtifact({ ...artifact, turnId }))
     );
+  }
+
+  pendingSentAttachmentTurnId(): string | undefined {
+    return this.activeRun?.artifact === 'persona_message' ? this.activeRun.writerTurnId : undefined;
+  }
+
+  /** One writer-visible body, only from the successful room turn that actually published it. */
+  readSentMessageAttachment(turnId: string, artifactId: string):
+    { attachment: WorkshopMessageAttachmentSnapshot; content: string } | { error: string } {
+    const turn = this.turnLedger.find(turnId);
+    const ref = turn?.messageAttachments?.find(attachment => attachment.id === artifactId);
+    if (!turn || turn.role !== 'user' || turn.kind !== 'message' || turn.participant !== 'writer' || !ref
+      || (turn.widgetCommit?.rail === 'thread-artifact' && turn.widgetCommit.artifactId === artifactId)) {
+      return { error: 'That attachment is no longer on this message.' } as const;
+    }
+    if (workshopTurnAudience(turn).kind !== 'room') {
+      return { error: 'This was a private instrument message. Its attachment text was not kept in the room.' } as const;
+    }
+    const body = this.threadArtifacts.find(item => item.turnId === turnId && item.id === artifactId);
+    if (!body || body.kind !== workshopMessageAttachmentKind(ref)) {
+      return { error: 'No sent copy is available for this message.' } as const;
+    }
+    return { attachment: cloneMessageAttachmentSnapshot(ref), content: body.content } as const;
   }
 
   /** Host-private artifact projection for room catch-up and guest join only. */
@@ -1347,6 +1416,43 @@ export class WorkshopSessionService {
     return this.turnLedger.all();
   }
 
+  readRoomTurn(turnId: string): WorkshopTurn | undefined {
+    return this.turnLedger.find(turnId);
+  }
+
+  /** The rewind listener keeps drawn sets belonging to surviving replies, including offscreen turns. */
+  readHighlightTurnIds(): ReadonlySet<string> {
+    return new Set(this.turnLedger.project((turn) => turn.highlights ? turn.id : undefined)
+      .filter((id): id is string => id !== undefined));
+  }
+
+  /** Scan the whole ledger, including offscreen replies. The caller authorizes each source on this host. */
+  readHighlightPromptCandidates(): { turnId: string; source: { sourceUri: string; relativePath: string }; count: number }[] {
+    return this.turnLedger.project(turn => {
+      const record = turn.highlights;
+      return record && !record.suppressRestorePrompt
+        ? { turnId: turn.id, source: { ...record.source }, count: record.set.places.length }
+        : undefined;
+    }).filter(candidate => candidate !== undefined);
+  }
+
+  /** A restore dialog affects only the exact set IDs it offered, in the same opening of the room. */
+  suppressHighlightPrompts(roomRevision: number, turnIds: readonly string[]): boolean {
+    if (roomRevision !== this.roomRevision) {
+      return false;
+    }
+    let changed = false;
+    for (const id of new Set(turnIds)) {
+      this.turnLedger.update(id, turn => {
+        if (turn.highlights && !turn.highlights.suppressRestorePrompt) {
+          turn.highlights.suppressRestorePrompt = true;
+          changed = true;
+        }
+      });
+    }
+    return changed;
+  }
+
   /** The panel closed: even a reader returning before the final flush must drop its result. */
   invalidatePendingRoomReads(): void {
     this.roomRevision = mintRoomRevision();
@@ -1543,12 +1649,12 @@ export class WorkshopSessionService {
    * `describeCapabilityArtifactRefusal`) instead of misattributing it.
    */
   recordCapabilityArtifact(
-    input: WorkshopCapabilityArtifactInput
+    candidate: WorkshopCapabilityArtifactInput
   ): WorkshopToolReportCompletion | undefined {
-    if (this.capabilityArtifactRefusal(input)) {
+    if (this.capabilityArtifactRefusal(candidate)) {
       return undefined;
     }
-
+    const input = candidate.details.operation === 'problems.read' ? workshopProblemsReadReceipt(candidate) : candidate;
     const isAnalysis = input.details.operation === 'analysis.run';
     const turnId = this.nextTurnId('assistant');
     const artifact: WorkshopTurnArtifact = (() => {
@@ -1576,6 +1682,7 @@ export class WorkshopSessionService {
         case 'locations.current': return 'locations_current';
         case 'locations.folders': return 'locations_folders';
         case 'locations.check': return 'locations_check';
+        case 'problems.read': return 'problems_read';
         default: return assertNever(input.details.operation);
       }
     })();
@@ -1772,7 +1879,8 @@ export class WorkshopSessionService {
     trailerOutcomes?: WorkshopTrailerOutcomes,
     todoStatus?: todoRows.WorkshopReplyTodoStatusCommit,
     locationsProposal?: WorkshopLocationsProposalCard,
-    passageSearch?: passageSearchRecords.WorkshopPassageSearchReplyCommit
+    passageSearch?: passageSearchRecords.WorkshopPassageSearchReplyCommit,
+    highlights?: WorkshopTurn['highlights']
   ): WorkshopTurn | undefined {
     if (this.activeRun?.requestId !== requestId) {
       return undefined;
@@ -1835,6 +1943,10 @@ export class WorkshopSessionService {
       // The answer to a press names the reply and kind it answers (ADR 2026-11-10 D3).
       ...((isHost || isGuest) && editOfferAnswer ? { editOfferAnswer: { ...editOfferAnswer } } : {})
     };
+
+    if (highlights && (isHost || isGuest) && active.artifact === 'persona_message') {
+      turn.highlights = highlights;
+    }
 
     if (isHost && conversationId) {
       if (this.getHostConversationId() !== conversationId) {
@@ -1940,6 +2052,13 @@ export class WorkshopSessionService {
       };
     }
     return cloneTurn(turn);
+  }
+
+  /** Placement reads the live editor after adoption. Store its counts before the reply is announced or saved. */
+  recordHighlightOutcome(turnId: string, highlights: NonNullable<WorkshopTrailerOutcomes['highlights']>): WorkshopTurn | undefined {
+    return this.turnLedger.update(turnId, (turn) => {
+      turn.trailerOutcomes = { ...turn.trailerOutcomes, highlights };
+    });
   }
 
   /**

@@ -1,7 +1,7 @@
 /**
- * PR #181 F-01: reasoning `off` never goes to a model the catalog marks as
- * always reasoning (`reasoning.mandatory`), in either pass, and goes as asked
- * when the catalog cannot say.
+ * Proofread continues to respect Off and the catalog's mandatory reasoners.
+ * Craft Flags prices and sends Standard for legacy Off, and checks live model
+ * support before adding a thinking budget.
  *
  * Through the production AIResourceManager, AgentRunEngine, OpenRouterClient,
  * live catalog reader, ProofreadService, CraftFlagsService and both use
@@ -35,23 +35,25 @@ import { DraftEditUseCase } from '@/application/services/draftEdit/DraftEditUseC
 import { DraftEditApplier } from '@/application/services/draftEdit/DraftEditApplier';
 import { CraftFlagsUseCase } from '@/application/services/draftEdit/CraftFlagsUseCase';
 import { describeDraftEditOutcome } from '@/application/services/draftEdit/draftEditSummary';
-import { describeCraftFlagsOutcome } from '@/application/services/draftEdit/craftFlagsSummary';
+import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { CRAFT_FLAG_CATEGORIES } from '@/domain/models/CraftFlag';
 import type { ReasoningLevel } from '@/domain/models/ReasoningLevel';
 import { FakeAnnotations, FakeDocuments, proofreadNow } from '@/__tests__/application/services/draftEdit/fakeDocuments';
 
 const ALWAYS = 'test/always-reasons';
 const CAN_STOP = 'test/can-stop';
+const PLAIN = 'test/no-reasoning';
 const TEXT = 'Alice was beginning to get very tired of sitting by her sister on the bank, and of having nothing to do.';
 
 interface Sent {
   readonly model: string;
   readonly reasoning?: Record<string, unknown>;
+  readonly maxTokens: number;
 }
 
 const built: AIResourceManager[] = [];
 
-async function createHost(values: Record<string, unknown>, catalog: { reachable: boolean }) {
+async function createHost(values: Record<string, unknown>, catalog: { reachable: boolean; plainSupportsReasoning?: boolean }) {
   const settings = { get: (_section: string, key: string, fallback?: unknown) => values[key] ?? fallback };
   const log = { appendLine: jest.fn(), show: jest.fn(), clear: jest.fn() };
   const manager = new AIResourceManager(
@@ -77,12 +79,13 @@ async function createHost(values: Record<string, unknown>, catalog: { reachable:
         ok: true,
         json: async () => ({ data: [
           { id: ALWAYS, context_length: 1_000_000, pricing: { prompt: '0.000001', completion: '0.000001' }, reasoning: { mandatory: true } },
-          { id: CAN_STOP, context_length: 1_000_000, pricing: { prompt: '0.000001', completion: '0.000001' }, reasoning: { mandatory: false } }
+          { id: CAN_STOP, context_length: 1_000_000, pricing: { prompt: '0.000001', completion: '0.000001' }, reasoning: { mandatory: false } },
+          { id: PLAIN, context_length: 1_000_000, supported_parameters: catalog.plainSupportsReasoning ? ['temperature', 'reasoning'] : ['temperature'] }
         ] })
       } as Response;
     }
-    const body = JSON.parse(String(init?.body)) as Sent & { messages: Array<{ content: string }> };
-    sent.push({ model: body.model, ...(body.reasoning ? { reasoning: body.reasoning } : {}) });
+    const body = JSON.parse(String(init?.body)) as Omit<Sent, 'maxTokens'> & { max_tokens: number; messages: Array<{ content: string }> };
+    sent.push({ model: body.model, maxTokens: body.max_tokens, ...('reasoning' in body ? { reasoning: body.reasoning } : {}) });
     if (body.model === ALWAYS && body.reasoning?.effort === 'none') {
       return {
         ok: false,
@@ -133,7 +136,7 @@ async function createHost(values: Record<string, unknown>, catalog: { reachable:
   return { proofread, craft, target, sent, catalogReads, repick };
 }
 
-describe('Reasoning off on a model that always reasons (PR #181 F-01)', () => {
+describe('Draft editing reasoning over the provider transport', () => {
   const originalFetch = global.fetch;
   beforeEach(() => OpenRouterModels.clearCache());
   afterEach(() => {
@@ -164,12 +167,12 @@ describe('Reasoning off on a model that always reasons (PR #181 F-01)', () => {
       const light = await createHost({ proofreadModel: ALWAYS }, { reachable: true });
       expect((await proofreadAt(light, 'light')).kind).toBe('completed');
       // eslint-disable-next-line @typescript-eslint/naming-convention -- OpenRouter's wire name.
-      expect(light.sent).toEqual([{ model: ALWAYS, reasoning: { max_tokens: 1_024 } }]);
+      expect(light.sent).toMatchObject([{ model: ALWAYS, reasoning: { max_tokens: 1_024 } }]);
       expect(light.catalogReads.count).toBe(0);
 
       const off = await createHost({ proofreadModel: CAN_STOP }, { reachable: true });
       expect((await proofreadAt(off, 'off')).kind).toBe('completed');
-      expect(off.sent).toEqual([{ model: CAN_STOP, reasoning: { effort: 'none' } }]);
+      expect(off.sent).toMatchObject([{ model: CAN_STOP, reasoning: { effort: 'none' } }]);
     });
 
     it('sends off as asked when the catalog cannot be read, and the provider\'s refusal is the run\'s', async () => {
@@ -182,7 +185,7 @@ describe('Reasoning off on a model that always reasons (PR #181 F-01)', () => {
         consoleError.mockRestore();
       }
 
-      expect(host.sent).toEqual([{ model: ALWAYS, reasoning: { effort: 'none' } }]);
+      expect(host.sent).toMatchObject([{ model: ALWAYS, reasoning: { effort: 'none' } }]);
       expect(outcome).toMatchObject({
         kind: 'completed',
         chunks: { total: 1, completed: 0 },
@@ -192,64 +195,59 @@ describe('Reasoning off on a model that always reasons (PR #181 F-01)', () => {
   });
 
   describe('Craft Flags', () => {
-    const PASS = { kind: 'craft' as const, categories: [...CRAFT_FLAG_CATEGORIES], reasoning: 'off' as const };
+    const CALLS = CRAFT_FLAG_CATEGORIES.length;
+    const TYPICAL = PROMPT_BUDGETS.craftFlags.typicalOutputTokens;
+    const REPLY_TOKENS = PROMPT_BUDGETS.craftFlags.outputTokens;
+    const STANDARD = PROMPT_BUDGETS.reasoning.standard;
 
-    function gestureOf(host: Awaited<ReturnType<typeof createHost>>) {
-      const begun = host.craft.begin(host.target, PASS);
+    async function planRun(host: Awaited<ReturnType<typeof createHost>>, reasoning: ReasoningLevel) {
+      const begun = host.craft.begin(host.target, { kind: 'craft', categories: CRAFT_FLAG_CATEGORIES, reasoning });
       if (begun.kind !== 'gesture') {
         throw new Error(`no gesture: ${begun.kind}`);
       }
-      return begun.gesture;
-    }
-
-    it('refuses off on the always-reasoning model before any confirmation, sending none of the four calls', async () => {
-      const host = await createHost({ craftModel: ALWAYS }, { reachable: true });
-      const plan = await host.craft.plan(gestureOf(host));
-
-      expect(plan).toEqual({ kind: 'reasoning-required', model: ALWAYS });
-      expect(host.sent).toEqual([]);
-      expect(describeCraftFlagsOutcome(plan as { kind: 'reasoning-required'; model: string }, 'chapter-01.md').message).toBe(
-        'Craft Flags sent nothing: the model catalog says test/always-reasons always reasons, so it cannot be asked for reasoning off. '
-          + 'Set proseMinion.craftFlags.reasoning to light or higher, or choose another model in proseMinion.craftModel.'
-      );
-      expect(host.craft.begin(host.target, PASS).kind).toBe('gesture');
-    });
-
-    it('sends all four calls at off to the approved model when the setting moves to an always-reasoning one during the confirmation', async () => {
-      const host = await createHost({ craftModel: CAN_STOP }, { reachable: true });
-      const gesture = gestureOf(host);
-      const plan = await host.craft.plan(gesture);
+      const plan = await host.craft.plan(begun.gesture);
       if (plan.kind !== 'ready') {
         throw new Error(`not ready: ${plan.kind}`);
       }
-      // The writer reads the confirmation here, and picks another model meanwhile.
-      await host.repick({ craftModel: ALWAYS });
-      const outcome = await host.craft.run(gesture, { model: plan.estimate.model });
+      const { model, reasoningBudgeted } = plan.estimate;
+      return { estimate: plan.estimate, run: () => host.craft.run(begun.gesture, { model, reasoningBudgeted }) };
+    }
 
-      expect(outcome.kind).toBe('completed');
-      expect(host.sent).toEqual(CRAFT_FLAG_CATEGORIES.map(() => ({ model: CAN_STOP, reasoning: { effort: 'none' } })));
+    it.each([ALWAYS, CAN_STOP])('estimates and sends Standard for a historical Off setting on %s', async model => {
+      const host = await createHost({ assistantModel: model }, { reachable: true });
+      const plan = await planRun(host, 'off');
+      expect(plan.estimate).toMatchObject({ model, reasoningBudgeted: true, outputTokens: CALLS * (TYPICAL + STANDARD / 2) });
+      expect(host.sent).toEqual([]);
+
+      await host.repick({ craftModel: PLAIN });
+      expect((await plan.run()).kind).toBe('completed');
+      // eslint-disable-next-line @typescript-eslint/naming-convention -- OpenRouter's wire name.
+      expect(host.sent).toEqual(CRAFT_FLAG_CATEGORIES.map(() => ({ model, maxTokens: REPLY_TOKENS + STANDARD, reasoning: { max_tokens: STANDARD } })));
     });
 
-    it('refuses at the calls when the catalog, unreadable at the price, is read again before the run', async () => {
-      const catalog = { reachable: false };
-      const host = await createHost({ craftModel: ALWAYS }, catalog);
-      const gesture = gestureOf(host);
-      const consoleError = jest.spyOn(console, 'error').mockImplementation(() => undefined);
-      let plan;
-      try {
-        plan = await host.craft.plan(gesture);
-      } finally {
-        consoleError.mockRestore();
-      }
-      expect(plan?.kind).toBe('ready');
+    it('keeps the plain request and estimate for a non-reasoning model after the catalog refreshes', async () => {
+      const catalog = { reachable: true, plainSupportsReasoning: false };
+      const host = await createHost({ assistantModel: ALWAYS, craftModel: PLAIN }, catalog);
+      const plan = await planRun(host, 'deep');
+      expect(plan.estimate).toMatchObject({ model: PLAIN, reasoningBudgeted: false, outputTokens: CALLS * TYPICAL });
 
-      // The model browser refreshes the catalog while the confirmation is open.
-      catalog.reachable = true;
+      catalog.plainSupportsReasoning = true;
       OpenRouterModels.clearCache();
-      const outcome = await host.craft.run(gesture, { model: ALWAYS });
+      await OpenRouterModels.fetchModels();
+      expect(OpenRouterModels.getCachedSupportsReasoning(PLAIN)).toBe(true);
+      expect((await plan.run()).kind).toBe('completed');
+      expect(host.sent).toEqual(CRAFT_FLAG_CATEGORIES.map(() => ({ model: PLAIN, maxTokens: REPLY_TOKENS })));
+    });
 
-      expect(outcome).toEqual({ kind: 'reasoning-required', model: ALWAYS });
-      expect(host.sent).toEqual([]);
+    it('keeps the selected budget when the model catalog has no entry', async () => {
+      const model = 'test/model-not-listed';
+      const host = await createHost({ craftModel: model }, { reachable: true });
+      const plan = await planRun(host, 'light');
+      const light = PROMPT_BUDGETS.reasoning.light;
+      expect(plan.estimate).toMatchObject({ model, reasoningBudgeted: true, outputTokens: CALLS * (TYPICAL + light / 2) });
+      expect((await plan.run()).kind).toBe('completed');
+      // eslint-disable-next-line @typescript-eslint/naming-convention -- OpenRouter's wire name.
+      expect(host.sent).toEqual(CRAFT_FLAG_CATEGORIES.map(() => ({ model, maxTokens: REPLY_TOKENS + light, reasoning: { max_tokens: light } })));
     });
   });
 });

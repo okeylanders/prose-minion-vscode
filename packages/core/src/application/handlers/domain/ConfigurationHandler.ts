@@ -9,11 +9,9 @@ import { LogSink, SettingsStore, ShellService } from '@/platform';
 import { AIResourceManager } from '@orchestration/AIResourceManager';
 import type { AIResourceRefresh } from '@orchestration/AIResourceRefresh';
 import {
-  DEFAULT_PROOFREAD_MODEL,
-  DEFAULT_WIDGET_MODEL,
   MODEL_SCOPE_SETTING_KEYS,
   followingModelScopes,
-  resolveFollowingModels
+  resolveModelScopeSelections
 } from '@orchestration/ModelScopeSelections';
 import { AssistantToolService } from '@services/analysis/AssistantToolService';
 import { DictionaryService } from '@services/dictionary/DictionaryService';
@@ -47,7 +45,6 @@ import type { ContextPathSuggestions } from '@/application/services/contextPaths
 import {
   CATEGORY_MODELS,
   CuratedOpenRouterModel,
-  DEFAULT_CATEGORY_MODEL,
   OpenRouterModel,
   OpenRouterModels
 } from '@providers/OpenRouterModels';
@@ -498,17 +495,7 @@ export class ConfigurationHandler {
   }
 
   private getEffectiveModelSelections(): Partial<Record<ModelScope, string>> {
-    const fallback = 'anthropic/claude-sonnet-5';
-
-    const own = {
-      assistant: this.settings.get<string>('proseMinion', 'assistantModel') || fallback,
-      dictionary: this.settings.get<string>('proseMinion', 'dictionaryModel') || fallback,
-      context: this.settings.get<string>('proseMinion', 'contextModel') || fallback,
-      category: this.settings.get<string>('proseMinion', 'categoryModel') || DEFAULT_CATEGORY_MODEL,
-      widget: this.settings.get<string>('proseMinion', 'widgetModel') || DEFAULT_WIDGET_MODEL,
-      proofread: this.settings.get<string>('proseMinion', 'proofreadModel') || DEFAULT_PROOFREAD_MODEL
-    };
-    const selections: Partial<Record<ModelScope, string>> = { ...own, ...resolveFollowingModels(this.settings, own) };
+    const selections = resolveModelScopeSelections(this.settings);
 
     // SPRINT 05: Get resolved model selections from AIResourceManager
     try {

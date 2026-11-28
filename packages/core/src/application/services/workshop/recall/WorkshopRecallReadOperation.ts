@@ -37,6 +37,8 @@ import {
   workshopTranscriptRecallRequestSummary
 } from '@/application/services/workshop/recall/WorkshopTranscriptRecallRequestCopy';
 import {
+  acceptWorkshopReadDelivery,
+  type StageWorkshopReadDelivery,
   fitWorkshopReadToWindow,
   workshopReadEvidenceTokens,
   WorkshopMeasuredRead,
@@ -76,7 +78,11 @@ export class WorkshopRecallReadOperation {
     private readonly context: WorkshopRecallOperationContext
   ) {}
 
-  async run(request: ReadRequest, window?: CapabilityContextWindow): Promise<WorkshopRecallOperationOutcome> {
+  async run(
+    request: ReadRequest,
+    window?: CapabilityContextWindow,
+    stageDelivery: StageWorkshopReadDelivery = acceptWorkshopReadDelivery
+  ): Promise<WorkshopRecallOperationOutcome> {
     const budgets = PROMPT_BUDGETS.workshopTranscriptRecall;
     if (this.reads >= budgets.readsPerTurn) {
       return {
@@ -110,11 +116,13 @@ export class WorkshopRecallReadOperation {
     if (!fitted.fit) {
       return { result: this.windowTooSmall(request, minimum, half!, fitted.minimum) };
     }
-    const { outcome, tokens } = fitted.fit;
-    this.readCharacters += outcome.content!.length;
-    this.context.log(`read sessions=${request.sessions.length} limit=${fitted.fit.size} by=${String(outcome.metadata!.limitedBy)} ` +
-      `characters=${outcome.content!.length} turnTotal=${this.readCharacters}` +
-      (half === undefined ? ' window=unknown' : ` tokens=${tokens} halfWindow=${half} renders=${fitted.renders}`));
+    const { outcome, tokens, size } = fitted.fit;
+    stageDelivery(() => {
+      this.readCharacters += outcome.content!.length;
+      this.context.log(`read sessions=${request.sessions.length} limit=${size} by=${String(outcome.metadata!.limitedBy)} ` +
+        `characters=${outcome.content!.length} turnTotal=${this.readCharacters}` +
+        (half === undefined ? ' window=unknown' : ` tokens=${tokens} halfWindow=${half} renders=${fitted.renders}`));
+    });
     return { result: outcome, sources: sourcesOf.get(outcome) };
   }
 

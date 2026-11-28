@@ -1,5 +1,6 @@
 /** Workshop context attachments, configured resources, and wizard IPC slice. */
 
+import { WorkshopSentAttachmentRoutes } from './WorkshopSentAttachmentRoutes';
 import {
   WorkshopSessionService,
   workshopTextNoteLabel
@@ -63,6 +64,7 @@ import {
 import type {
   WorkshopMessageAttachmentReadsOutcome
 } from '@handlers/domain/workshop/WorkshopMessageAttachmentReads';
+import { WorkshopPastedTextRoute } from './WorkshopPastedTextRoute';
 import { fileURLToPath, pathToFileURL } from 'url';
 
 let requestIdCounter = 0;
@@ -97,6 +99,7 @@ type WorkshopContextEffects = Pick<
  * envelope, session-operation gate, and central cancel route.
  */
 export class WorkshopContextHandler {
+  private readonly sentAttachments: WorkshopSentAttachmentRoutes;
   private wizardRun?: {
     requestId: string;
     controller: AbortController;
@@ -111,6 +114,9 @@ export class WorkshopContextHandler {
     private readonly outputChannel: LogSink,
     private readonly effects: WorkshopContextEffects
   ) {
+    this.sentAttachments = new WorkshopSentAttachmentRoutes(
+      session, contextIntakeService, shell, postMessage, outputChannel, effects.reportError, () => this.disposed
+    );
     this.readIn = new WorkshopReadInRoutes(
       contextIntakeService, shell, postMessage, outputChannel, effects.reportError, effects.findReadInRecord
     );
@@ -124,6 +130,9 @@ export class WorkshopContextHandler {
     router: MessageRouter,
     registerMutation: WorkshopMutationRouteRegistrar
   ): void {
+    const pastedText = new WorkshopPastedTextRoute(this.session, this.postMessage, this.effects);
+    registerMutation(MessageType.WORKSHOP_STAGE_MESSAGE_TEXT,
+      (message) => pastedText.handle(message), undefined, (reason, message) => { void pastedText.handle(message, reason); });
     registerMutation(MessageType.WORKSHOP_ADD_CONTEXT_TEXT, this.handleAddContextText.bind(this));
     registerMutation(MessageType.WORKSHOP_ADD_CONTEXT_FILE, this.handleAddContextFile.bind(this));
     registerMutation(
@@ -145,6 +154,8 @@ export class WorkshopContextHandler {
       MessageType.WORKSHOP_OPEN_CONTEXT_ATTACHMENT_FILE,
       this.handleOpenContextAttachmentFile.bind(this)
     );
+    router.register(MessageType.WORKSHOP_REQUEST_MESSAGE_ATTACHMENT, message => this.sentAttachments.read(message.payload));
+    router.register(MessageType.WORKSHOP_OPEN_MESSAGE_ATTACHMENT_FILE, message => this.sentAttachments.open(message.payload));
     // Read in (ADR 2026-11-03 D4): a file a persona read, by `{ group, path }`.
     router.register(
       MessageType.WORKSHOP_REQUEST_READ_IN_RESOURCE,

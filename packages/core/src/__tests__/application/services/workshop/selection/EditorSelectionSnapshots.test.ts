@@ -133,6 +133,13 @@ describe('cutToSelectedTextBound', () => {
     expect(cut.truncation).toEqual({ keptWords: 400, totalWords: 500 });
   });
 
+  it('keeps the leading whitespace when no selected word ends before the cutoff', () => {
+    const prefix = ' '.repeat(BOUNDS.characters);
+    expect(cutToSelectedTextBound(prefix + 'first second')).toEqual({
+      text: prefix, words: 0, truncation: { keptWords: 0, totalWords: 2 }
+    });
+  });
+
   it('cuts one unbroken run inside the character bound, never inside a surrogate pair', () => {
     const cut = cutToSelectedTextBound(`${'y'.repeat(BOUNDS.characters - 1)}\u{1F407}tail`);
     expect(cut.text).toBe('y'.repeat(BOUNDS.characters - 1));

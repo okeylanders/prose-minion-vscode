@@ -48,7 +48,9 @@ import { OpenRouterModels } from '@providers/OpenRouterModels';
 import {
   AgentContextWindowExceededError,
   assertRequestFitsContext,
-  measureContextWindow
+  exceedsContextWindow,
+  measureContextWindow,
+  withheldEvidenceNotice
 } from '@orchestration/RequestContextPreflight';
 import {
   ContextBudgetSnapshot,
@@ -56,6 +58,8 @@ import {
   InferenceRequestObservation,
   TokenUsage
 } from '@shared/types';
+
+const EVIDENCE_KIND = { guides: 'craft guide read', projectContext: 'project resource read', workshopToolContext: 'Workshop resource read', workshopPersona: 'Workshop capability' } as const;
 
 export type StatusCallback = (message: string, tickerMessage?: string) => void;
 /** A completed provider request may omit its usage measurements. */
@@ -425,8 +429,8 @@ export class AgentRunEngine {
       peakPromptTokens = Math.max(peakPromptTokens, observation.promptTokens);
     };
 
-    const currentMessages = (): OpenRouterMessage[] => {
-      const messages = [...history, ...pendingMessages];
+    const currentMessages = (following: OpenRouterMessage[] = []): OpenRouterMessage[] => {
+      const messages = [...history, ...pendingMessages, ...following];
       if (remindCapabilityProtocol) {
         const last = messages.length - 1;
         if (messages[last]?.role === 'user') {
@@ -526,14 +530,13 @@ export class AgentRunEngine {
           // delta between this round's observation and the next one belongs
           // to the evidence delivered between them.
           const promptTokensBeforeEvidence = latestObservation?.promptTokens;
-          const fulfillment = await this.fulfillCapability(
-            capability,
-            request,
-            provider,
-            [...currentMessages(), { role: 'assistant', content: this.privateSafe(capability, last.content) }],
-            policy.retention === 'retain',
-            runOptions
-          );
+          const artifactId = policy.retention === 'retain'
+            ? this.conversationManager.nextArtifactId(conversationId)
+            : undefined;
+          const frame = (body: string) => artifactId ? wrapAgentFetchedArtifactEvidence(artifactId, body) : body;
+          const call: OpenRouterMessage = { role: 'assistant', content: this.privateSafe(capability, last.content) };
+          const fulfillment = await this.fulfillCapability(capability, request, provider,
+            body => currentMessages([call, { role: 'user', content: frame(body) }]), runOptions);
           totalUsage = this.addUsage(totalUsage, fulfillment.usage);
           artifacts.push(...fulfillment.artifacts);
           if (capability.catalog === 'guides') usedGuides.push(...fulfillment.deliveredItems);
@@ -545,15 +548,7 @@ export class AgentRunEngine {
               (artifact.catalog === 'guides' ? usedGuides : requestedResources).push(artifact.id);
             }
           }
-          // Retained-history evidence gets a stable `art-N` address at injection
-          // (ADR 2026-07-18): the Phase 7 manifest and tombstone surgery target
-          // stored entries by this id. Discarded runs need no address.
-          const artifactId = policy.retention === 'retain'
-            ? this.conversationManager.nextArtifactId(conversationId)
-            : undefined;
-          const evidence = artifactId
-            ? wrapAgentFetchedArtifactEvidence(artifactId, fulfillment.evidence)
-            : fulfillment.evidence;
+          const evidence = frame(fulfillment.evidence);
           this.outputChannel?.appendLine(
             `[AgentRunEngine] Fulfilled ${capability.catalog} capability ${rounds}/${policy.maxCapabilityRounds} ` +
             `(${capability.requestLogSummary(request)}): ${fulfillment.evidence.length} evidence chars; ` +
@@ -890,33 +885,31 @@ export class AgentRunEngine {
     return request.capability;
   }
 
-  /**
-   * Fulfill one call, telling the capability how much room its evidence has
-   * when the model's live window is known. `messages` is the next request
-   * up to the call itself. The evidence message is counted empty, inside the
-   * artifact frame a retained run wraps it in; its address grows by a digit
-   * now and then, which the preflight's rounding can feel by a token.
-   */
-  private fulfillCapability(
+  /** Offer the read its window, then check the complete prospective request before announcing any evidence. */
+  private async fulfillCapability(
     capability: AnyAgentCapability,
     request: unknown,
     provider: OpenRouterClient,
-    messages: OpenRouterMessage[],
-    retained: boolean,
+    messagesWith: (evidence: string) => OpenRouterMessage[],
     options: AgentRunOptions
   ): Promise<CapabilityFulfillment> {
-    const contextLength = OpenRouterModels.getCachedContextLength(this.requestModel(options, provider));
-    if (contextLength === undefined) {
-      return capability.fulfill(request);
+    const liveWindow = () => OpenRouterModels.getCachedContextLength(this.requestModel(options, provider));
+    const measure = (evidence: string, length: number) => measureContextWindow(messagesWith(evidence), length, options.maxTokens, options.tools);
+    const initialLength = liveWindow();
+    const readWindow: [] | [CapabilityContextWindow] = initialLength === undefined ? [] : [measure('', initialLength)];
+    const ready = capability.prepareEvidence
+      ? await capability.prepareEvidence(request, ...readWindow)
+      : await capability.fulfill(request, ...readWindow);
+    const length = liveWindow();
+    const complete = length === undefined ? undefined : measure(ready.evidence, length);
+    let notice: string | undefined;
+    if (complete && exceedsContextWindow(complete)) {
+      const room = measure('', complete.contextLength).freeInputTokens;
+      const operation = 'settle' in ready ? ready.operation : EVIDENCE_KIND[capability.catalog];
+      notice = withheldEvidenceNotice(operation, room, 'settle' in ready && ready.indivisible);
     }
-    const frame = retained ? wrapAgentFetchedArtifactEvidence('art-1', '') : '';
-    const window = measureContextWindow(
-      [...messages, { role: 'user', content: frame }],
-      contextLength,
-      options.maxTokens,
-      options.tools
-    );
-    return capability.fulfill(request, window);
+    if ('settle' in ready) { return ready.settle(notice); }
+    return notice === undefined ? ready : { evidence: notice, artifacts: [], deliveredItems: [], usage: ready.usage };
   }
 
   /** The model the next request goes to: the run's pinned model, else the provider's now. */

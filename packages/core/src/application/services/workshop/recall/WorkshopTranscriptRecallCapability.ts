@@ -9,6 +9,7 @@
  * propagates.
  */
 
+import type { StageWorkshopReadDelivery } from '@/application/services/workshop/reads/WorkshopReadWindowFit';
 import type { LogSink } from '@/platform';
 import type { CapabilityContextWindow, CapabilityDeliveredSource } from '@orchestration/AgentRunContracts';
 import type {
@@ -49,7 +50,9 @@ export class WorkshopTranscriptRecallCapability {
     this.reads = new WorkshopRecallReadOperation(recall, this.context);
   }
 
-  async fulfill(request: WorkshopTranscriptRecallRequest, window?: CapabilityContextWindow): Promise<WorkshopCapabilityResult> {
+  async fulfill(
+    request: WorkshopTranscriptRecallRequest, window?: CapabilityContextWindow, stageDelivery?: StageWorkshopReadDelivery
+  ): Promise<WorkshopCapabilityResult> {
     throwIfRecallTurnAborted(this.turn.signal);
     switch (request.capability) {
       case 'transcript.catalog':
@@ -57,7 +60,7 @@ export class WorkshopTranscriptRecallCapability {
       case 'transcript.search':
         return runWorkshopRecallSearch(this.recall, this.context, request);
       case 'transcript.read':
-        return this.recorded(await this.reads.run(request, window));
+        return this.recorded(await this.reads.run(request, window, stageDelivery));
       case 'transcript.todos':
         return this.recorded(await runWorkshopRecallTodos(this.recall, this.context, request));
       case 'transcript.bookmarks':

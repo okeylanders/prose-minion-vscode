@@ -204,6 +204,7 @@ describe('WorkshopSessionPersistenceCoordinator', () => {
     await coordinator.initialize();
     await coordinator.flush();
 
+    expect(coordinator.takeHighlightRestoreOpening()).toBeUndefined();
     expect(current?.workshop.excerpt?.text).toBe('A complete pinned excerpt.');
     expect(current?.workshop.turns.at(-1)?.artifact).toBe('session_start');
     expect(current?.summary.excerptWordCount).toBe(4);
@@ -243,6 +244,8 @@ describe('WorkshopSessionPersistenceCoordinator', () => {
 
     expect(first.restored).toBe(true);
     expect(second).toBe(first);
+    expect(coordinator.takeHighlightRestoreOpening()).toMatchObject({ roomRevision: session.readRoomRevision(), excerptVersion: session.getExcerptVersion() });
+    expect(coordinator.takeHighlightRestoreOpening()).toBeUndefined();
     expect(session.getExcerpt()?.text).toBe('The restored manuscript.');
     expect(session.getSnapshot().turns.map((turn) => turn.artifact))
       .toEqual(['session_start']);
@@ -254,6 +257,32 @@ describe('WorkshopSessionPersistenceCoordinator', () => {
     expect(session.hasRoomMemory()).toBe(false);
     expect(() => session.setSessionScope('open')).not.toThrow();
     expect(session.getScope()).toBe('open');
+  });
+
+  it('opens a new branch without a restore offer, preserving its highlights for an ordinary reopen and restart', async () => {
+    const file = { sourceUri: 'file:///workspace/chapter.md', relativePath: 'chapter.md' };
+    const inherited = new WorkshopSessionService(() => now.getTime());
+    inherited.setExcerpt({ text: 'A lantern glowed.', source: { kind: 'file', ...file } });
+    inherited.beginPersonaMessage('earlier-reply', 'Read the scene.');
+    const reply = inherited.completeRun('earlier-reply', 'I marked the light.', undefined, false)!;
+    const branch = persistedSession('lantern-branch', 'Lantern branch', 'A lantern glowed.');
+    branch.workshop = inherited.exportCommittedState();
+    branch.workshop.turns.find(turn => turn.id === reply.id)!.highlights = {
+      source: file, set: { title: 'Light', places: [{ start: { quote: 'lantern' }, note: 'Recurs later.' }] }
+    };
+    branch.summary.turnCount = branch.workshop.turns.length;
+    named.push(branch);
+    const coordinator = createCoordinator();
+    await coordinator.initialize();
+    await coordinator.openNamed(branch.sessionId, undefined, 'new-branch');
+    const candidates = [{ turnId: reply.id, source: file, count: 1 }];
+    expect(session.readHighlightPromptCandidates()).toEqual(candidates);
+    expect(coordinator.takeHighlightRestoreOpening()).toBeUndefined();
+    await coordinator.openNamed(branch.sessionId);
+    expect(coordinator.takeHighlightRestoreOpening()?.candidates).toEqual(candidates);
+    const afterRestart = createCoordinator();
+    await afterRestart.initialize();
+    expect(afterRestart.takeHighlightRestoreOpening()?.candidates).toEqual(candidates);
   });
 
   it('logs a released schema migration separately from checkpoint normalization', async () => {
@@ -350,6 +379,8 @@ describe('WorkshopSessionPersistenceCoordinator', () => {
     expect(current?.workshop.excerpt?.text).toBe('The newer portable excerpt.');
     expect(named[0].workshop.excerpt?.text).toBe('The newer portable excerpt.');
     await coordinator.openNamed('shared-room');
+    expect(coordinator.takeHighlightRestoreOpening()?.roomRevision).toBe(session.readRoomRevision());
+    expect(coordinator.takeHighlightRestoreOpening()).toBeUndefined();
 
     expect(session.getExcerpt()?.text).toBe('The newer portable excerpt.');
     expect(current?.workshop.excerpt?.text).toBe('The newer portable excerpt.');
@@ -391,6 +422,8 @@ describe('WorkshopSessionPersistenceCoordinator', () => {
     named[0] = incoming;
 
     expect(await coordinator.refreshNamedSession()).toBe(true);
+    // A Git refresh replaced the prior initialized room before a webview read its opening.
+    expect(coordinator.takeHighlightRestoreOpening()).toBeUndefined();
 
     expect(session.getExcerpt()?.text).toBe('Incoming excerpt.');
     expect(current?.title).toBe('Incoming');
@@ -1074,7 +1107,7 @@ describe('WorkshopSessionPersistenceCoordinator', () => {
     });
   });
 
-  it('rolls back an open whose durable current promotion fails without retiring old history', async () => {
+  it.each(['reopen', 'new-branch'] as const)('rolls back a failed %s promotion without retiring old history', async purpose => {
     const coordinator = createCoordinator();
     await coordinator.initialize();
     await coordinator.flush();
@@ -1085,7 +1118,8 @@ describe('WorkshopSessionPersistenceCoordinator', () => {
     named.push(persistedSession('other-room', 'Other room', 'A different room.'));
     store.writeCurrent.mockRejectedValueOnce(new Error('promotion failed'));
 
-    await expect(coordinator.openNamed('other-room')).rejects.toThrow('promotion failed');
+    await expect(coordinator.openNamed('other-room', undefined, purpose)).rejects.toThrow('promotion failed');
+    expect(coordinator.takeHighlightRestoreOpening()).toBeUndefined();
 
     expect(session.getExcerpt()?.text).toBe('The live room.');
     expect(session.getHostConversationId()).toBe('old-host');

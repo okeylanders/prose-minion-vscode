@@ -29,10 +29,9 @@ import { getWebviewHtml } from './webviewHtml';
 
 const MAX_RECEIVER = 80;
 
-export interface WorkshopNamedOpening {
-  sessionId: string;
-  drafts: readonly WorkshopBranchDraftMessage[];
-}
+export type WorkshopNamedOpening =
+  | { purpose: 'reopen'; sessionId: string }
+  | { purpose: 'new-branch'; sessionId: string; drafts: readonly WorkshopBranchDraftMessage[] };
 
 export class WorkshopPanelTab {
   /** Opaque UI navigation handle for this attachment; never a disk slot or mutation destination. */
@@ -110,7 +109,9 @@ export class WorkshopPanelTab {
     // Buffer early routes behind the same barrier as external excerpts; close abandons them all.
     this.ready = roomReady.then(async () => {
       if (!this.closed && this.namedOpening) {
-        await this.coreServices.workshopSessionPersistenceCoordinator.openNamed(this.namedOpening.sessionId);
+        await this.coreServices.workshopSessionPersistenceCoordinator.openNamed(
+          this.namedOpening.sessionId, undefined, this.namedOpening.purpose
+        );
       }
       if (!this.closed) {
         this.mountHandler();
@@ -223,7 +224,9 @@ export class WorkshopPanelTab {
       void handled.then(() => {
         if (this.closed || this.namedOpening !== branch) { return; }
         this.namedOpening = undefined;
-        for (const draft of branch.drafts) { void panel.webview.postMessage(draft); }
+        if (branch.purpose === 'new-branch') {
+          for (const draft of branch.drafts) { void panel.webview.postMessage(draft); }
+        }
       });
     }
   }

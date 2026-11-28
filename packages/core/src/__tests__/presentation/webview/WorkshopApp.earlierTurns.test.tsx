@@ -132,6 +132,61 @@ describe('WorkshopApp — show earlier turns', () => {
 
   afterEach(() => jest.clearAllMocks());
 
+  it('waits only on the provisional writer’s pill and enables the same button after commitment', () => {
+    const old = { ...turn(5), messageAttachments: [{ id: 'ta-5', label: 'Selected Text', words: 3 }] };
+    const fresh = { ...turn(7), messageAttachments: [{ id: 'ta-7', label: 'Selected Text', words: 2 }] };
+    deliver(session({ turns: [old, turn(6), { ...fresh, sentAttachmentsPending: true }], activeRequestId: 'run-7' }));
+    const current = within(bubble(fresh.id)).getByRole<HTMLButtonElement>('button', { name: /Available after the reply/ });
+    expect(current.disabled).toBe(true);
+    fireEvent.click(current);
+    expect(posted(MessageType.WORKSHOP_REQUEST_MESSAGE_ATTACHMENT)).toHaveLength(0);
+    expect(within(bubble(old.id)).getByRole<HTMLButtonElement>('button', { name: /that was sent/ }).disabled).toBe(false);
+    deliver(session({ turns: [old, turn(6), fresh, turn(8)] }));
+    expect(current.disabled).toBe(false);
+    fireEvent.click(current);
+    expect(posted(MessageType.WORKSHOP_REQUEST_MESSAGE_ATTACHMENT)[0].payload).toMatchObject({ turnId: fresh.id, artifactId: 'ta-7' });
+  });
+
+  it('opens an earlier writer’s sent selection by its own ids and shows literal text, lines and the cut', () => {
+    fireEvent.click(control()!);
+    const older = page(3, 4);
+    older.turns[0].messageAttachments = [{ id: 'ta-1', label: 'Selected Text', relativePath: 'draft/chapter.md',
+      words: 2, truncation: { keptWords: 2, totalWords: 9 }, selectedText: { snapshotId: 's1', startLine: 6, endLine: 9 } }];
+    answer(asked()[0], { page: older });
+    fireEvent.click(within(bubble('turn-3')).getByRole('button', { name: 'Show the Selected Text that was sent' }));
+    const identity = posted(MessageType.WORKSHOP_REQUEST_MESSAGE_ATTACHMENT)[0].payload;
+    expect(identity).toEqual({ requestId: expect.any(String), roomRevision: 1, turnId: 'turn-3', artifactId: 'ta-1' });
+    const content = '<writer-message> &lt;writer-message&gt; <img src=x onerror=boom()>\nSpacing  stays.';
+    deliver({ type: MessageType.WORKSHOP_MESSAGE_ATTACHMENT_CONTENT, source: 'extension.workshop', timestamp: 1,
+      payload: { ...identity, content, canOpenInEditor: false } });
+    const sheet = within(screen.getByRole('dialog', { name: 'Selected Text' }));
+    expect(sheet.getByLabelText('Sent attachment text').textContent).toBe(content);
+    expect(sheet.getByLabelText('Sent attachment text').querySelector('img')).toBeNull();
+    expect(sheet.getByText(/draft\/chapter.md · lines 6–9 · First 2 of 9 words/)).toBeTruthy();
+    expect(sheet.queryByRole('button', { name: 'Open current file' })).toBeNull();
+    deliver(session({ roomRevision: 2 }));
+    expect(screen.queryByRole('dialog', { name: 'Selected Text' })).toBeNull();
+    expect(JSON.stringify(vscode.setState.mock.calls)).not.toContain('onerror');
+  });
+
+  it('shows the character cut when inspecting a sent single-word paste', () => {
+    fireEvent.click(control()!);
+    const older = page(3, 4);
+    const attachment = {
+      id: 'ta-2', label: 'Pasted text', words: 1,
+      pastedText: { truncated: true, truncation: { keptWords: 1, totalWords: 1, keptCharacters: 5, totalCharacters: 8 } }
+    };
+    older.turns[0].messageAttachments = [attachment];
+    answer(asked()[0], { page: older });
+    fireEvent.click(within(bubble('turn-3')).getByRole('button', { name: 'Show the Pasted text that was sent' }));
+    const identity = posted(MessageType.WORKSHOP_REQUEST_MESSAGE_ATTACHMENT)[0].payload;
+    deliver({ type: MessageType.WORKSHOP_MESSAGE_ATTACHMENT_CONTENT, source: 'extension.workshop', timestamp: 1,
+      payload: { ...identity, content: 'abcde', canOpenInEditor: false } });
+    const sheet = within(screen.getByRole('dialog', { name: 'Pasted text' }));
+    expect(sheet.getByLabelText('Sent attachment text').textContent).toBe('abcde');
+    expect(sheet.getByText(/first 5 of 8 characters/)).toBeTruthy();
+  });
+
   it('leads the thread with the count; a press posts ids only and waits', () => {
     expect(control()?.textContent).toBe('Show earlier turns (4 not shown)');
     expect(bubbleIds()).toEqual(['turn-5', 'turn-6', 'turn-7', 'turn-8']);

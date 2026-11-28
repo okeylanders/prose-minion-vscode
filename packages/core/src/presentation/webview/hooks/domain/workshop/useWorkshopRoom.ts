@@ -49,6 +49,7 @@ import {
   WorkshopMessageAttachmentSnapshot,
   WorkshopChatTarget,
   WorkshopComposerDraftRestoredMessage,
+  WorkshopSendAcknowledgedMessage,
   WorkshopPersonaId,
   WorkshopPersonaGuestSnapshot,
   WorkshopSelectableSessionScope,
@@ -239,7 +240,9 @@ export interface WorkshopRoomActions {
   runTool: (toolId: WorkshopToolId) => void;
   quickAction: (toolId: WorkshopToolId, reportTurnId: string, label: string) => void;
   /** `selectedText`: the snapshot the composer's live Selected Text pill showed and the room it was drawn in, when it rides this send. */
-  sendMessage: (text: string, selectedText?: { snapshotId: string; roomRevision: number }) => void;
+  submissionPending: boolean;
+  sendMessage: (text: string, selectedText?: { snapshotId: string; roomRevision: number }, attachmentRoomRevision?: number) => boolean;
+  handleSendAcknowledged: (message: WorkshopSendAcknowledgedMessage) => void;
   seedComposerDraft: (text: string, keepDraft?: boolean) => void;
   selectPersona: (personaId: WorkshopPersonaId) => void;
   inviteGuest: (personaId: WorkshopPersonaId, openingMessage: string) => void;
@@ -356,6 +359,12 @@ export const useWorkshopRoom = (): UseWorkshopRoomReturn => {
     keepDraft?: boolean;
   }>();
   const composerDraftTokenRef = React.useRef(0);
+  const activeSubmissionId = React.useRef<string>();
+  // A room change unlocks this panel's composer. Its submitted text stays here until the host settles that send.
+  const submittedDrafts = React.useRef(new Map<string, { room: number; text: string }>());
+  const submissionIds = React.useRef({ prefix: `send-${Math.random().toString(36).slice(2)}`, next: 0 });
+  const [submissionPending, setSubmissionPending] = React.useState(false);
+  const currentRoom = React.useRef(0);
 
   // The single live-run tracker: state drives rendering, the ref mirror lets
   // handlers compare without stale closures (StrictMode double-invokes state
@@ -538,13 +547,29 @@ export const useWorkshopRoom = (): UseWorkshopRoomReturn => {
   );
 
   const sendMessage = React.useCallback(
-    (text: string, selectedText?: { snapshotId: string; roomRevision: number }) => {
+    (text: string, selectedText?: { snapshotId: string; roomRevision: number }, attachmentRoomRevision?: number) => {
+      // The ref closes the gap before React rerenders or the host announces the running turn.
+      if (activeSubmissionId.current || liveRunRef.current?.phase === 'streaming') {
+        return false;
+      }
+      const room = selectedText?.roomRevision ?? attachmentRoomRevision ?? currentRoom.current;
+      const id = `${submissionIds.current.prefix}-${++submissionIds.current.next}`;
+      submittedDrafts.current.set(id, { room, text });
+      activeSubmissionId.current = id;
+      setSubmissionPending(true);
       setErrorMessage('');
-      // A send that names a Selected Text snapshot names the room its pill was drawn in, as the pill
-      // recorded it: never the room on screen at send time (ADR 2026-11-14 D14; PR #264 P2).
-      post(MessageType.WORKSHOP_SEND_MESSAGE, selectedText
-        ? { text, selectedTextSnapshotId: selectedText.snapshotId, roomRevision: selectedText.roomRevision }
-        : { text });
+      try {
+        post(MessageType.WORKSHOP_SEND_MESSAGE, {
+          text, roomRevision: room, submissionId: id, ...(selectedText && { selectedTextSnapshotId: selectedText.snapshotId })
+        });
+        return true;
+      } catch {
+        submittedDrafts.current.delete(id);
+        activeSubmissionId.current = undefined;
+        setSubmissionPending(false);
+        setErrorMessage('The message could not be sent to the Workshop.');
+        return false;
+      }
     },
     [post]
   );
@@ -553,6 +578,21 @@ export const useWorkshopRoom = (): UseWorkshopRoomReturn => {
     composerDraftTokenRef.current += 1;
     setComposerDraftSeed({ text, token: composerDraftTokenRef.current, ...(keepDraft ? { keepDraft: true } : {}) });
   }, []);
+
+  const handleSendAcknowledged = React.useCallback(({ payload }: WorkshopSendAcknowledgedMessage) => {
+    const submission = submittedDrafts.current.get(payload.submissionId);
+    if (!submission || payload.roomRevision !== submission.room) {
+      return;
+    }
+    submittedDrafts.current.delete(payload.submissionId);
+    if (activeSubmissionId.current === payload.submissionId) {
+      activeSubmissionId.current = undefined;
+      setSubmissionPending(false);
+    }
+    if (!payload.accepted && submission.text) {
+      seedComposerDraft(submission.text, true);
+    }
+  }, [seedComposerDraft]);
 
   const selectPersona = React.useCallback(
     (personaId: WorkshopPersonaId) => {
@@ -693,7 +733,13 @@ export const useWorkshopRoom = (): UseWorkshopRoomReturn => {
       setShelvedExcerpt(session.shelvedExcerpt ?? null);
       setRoomHasMemory(session.roomHasMemory);
       setContextAttachments(session.contextAttachments ?? []);
-      setRoomRevision(session.roomRevision ?? 0);
+      const nextRoom = session.roomRevision ?? 0;
+      if (currentRoom.current !== nextRoom) {
+        activeSubmissionId.current = undefined;
+        setSubmissionPending(false);
+      }
+      currentRoom.current = nextRoom;
+      setRoomRevision(nextRoom);
       setContextRevision(session.contextRevision ?? 0);
       setPendingMessageAttachments(session.pendingMessageAttachments ?? []);
       setStandingDirectives(session.standingDirectives ?? []);
@@ -933,7 +979,7 @@ export const useWorkshopRoom = (): UseWorkshopRoomReturn => {
     handleContextSearchResults,
     runTool,
     quickAction,
-    sendMessage,
+    submissionPending, sendMessage, handleSendAcknowledged,
     seedComposerDraft,
     selectPersona,
     inviteGuest,

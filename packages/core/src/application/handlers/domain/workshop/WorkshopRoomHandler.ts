@@ -23,10 +23,12 @@ import {
   resolveWorkshopReplyLocations,
   type WorkshopReplyLocationsContext
 } from '@/application/services/workshop/locations/WorkshopReplyLocations';
+import { authorizeWorkshopReplyHighlights } from '@/application/services/workshop/highlights/WorkshopReplyHighlights';
 import type { WorkshopSavedSessionTodos } from '@/application/services/workshop/todos/WorkshopSavedSessionTodos';
 import type { WorkshopBookmarkBrowserPort } from '@handlers/domain/workshop/WorkshopBookmarkBrowserHandler';
 import type { WorkshopMemoryDraftPorts } from '@handlers/domain/workshop/WorkshopMemoryDraftHandler';
 import type { WorkshopSelectedTextSnapshotsPort } from '@handlers/domain/workshop/WorkshopSelectedTextHandler';
+import type { WorkshopHighlightEditor } from '@/application/services/workshop/highlights/WorkshopHighlightEditor';
 import type { WorkshopProjectMemoryPort } from '@handlers/domain/workshop/WorkshopRouteContracts';
 import type { WorkshopPinnedContextServices } from '@/application/services/workshop/pinnedContext/WorkshopPinnedContextPorts';
 import {
@@ -329,7 +331,7 @@ export class WorkshopRoomHandler {
     private readonly capabilityFactory: WorkshopPersonaCapabilityFactory,
     private readonly postMessage: MessageTransport,
     shell: ShellService,
-    contextIntakeService: WorkshopContextIntakeService,
+    private readonly contextIntakeService: WorkshopContextIntakeService,
     private readonly conversationSettingsService: WorkshopConversationSettingsService,
     private readonly sessionTime: WorkshopSessionTimeService,
     private readonly sessionPersistence: WorkshopSessionPersistenceCoordinator,
@@ -353,7 +355,8 @@ export class WorkshopRoomHandler {
     /** A persona's passage search (ADR 2026-11-20 D20): the engine, the listing and the report file, built in `extension.ts`. */
     passageSearch?: WorkshopPassageSearchPorts,
     revealWorkshopRoom?: (roomId: string) => boolean,
-    openWorkshopBranch?: WorkshopUiActions['openWorkshopBranch']
+    openWorkshopBranch?: WorkshopUiActions['openWorkshopBranch'],
+    private readonly workshopHighlights?: WorkshopHighlightEditor
   ) {
     // Guide-loading status is forwarded only while a Workshop run is in
     // flight — the service is shared with the sidebar's AnalysisHandler, and
@@ -381,7 +384,7 @@ export class WorkshopRoomHandler {
         session: this.session,
         postMessage: this.postMessage,
         shell,
-        contextIntakeService,
+        contextIntakeService: this.contextIntakeService,
         sessionPersistence: this.sessionPersistence,
         transcriptExport,
         widgetRuntime,
@@ -391,6 +394,7 @@ export class WorkshopRoomHandler {
         fileEditApply,
         memoryDrafts,
         selectedText, savedSessionTodos, locationsProposals, passageSearch, revealWorkshopRoom, openWorkshopBranch,
+        workshopHighlights: this.workshopHighlights,
         outputChannel: this.outputChannel
       },
       {
@@ -447,7 +451,8 @@ export class WorkshopRoomHandler {
     ) => {
       registerMutation(MessageType.WORKSHOP_RUN_TOOL, this.handleRunTool.bind(this));
       registerMutation(MessageType.WORKSHOP_QUICK_ACTION, this.handleQuickAction.bind(this));
-      registerMutation(MessageType.WORKSHOP_SEND_MESSAGE, this.handleSendMessage.bind(this));
+      registerMutation(MessageType.WORKSHOP_SEND_MESSAGE, this.handleSendMessage.bind(this), undefined,
+        (reason, message) => { void this.handleSendMessage(message, reason); });
       registerMutation(MessageType.WORKSHOP_INVITE_GUEST, this.handleInviteGuest.bind(this));
       registerMutation(MessageType.WORKSHOP_DISMISS_GUEST, this.handleDismissGuest.bind(this));
       registerMutation(MessageType.WORKSHOP_SELECT_PERSONA, this.handleSelectPersona.bind(this));
@@ -603,14 +608,56 @@ export class WorkshopRoomHandler {
   }
 
   /** The one composer message: host start/continuation or explicit direct tool. */
-  async handleSendMessage(message: WorkshopSendMessageMessage): Promise<void> {
+  async handleSendMessage(message: WorkshopSendMessageMessage, blocked?: string): Promise<void> {
+    const { submissionId, roomRevision } = message.payload ?? {};
+    let accepted = false;
+    const acknowledge = (ok: boolean) => {
+      if (typeof submissionId === 'string' && typeof roomRevision === 'number') {
+        void this.postMessage({
+          type: MessageType.WORKSHOP_SEND_ACKNOWLEDGED, source: 'extension.workshop', timestamp: Date.now(),
+          payload: { submissionId, roomRevision, accepted: ok }
+        });
+      }
+    };
+
+    try {
+      if (blocked) {
+        this.sendError('workshop.send_message', blocked);
+        return;
+      }
+      await this.submitComposerMessage(message, () => {
+        accepted = true;
+        acknowledge(true);
+      });
+    } finally {
+      // Every refusal, including preflight errors and the session mutation gate, settles the same submission.
+      if (!accepted && !this.disposed) {
+        acknowledge(false);
+      }
+    }
+  }
+
+  private async submitComposerMessage(message: WorkshopSendMessageMessage, accepted: () => void): Promise<void> {
     const text = typeof message.payload?.text === 'string' ? message.payload.text.trim() : '';
-    if (text.length === 0) {
-      this.sendError('workshop.send_message', 'Cannot send an empty message.');
+    if (typeof message.payload?.text !== 'string') {
+      this.sendError('workshop.send_message', 'A composer message needs text or attachments.');
       return;
     }
 
-    if (!(await this.pickedAttachmentsStaged(text)) || this.disposed) {
+    // The correlated sender keeps its draft until the verdict. Older clients need the host to give it back.
+    const restoreOnRefusal = () => {
+      if (!message.payload.submissionId) {
+        this.postComposerDraftRestored(text);
+      }
+    };
+    if (!(await this.pickedAttachmentsStaged(restoreOnRefusal)) || this.disposed) {
+      return;
+    }
+
+    if (message.payload.selectedTextSnapshotId === undefined && message.payload.roomRevision !== undefined
+      && message.payload.roomRevision !== this.session.readRoomRevision()) {
+      this.sendError('workshop.send_message', 'The Workshop room changed before the message was sent.');
+      restoreOnRefusal();
       return;
     }
 
@@ -619,10 +666,14 @@ export class WorkshopRoomHandler {
     const selection = this.sliceComposition.stageSelectedTextForSend(message.payload);
     if (!selection.ok) {
       this.sendError('workshop.send_message', selection.message);
-      this.postComposerDraftRestored(text);
+      restoreOnRefusal();
       return;
     }
 
+    if (!text && !this.session.hasPendingMessageAttachments()) {
+      this.sendError('workshop.send_message', 'Cannot send an empty message.');
+      return;
+    }
     const target = this.session.getChatTarget();
     if (
       target.kind === 'tool' &&
@@ -637,6 +688,8 @@ export class WorkshopRoomHandler {
     }
 
     await this.executeMessage(text, text, undefined, {
+      writerComposed: true,
+      onComposerAccepted: accepted,
       includeMessageAttachments: true,
       restoreDraftOnRollback: true
     });
@@ -651,7 +704,7 @@ export class WorkshopRoomHandler {
    * send and gives the draft back: a message never goes without its file
    * unseen.
    */
-  private async pickedAttachmentsStaged(text: string): Promise<boolean> {
+  private async pickedAttachmentsStaged(restoreOnRefusal: () => void): Promise<boolean> {
     const room = this.session.readRoomRevision();
     if (!this.sliceComposition.messageAttachmentReadsPending(room)) {
       return true;
@@ -673,7 +726,7 @@ export class WorkshopRoomHandler {
       WORKSHOP_SEND_WITHOUT_ATTACHMENT_REFUSALS[fault],
       reads.kind === 'refused' ? reads.reason : undefined
     );
-    this.postComposerDraftRestored(text);
+    restoreOnRefusal();
     return false;
   }
 
@@ -745,6 +798,7 @@ export class WorkshopRoomHandler {
         requestId,
         openingMessage
       );
+      const joinRoomRevision = this.session.readRoomRevision();
       const joinRoomTurns = this.roomDelivery.prepareJoinSnapshot({
         kind: 'personaGuest',
         personaId
@@ -844,6 +898,10 @@ export class WorkshopRoomHandler {
           memoryAutoSavesInRoom: memoryAutoSave.inRoom,
           fileEdits, todoStatus, locations,
           passageSearch: await this.sliceComposition.replyPassageSearch(result.content, controller.signal),
+          highlights: await authorizeWorkshopReplyHighlights({ reply: result.content, requestId, roomRevision: joinRoomRevision,
+            excerpt: joinStart.excerpt, persona: workshopPersonaLabel(personaId), intake: this.contextIntakeService, editor: this.workshopHighlights,
+            signal: controller.signal, session: this.session,
+            ask: (details, signal) => this.sliceComposition.askHighlightProposal(details, signal) }),
           reactionsOpen: this.conversationSettingsService.personaReactionsOpen(),
           session: this.session,
           requestId,
@@ -1147,6 +1205,10 @@ export class WorkshopRoomHandler {
        * deterministic quick actions never consume them (Phase 6B).
        */
       includeMessageAttachments?: boolean;
+      /** A writer-authored message can ask a persona to highlight its own excerpt. */
+      writerComposed?: true;
+      /** The running snapshot and stream start were posted; the composer can release its local send guard. */
+      onComposerAccepted?: () => void;
       /** Restore writer-owned composer text if transient rollback removes its turn. */
       restoreDraftOnRollback?: boolean;
       /**
@@ -1180,6 +1242,7 @@ export class WorkshopRoomHandler {
     // whether an excerpt happens to be present. An open conversation is a real
     // room; direct tool sidecars still require the passage they read.
     const excerpt = this.session.getExcerpt();
+    const messageRoomRevision = this.session.readRoomRevision();
     const hasExcerpt = !!excerpt && excerpt.text.trim().length > 0;
     const subjectStatus = this.session.getParticipantSubjectStatus();
     // Scope first, and independently of excerpt presence: a new session
@@ -1391,6 +1454,7 @@ export class WorkshopRoomHandler {
     this.postTurn(userTurn);
     this.postSessionState();
     this.sendStreamStarted(requestId);
+    executeOptions?.onComposerAccepted?.();
     this.sendStatus(statusMessage);
 
     // A directed run's reply is never shown (ADR 2026-11-10 D5): its tokens go nowhere.
@@ -1443,6 +1507,11 @@ export class WorkshopRoomHandler {
         memoryAutoSavesInRoom: memoryAutoSave.inRoom,
         fileEdits, todoStatus, locations,
         passageSearch: await this.sliceComposition.replyPassageSearch(result.content, controller.signal),
+        highlights: roomReader && executeOptions?.writerComposed && !directedRun && !widgetArtifact
+          ? await authorizeWorkshopReplyHighlights({ reply: result.content, requestId, roomRevision: messageRoomRevision, excerpt, persona: label,
+            intake: this.contextIntakeService, editor: this.workshopHighlights, signal: controller.signal, session: this.session,
+            ask: (details, signal) => this.sliceComposition.askHighlightProposal(details, signal) })
+          : undefined,
         ...delivery?.completion(),
         reactionsOpen: this.conversationSettingsService.personaReactionsOpen(),
         session: this.session,
@@ -1801,6 +1870,7 @@ export class WorkshopRoomHandler {
     return {
       fileEditsOpen: this.conversationSettingsService.getFileEditsMode() === 'ask',
       runActive: this.activeRun !== undefined,
+      pendingSentAttachmentTurnId: this.session.pendingSentAttachmentTurnId(),
       ledger: () => this.session.readRoomLedger(),
       authorPresent: (turn) => workshopEditOfferAuthorTarget(this.session, turn) !== undefined,
       liveSessionId: () => this.sessionPersistence.openRoomIdentity().sessionId,
@@ -1830,6 +1900,7 @@ export class WorkshopRoomHandler {
       source: 'extension.workshop',
       payload: {
         session,
+        highlightPrompt: this.sliceComposition.highlightPrompt(),
         writerProfile: this.conversationSettingsService.getWriterProfile(),
         webResearch: this.conversationSettingsService.getWebResearch(),
         projectMemory: this.conversationSettingsService.getProjectMemoryMode(),
@@ -1923,7 +1994,7 @@ export class WorkshopRoomHandler {
 }
 
 /** The frame kind a staged attachment carries, when it has one. */
-function withMessageAttachmentKind(attachment: { lightboxTile?: unknown; selectedText?: unknown }): { kind?: string } {
+function withMessageAttachmentKind(attachment: { lightboxTile?: unknown; selectedText?: unknown; pastedText?: unknown }): { kind?: string } {
   const kind = workshopMessageAttachmentKind(attachment);
   return kind ? { kind } : {};
 }

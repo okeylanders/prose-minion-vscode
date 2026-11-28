@@ -23,7 +23,7 @@ import type { WorkshopAnalysisSidePass } from '@/application/services/workshop/W
 import type { WorkshopResourceSources } from '@/application/services/workshop/WorkshopResourceCapability';
 import { AgentRunEngine } from '@orchestration/AgentRunEngine';
 import { AGENT_RUN_POLICIES } from '@orchestration/AgentRunPolicies';
-import { OpenRouterClient, type OpenRouterWebSearchTool } from '@providers/OpenRouterClient';
+import { OpenRouterClient, type OpenRouterMessage, type OpenRouterWebSearchTool } from '@providers/OpenRouterClient';
 import type { DictionaryService } from '@services/dictionary/DictionaryService';
 import { noProjectLenses } from '@/__tests__/application/services/workshop/lens/lensLibraryFixtures';
 import { groupListingOver } from '@/__tests__/application/services/workshop/resource/groupListingFixtures';
@@ -118,10 +118,9 @@ const streamedReply = (reply: WireReply): Response => {
   } as unknown as Response;
 };
 
-export interface SentMessage { readonly role: string; readonly content: string }
 export interface SentRequest {
   readonly body: Record<string, unknown>;
-  readonly messages: SentMessage[];
+  readonly messages: OpenRouterMessage[];
 }
 
 const flatten = (content: unknown): string =>
@@ -175,7 +174,7 @@ export function createNativeToolCallHarness(settings?: SettingsStore) {
     const body = JSON.parse(String(init?.body)) as Record<string, unknown>;
     sent.push({
       body,
-      messages: (body.messages as Array<{ role: string; content: unknown }>).map((message) => ({ role: message.role, content: flatten(message.content) }))
+      messages: (body.messages as Array<{ role: OpenRouterMessage['role']; content: unknown }>).map((message) => ({ role: message.role, content: flatten(message.content) }))
     });
     const reply = script.shift();
     if (reply === undefined) {throw new Error('the provider was asked for a reply the test did not script');}

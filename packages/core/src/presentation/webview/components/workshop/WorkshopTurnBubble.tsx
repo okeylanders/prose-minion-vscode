@@ -11,6 +11,8 @@
  * only the live streaming bubble rides the token clock.
  */
 
+import type { WorkshopMessageAttachmentSnapshot } from '@messages';
+import type { WorkshopHighlightAction } from '@hooks/domain/workshop/useWorkshopHighlightAction';
 import * as React from 'react';
 import { Icon, type IconName } from '@components/shared/Icon';
 import { MarkdownRenderer } from '@components/shared/MarkdownRenderer';
@@ -119,6 +121,8 @@ interface WorkshopTurnBubbleProps {
   locationsProposal?: WorkshopLocationsProposalControls;
   /** A persona's passage-search card: its price, Run and results (ADR 2026-11-20 D19). */
   passageSearch?: WorkshopPassageSearchControls;
+  onOpenSentAttachment?: (turnId: string, attachment: WorkshopMessageAttachmentSnapshot) => void;
+  onHighlightAction?: WorkshopHighlightAction;
   /** The reaction corner: its cluster and the "Add reaction" palette (ADR 2026-11-07 D8). */
   reactions?: WorkshopReactionControls;
   /** The footer's edit-offer chips, and the press's and answer's lines (ADR 2026-11-10 U1–U4). */
@@ -309,6 +313,8 @@ const capabilityTruncationNote = (operation: WorkshopCapabilityOperation | undef
       return 'Result was bounded by the file-history limits';
     case 'locations':
       return 'Result was bounded by the context-path limits';
+    case 'problems':
+      return 'The file had more problems than this read could show';
     case 'dictionary':
     case 'analysis':
       return 'Result reached its response-token limit';
@@ -406,7 +412,7 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
   onToggleBookmark,
   modelLabel = workshopRawModelId,
   memory,
-  fileEdits, todoReceipt, locationsProposal, passageSearch,
+  fileEdits, todoReceipt, locationsProposal, passageSearch, onOpenSentAttachment, onHighlightAction,
   reactions,
   editOffers
 }) => {
@@ -572,11 +578,15 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
           {turn.messageAttachments && turn.messageAttachments.length > 0 && (
             <div className="pm-ws-turn-attachments" aria-label="Message attachments">
               {turn.messageAttachments.map((attachment) => (
-                <span key={attachment.id} className="pm-ws-turn-attachment" title={workshopAttachmentTitle(attachment)}>
+                <button key={attachment.id} type="button" className="pm-ws-turn-attachment" disabled={turn.sentAttachmentsPending}
+                  title={workshopAttachmentTitle(attachment)}
+                  aria-label={turn.sentAttachmentsPending ? `${attachment.label} · Available after the reply` : `Show the ${attachment.label} that was sent`}
+                  onClick={() => onOpenSentAttachment?.(turn.id, attachment)}>
                   <Icon name={attachment.lightboxTile ? 'pin' : 'doc'} size={11} /> {attachment.label} ·{' '}
                   {workshopAttachmentSize(attachment, 'turn')}
-                </span>
+                </button>
               ))}
+              {turn.sentAttachmentsPending && <span className="pm-ws-comp-attachment-hint">Available after the reply</span>}
             </div>
           )}
           {isPrivateInstrumentTurn && (
@@ -824,6 +834,7 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
           {branchAction}
         </div>
         <WorkshopTurnFoot
+          onHighlightAction={onHighlightAction}
           turn={turn}
           offers={editOffers}
           reactions={reactions}

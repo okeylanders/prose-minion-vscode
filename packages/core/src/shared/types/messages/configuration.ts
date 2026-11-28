@@ -40,6 +40,8 @@ export function isModelScope(value: unknown): value is ModelScope {
  */
 export type FollowingModelScope = 'lightbox' | 'craft' | 'helper' | 'passageSearch';
 
+export type OwnModelScope = Exclude<ModelScope, FollowingModelScope>;
+
 /**
  * The own scope each following scope follows. The Lightbox and Craft Flags
  * follow the assistant model (the Workshop's); the helper follows
@@ -47,7 +49,7 @@ export type FollowingModelScope = 'lightbox' | 'craft' | 'helper' | 'passageSear
  * following scope never follows another following scope, so one lookup
  * always names a model.
  */
-export const MODEL_SCOPE_FOLLOWS: Readonly<Record<FollowingModelScope, Exclude<ModelScope, FollowingModelScope>>> = {
+export const MODEL_SCOPE_FOLLOWS: Readonly<Record<FollowingModelScope, OwnModelScope>> = {
   lightbox: 'assistant',
   craft: 'assistant',
   helper: 'proofread',

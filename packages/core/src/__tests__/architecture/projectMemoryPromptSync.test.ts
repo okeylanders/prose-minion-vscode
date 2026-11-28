@@ -55,6 +55,12 @@ describe('project-memory prompt ↔ PROMPT_BUDGETS', () => {
     expect(match!.slice(1).map(number)).toEqual(expected);
   });
 
+  it('teaches the whole-note fit and the shared allowance when the window is unknown', () => {
+    expect(prose).toContain('at most half the room left in your context window');
+    expect(prose).toContain("all memory reads in the turn share one read's character allowance");
+    expect(prose).toContain('A note is always read whole');
+  });
+
   it('holds the codec\'s field bounds to the same budgets (ADR 2026-11-04 D4)', () => {
     expect(PROJECT_MEMORY_FIELD_CHARACTERS).toEqual({
       title: budgets.titleCharacters, summary: budgets.summaryCharacters, body: budgets.bodyCharacters

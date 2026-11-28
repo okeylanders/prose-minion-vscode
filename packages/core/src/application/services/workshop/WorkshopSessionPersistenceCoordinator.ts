@@ -288,6 +288,10 @@ export class WorkshopSessionPersistenceCoordinator {
   private sessionOperationQueue: Promise<void> = Promise.resolve();
   private pendingSessionOperations = 0;
   private resumePending = false;
+  private highlightRestoreOpening?: {
+    roomRevision: number; excerptVersion: number;
+    candidates: ReturnType<WorkshopSessionService['readHighlightPromptCandidates']>;
+  };
   private localWorkPending = false;
   private dirtyRevision = 0;
   private writtenRevision = 0;
@@ -377,6 +381,22 @@ export class WorkshopSessionPersistenceCoordinator {
   openRoomInstance: WorkshopOpenRoomInstancePort['openRoomInstance'] = () => this.roomInstance.current();
   onRoomReplaced: WorkshopOpenRoomInstancePort['onRoomReplaced'] = (listener) => this.roomInstance.subscribe(listener);
   runSavedSessionOperation = <T>(operation: () => Promise<T>): Promise<T> => this.serializeNamedOperation(operation);
+
+  // The pane can mount after hydration or named Open completed. Ordinary snapshots, refreshes,
+  // rollback, branch and rewind never create an opening. Only turns present on disk are eligible.
+  private recordHighlightRestoreOpening(): void {
+    this.highlightRestoreOpening = {
+      roomRevision: this.session.readRoomRevision(),
+      excerptVersion: this.session.getExcerptVersion(),
+      candidates: this.session.readHighlightPromptCandidates()
+    };
+  }
+
+  takeHighlightRestoreOpening() {
+    const opening = this.highlightRestoreOpening;
+    this.highlightRestoreOpening = undefined;
+    return opening?.roomRevision === this.session.readRoomRevision() ? opening : undefined;
+  }
 
   /** Check inside the shared operation gate immediately before a cross-session write. */
   isNamedSessionOwnedElsewhere(sessionId: string): boolean {
@@ -516,6 +536,7 @@ export class WorkshopSessionPersistenceCoordinator {
             };
             result = await this.hydrate(recovered, true, current);
             await this.store.writeCurrent(recovered);
+            this.recordHighlightRestoreOpening();
             this.initialized = true;
             return result;
           }
@@ -544,6 +565,7 @@ export class WorkshopSessionPersistenceCoordinator {
           } else {
             this.localWorkPending = !cleanRolling;
           }
+          this.recordHighlightRestoreOpening();
         } else {
           const plan = await this.roomSeed.prepare('first');
           this.roomSeed.install(plan, this.session);
@@ -947,7 +969,8 @@ export class WorkshopSessionPersistenceCoordinator {
 
   async openNamed(
     sessionId: string,
-    afterLoad?: () => Promise<void>
+    afterLoad?: () => Promise<void>,
+    purpose: 'reopen' | 'new-branch' = 'reopen'
   ): Promise<WorkshopSessionHydrateResult> {
     return this.serializeNamedOperation(async () => {
       this.requireWritableSession(sessionId);
@@ -957,6 +980,9 @@ export class WorkshopSessionPersistenceCoordinator {
       }
       const result = await this.promoteNamedSession(persisted);
       await afterLoad?.();
+      // A newly created branch continues at its cut. A later saved-session Open or restore
+      // still offers its inherited sets, since the opening purpose is never persisted.
+      if (purpose === 'reopen') { this.recordHighlightRestoreOpening(); }
       return result;
     });
   }

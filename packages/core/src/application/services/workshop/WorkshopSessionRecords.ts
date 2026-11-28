@@ -12,6 +12,7 @@
  * whole-session consistency boundary.
  */
 
+import { cloneWorkshopPastedTextMeta } from './WorkshopPastedText';
 import type { WorkshopContextDeliveryBaseline } from '@/application/services/workshop/WorkshopContextDelivery';
 import type {
   ContextSourceEntry,
@@ -207,6 +208,32 @@ export interface WorkshopCapabilityArtifactInput {
   model?: WorkshopTurnModel;
 }
 
+/**
+ * File Problems evidence belongs to the invoking conversation. Its room
+ * artifact is a receipt: rebuild it from status and counts so a path, quote,
+ * diagnostic message, or provider error cannot travel with a saved turn.
+ */
+export function workshopProblemsReadReceipt(input: WorkshopCapabilityArtifactInput): WorkshopCapabilityArtifactInput {
+  const { status, requestedByPersonaId, invokedBy } = input.details;
+  const { diagnosticCount, shownCount } = input.result.metadata ?? {};
+  const counts = (status === 'success' || status === 'partial') &&
+    typeof diagnosticCount === 'number' && Number.isSafeInteger(diagnosticCount) && diagnosticCount >= 0 &&
+    typeof shownCount === 'number' && Number.isSafeInteger(shownCount) && shownCount >= 0 && shownCount <= diagnosticCount
+    ? { diagnosticCount, shownCount } : undefined;
+  const summary = counts
+    ? `${counts.shownCount} of ${counts.diagnosticCount} ${counts.diagnosticCount === 1 ? 'problem' : 'problems'}`
+    : 'file problems';
+  const content = counts ? `Read ${summary}.`
+    : input.result.metadata?.reason === 'context-window-exceeded' ? 'File Problems evidence did not fit in the context window.'
+      : `File Problems read ${status}.`;
+  return {
+    requestId: input.requestId,
+    excerptVersion: input.excerptVersion,
+    details: { operation: 'problems.read', status, requestSummary: summary, requestedByPersonaId, invokedBy, metadata: counts },
+    result: { capability: 'problems.read', status, requestSummary: summary, content }
+  };
+}
+
 export interface WorkshopExcerptReplacement {
   excerpt: WorkshopExcerpt;
   disposedConversationIds: string[];
@@ -302,6 +329,7 @@ export function cloneMessageAttachmentSnapshot(
     configuredResource: snapshot.configuredResource ? { ...snapshot.configuredResource } : undefined,
     truncation: snapshot.truncation ? { ...snapshot.truncation } : undefined,
     lightboxTile: snapshot.lightboxTile ? { ...snapshot.lightboxTile } : undefined,
+    ...(snapshot.pastedText ? { pastedText: cloneWorkshopPastedTextMeta(snapshot.pastedText) } : {}),
     ...(snapshot.selectedText ? { selectedText: { ...snapshot.selectedText } } : {})
   };
 }
@@ -314,6 +342,7 @@ export function cloneMessageAttachmentInput(
     configuredResource: input.configuredResource ? { ...input.configuredResource } : undefined,
     truncation: input.truncation ? { ...input.truncation } : undefined,
     lightboxTile: input.lightboxTile ? { ...input.lightboxTile } : undefined,
+    ...(input.pastedText ? { pastedText: cloneWorkshopPastedTextMeta(input.pastedText) } : {}),
     ...(input.selectedText ? { selectedText: { ...input.selectedText } } : {})
   };
 }
@@ -329,6 +358,7 @@ export function cloneMessageAttachment(
     truncation: attachment.truncation ? { ...attachment.truncation } : undefined,
     // A tile's meta is flat: one level of copy keeps the caller's object out of the session.
     lightboxTile: attachment.lightboxTile ? { ...attachment.lightboxTile } : undefined,
+    ...(attachment.pastedText ? { pastedText: cloneWorkshopPastedTextMeta(attachment.pastedText) } : {}),
     ...(attachment.selectedText ? { selectedText: { ...attachment.selectedText } } : {})
   };
 }
