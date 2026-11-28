@@ -1,7 +1,7 @@
 # Feature: Pin a Model to a Workshop Session
 
 **Date Identified:** 2026-11-27
-**Status:** Idea, decided: Okey took Ada's leans (2026-11-28). The on-screen design is being drawn in a Fable session (2026-11-28). Medium. A short ADR: which model a run uses, and what follows it (window measure, prices, cache clock).
+**Status:** Idea, decided: Okey took Ada's leans (2026-11-28). The on-screen design is drawn and waits for Okey's review ([design.md](design.md), 2026-11-28). Next: a short ADR on which model a run uses, and what follows it (window measure, prices, cache clock). Medium.
 **Priority:** Medium
 **Origin:** Okey, 2026-11-27
 
@@ -55,6 +55,32 @@
 | PM1 | Pin to the current model only, or pick any model to pin? | Pin the current one first. Picking comes with the model browser. |
 | PM2 | Do Branch and Rewind keep the pin? | Yes; it's the room's. |
 | PM3 | Do tool sidecars and helper tasks follow the pin? | No: they have their own scopes. Only the room's persona runs. |
+
+## Design
+
+[design.md](design.md) (2026-11-28) has the on-screen design: where the pin
+lives, every state with its copy and accessible names, how each surface
+reads the room's model, and eight open questions with a recommendation
+each. It proposes no product code.
+
+- **The pin is the right end of the header's model chip.** The chip names
+  the room's model in place of the setting.
+- **A note under the chip** says when the setting names another model.
+- **Unpinning asks once,** only when it would change the next reply's model.
+
+![Pinned, and the setting names another model](assets/3-pinned-setting-differs.png)
+
+![The pinned model is no longer available](assets/5-unavailable.png)
+
+Every state, dark and light, at 1280, 880 and 520px:
+[dark 1280](assets/sheet-dark-1280.png) ·
+[dark 880](assets/sheet-dark-880.png) ·
+[dark 520](assets/sheet-dark-520.png) ·
+[light 1280](assets/sheet-light-1280.png) ·
+[light 880](assets/sheet-light-880.png) ·
+[light 520](assets/sheet-light-520.png).
+The light sheets use a provisional palette: the Workshop is warm-dark only
+today. The mockups' source is [`assets/pin-model.html`](assets/pin-model.html).
 
 ## Completion Criteria
 

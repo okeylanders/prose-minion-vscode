@@ -1,0 +1,475 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Pin a model to a Workshop session (mockup)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!--
+  Design mockup for feature #42, Pin a Model to a Workshop Session.
+
+  It links the webview's real stylesheets, in the order index.tsx imports
+  them, so the header, bubble, divider, composer and context meter are drawn
+  by the product's own rules. Only the rules under "PROPOSED" below are new.
+  Everything under "MOCKUP ONLY" is the page around the frames.
+
+  The text is Alice, never a writer's. The logo is a placeholder tile.
+
+  Render: node .todo/features/feature-workshop-pin-model-to-session/assets/render.js
+-->
+<link rel="stylesheet" href="../../../../packages/core/src/presentation/webview/styles/fulltab/tokens.css">
+<link rel="stylesheet" href="../../../../packages/core/src/presentation/webview/styles/fulltab/shell.css">
+<link rel="stylesheet" href="../../../../packages/core/src/presentation/webview/styles/fulltab/modal.css">
+<link rel="stylesheet" href="../../../../packages/core/src/presentation/webview/styles/fulltab/savedItems.css">
+<link rel="stylesheet" href="../../../../packages/core/src/presentation/webview/styles/fulltab/savedBrowser.css">
+<link rel="stylesheet" href="../../../../packages/core/src/presentation/webview/styles/workshop/tokens.css">
+<link rel="stylesheet" href="../../../../packages/core/src/presentation/webview/styles/workshop/shell.css">
+<link rel="stylesheet" href="../../../../packages/core/src/presentation/webview/styles/workshop/session.css">
+<link rel="stylesheet" href="../../../../packages/core/src/presentation/webview/styles/workshop/context.css">
+<link rel="stylesheet" href="../../../../packages/core/src/presentation/webview/index.css">
+<style>
+/* ============================================================
+   PROPOSED: the rules this feature would add to
+   styles/workshop/shell.css (header actions). Nothing else is new.
+   ============================================================ */
+
+/* The model chip and its pin, joined into one control group. */
+[data-pm-surface="workshop"] .pm-ws-model-pin-group {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex: 0 0 auto;
+}
+[data-pm-surface="workshop"] .pm-ws-model-pin-row {
+  display: inline-flex;
+  align-items: stretch;
+}
+[data-pm-surface="workshop"] .pm-ws-model-pin-row .model-selector-trigger {
+  border-radius: var(--pm-r-input) 0 0 var(--pm-r-input);
+}
+[data-pm-surface="workshop"] .pm-ws-model-pin {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: -1px;
+  padding: 0 11px;
+  border: 1px solid var(--pm-border);
+  border-radius: 0 var(--pm-r-input) var(--pm-r-input) 0;
+  background: var(--pm-surface-2);
+  color: var(--pm-muted);
+  font: 500 12.5px var(--pm-sans);
+  white-space: nowrap;
+  cursor: pointer;
+}
+[data-pm-surface="workshop"] .pm-ws-model-pin:hover {
+  border-color: var(--pm-border-2);
+  color: var(--pm-text);
+}
+[data-pm-surface="workshop"] .pm-ws-model-pin[aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+/* Pinned: the accent the Sessions menu and persona trigger use when active. */
+[data-pm-surface="workshop"] .pm-ws-model-pinned .model-selector-trigger {
+  border-color: var(--pm-accent-lo);
+}
+[data-pm-surface="workshop"] .pm-ws-model-pinned .pm-ws-model-pin {
+  border-color: var(--pm-accent-lo);
+  background: var(--pm-accent-soft);
+  color: var(--pm-text);
+}
+[data-pm-surface="workshop"] .pm-ws-model-pinned .pm-ws-model-pin svg {
+  color: var(--pm-accent-hi);
+  fill: currentColor;
+}
+/* The note under the group: the Sessions menu's save-state treatment. Out of
+   flow on a wide header, so the row's other chips never move. */
+[data-pm-surface="workshop"] .pm-ws-model-pin-note {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  color: var(--pm-dim);
+  font: 10px var(--pm-mono);
+  white-space: nowrap;
+}
+[data-pm-surface="workshop"] .pm-ws-model-pin-note b {
+  color: var(--pm-muted);
+  font-weight: 400;
+}
+/* Pinned model unavailable. */
+[data-pm-surface="workshop"] .pm-ws-model-gone .model-selector-trigger,
+[data-pm-surface="workshop"] .pm-ws-model-gone .pm-ws-model-pin {
+  border-color: color-mix(in srgb, var(--pm-amber) 58%, var(--pm-border));
+}
+[data-pm-surface="workshop"] .pm-ws-model-gone .model-selector-trigger > svg:first-child {
+  color: var(--pm-amber);
+  flex-shrink: 0;
+}
+[data-pm-surface="workshop"] .pm-ws-model-gone .pm-ws-model-pin {
+  background: color-mix(in srgb, var(--pm-amber) 10%, var(--pm-surface-2));
+}
+[data-pm-surface="workshop"] .pm-ws-model-gone .pm-ws-model-pin svg {
+  color: var(--pm-amber);
+}
+[data-pm-surface="workshop"] .pm-ws-model-gone .pm-ws-model-pin-note {
+  color: var(--pm-amber);
+}
+/* The unavailable banner's action: the provider-paused banner's button. */
+[data-pm-surface="workshop"] .pm-ws-pin-unavailable {
+  align-items: center;
+}
+[data-pm-surface="workshop"] .pm-ws-pin-unavailable > span {
+  flex: 1;
+}
+[data-pm-surface="workshop"] .pm-ws-pin-unavailable strong {
+  color: var(--pm-text);
+}
+[data-pm-surface="workshop"] .pm-ws-pin-unavailable code {
+  font: 11px var(--pm-mono);
+}
+[data-pm-surface="workshop"] .pm-ws-pin-unavailable button {
+  flex: 0 0 auto;
+  padding: 5px 10px;
+  border: 1px solid color-mix(in srgb, var(--pm-amber) 58%, var(--pm-border));
+  border-radius: var(--pm-r-pill);
+  background: color-mix(in srgb, var(--pm-amber) 13%, var(--pm-surface-2));
+  color: var(--pm-text);
+  font: 600 11px var(--pm-sans);
+  cursor: pointer;
+}
+@media (max-width: 1100px) {
+  /* The header's actions wrap here; the note takes its own line in flow. */
+  [data-pm-surface="workshop"] .pm-ws-model-pin-note {
+    position: static;
+  }
+}
+@media (max-width: 520px) {
+  [data-pm-surface="workshop"] .pm-ws-model-pin-group {
+    align-items: flex-start;
+  }
+  [data-pm-surface="workshop"] .pm-ws-model-pin-row .model-selector-trigger {
+    max-width: 190px;
+  }
+  [data-pm-surface="workshop"] .pm-ws-pin-unavailable {
+    flex-wrap: wrap;
+  }
+}
+
+/* ============================================================
+   MOCKUP ONLY: the page around the frames. None of this ships.
+   ============================================================ */
+html, body { height: auto; }
+body {
+  margin: 0;
+  padding: 24px 24px 40px;
+  background: #0d0a08;
+  color: #c9bbab;
+  font: 13px -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, system-ui, sans-serif;
+  overflow: auto;
+}
+body.mk-light { background: #d8cfc3; color: #4a3c2f; }
+.mk-title { font-size: 17px; font-weight: 700; margin: 0 0 4px; color: #f3ece1; }
+.mk-light .mk-title { color: #2a2018; }
+.mk-lede { margin: 0 0 22px; max-width: 900px; line-height: 1.55; }
+.mk-frame { margin: 0 0 30px; }
+.mk-frame > h2 {
+  font: 600 11px ui-monospace, Menlo, Consolas, monospace;
+  letter-spacing: .08em; text-transform: uppercase; color: #ee7d49; margin: 0 0 4px;
+}
+.mk-light .mk-frame > h2 { color: #a8431c; }
+.mk-frame > p { margin: 0 0 10px; max-width: 900px; line-height: 1.5; }
+.mk-sub { font: 600 10px ui-monospace, Menlo, Consolas, monospace; letter-spacing: .08em; text-transform: uppercase; margin: 14px 0 6px; opacity: .8; }
+.mk-root { position: relative; border: 1px solid #3a2c1f; border-radius: 8px; overflow: hidden; }
+.mk-light .mk-root { border-color: #b9a892; }
+.mk-root .pm-ws { height: auto; }
+.mk-root .pm-ws-main { min-height: 0; }
+.mk-root .pm-ws-thread { flex: none; overflow: visible; padding-top: 20px; padding-bottom: 18px; }
+.mk-root .pm-ws-modal-backdrop { position: absolute; }
+.mk-root .pm-ws-toast { position: static; margin: 0 32px 14px auto; width: max-content; }
+.mk-root .pm-ws-turn { outline: 0; }
+.mk-logo-tile { font: 800 17px/1 Georgia, serif; color: #15110d; letter-spacing: -.04em; }
+.mk-rail-slice { padding: 14px 32px 18px; max-width: 520px; }
+.mk-rail-slice .pm-ws-eyebrow { margin-bottom: 2px; }
+/* A native title tooltip, drawn so the words can be read in a still image. */
+.mk-tip {
+  position: absolute; z-index: 5; max-width: 300px; padding: 6px 9px;
+  background: #2a2a2a; color: #e8e8e8; border: 1px solid #555; border-radius: 4px;
+  font: 12px/1.4 -apple-system, "Segoe UI", system-ui, sans-serif; box-shadow: 0 4px 14px rgba(0,0,0,.4);
+}
+.mk-focus { outline: 2px solid var(--pm-accent-hi) !important; outline-offset: 1px; }
+/* VS Code's own editor tabs, approximated. Not the extension's to style. */
+.mk-tabs { display: flex; background: #252526; border-bottom: 1px solid #1b1b1b; font: 13px -apple-system, "Segoe UI", system-ui, sans-serif; }
+.mk-tab { padding: 8px 14px; color: #969696; border-right: 1px solid #1b1b1b; white-space: nowrap; }
+.mk-tab-on { background: #1e1e1e; color: #fff; border-top: 1px solid #e0673a; }
+.mk-light .mk-tabs { background: #ececec; border-bottom-color: #d4d4d4; }
+.mk-light .mk-tab { color: #6f6f6f; border-right-color: #d4d4d4; }
+.mk-light .mk-tab-on { background: #fff; color: #222; }
+.mk-pair { display: grid; gap: 14px; }
+
+/* A provisional light palette. The Workshop is pinned warm-dark today
+   (styles/fulltab/tokens.css); this exists only to check that the pin does
+   not depend on a dark surface. The values are not a proposal. */
+.mk-light [data-pm-frame="fulltab"] {
+  --pm-bg: #f6f1ea; --pm-bg-grad-top: #efe6d9;
+  --pm-surface: #fffaf3; --pm-surface-2: #f3eadf; --pm-surface-3: #e9dccb; --pm-inset: #f1e8dc;
+  --pm-border: #d9c9b6; --pm-border-2: #c4b09a; --pm-border-soft: #e4d7c6;
+  --pm-text: #2a2018; --pm-text-2: #4a3c2f; --pm-muted: #6b5a49; --pm-dim: #85735f; --pm-faint: #b3a391;
+  --pm-accent: #c8552c; --pm-accent-hi: #b0451c; --pm-accent-lo: #d27650;
+  --pm-accent-soft: rgba(200, 85, 44, 0.12);
+  --pm-blue: #2b6fc0; --pm-green: #2f8a4d; --pm-pink: #b83a7c; --pm-amber: #946400; --pm-red: #c0432c;
+}
+.mk-light .mk-root .pm-ws-modal-backdrop { background: rgba(60, 40, 20, 0.3); }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-chevDown" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></symbol>
+    <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 17v5M9 3h6l-1 7 3 3H7l3-3z"/></symbol>
+    <symbol id="i-chip" viewBox="0 0 24 24"><path d="M7 7h10v10H7z"/><path d="M9 3v4M15 3v4M9 17v4M15 17v4M3 9h4M3 15h4M17 9h4M17 15h4"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l4 2"/></symbol>
+    <symbol id="i-person" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4.5 21a7.5 7.5 0 0 1 15 0"/></symbol>
+    <symbol id="i-doc" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></symbol>
+    <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></symbol>
+    <symbol id="i-send" viewBox="0 0 24 24"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></symbol>
+    <symbol id="i-book" viewBox="0 0 24 24"><path d="M2 5a2 2 0 0 1 2-2h6v17H4a2 2 0 0 0-2 2z"/><path d="M22 5a2 2 0 0 0-2-2h-6v17h6a2 2 0 0 1 2 2z"/></symbol>
+  </defs>
+</svg>
+
+<h1 class="mk-title">Pin a model to a Workshop session</h1>
+<p class="mk-lede">Feature #42. The header's model chip names the room's model and gains a <b>Pin</b> beside it. Each frame is a slice of the Workshop tab drawn by the webview's own stylesheets; only the pin's rules are new.</p>
+
+<div id="frames"></div>
+
+<script>
+/* The frames are built from a few small templates so a revision changes one
+   place. Nothing here is product code. */
+const icon = (name, size = 15, extra = '') =>
+  `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ${extra}><use href="#i-${name}"/></svg>`;
+
+/**
+ * The header. `pin` is 'off' | 'on' | 'gone'; `setting` is the Workshop
+ * setting's model when it differs from the room's.
+ */
+function header({ subtitle, session, model, pin = 'off', setting, focusPin, pinDisabled }) {
+  const pinned = pin !== 'off';
+  const groupClass = `pm-ws-model-pin-group${pinned ? ' pm-ws-model-pinned' : ''}${pin === 'gone' ? ' pm-ws-model-gone' : ''}`;
+  const current = pin === 'gone'
+    ? `Current model: ${model}, pinned to this session, no longer available`
+    : pinned
+      ? `Current model: ${model}, pinned to this session${setting ? `. Workshop setting: ${setting}` : ''}`
+      : `Current model: ${model}`;
+  const pinName = pinned
+    ? `Pinned to ${model}. Unpin this session`
+    : `Pin this session to ${model}`;
+  const note = pin === 'gone'
+    ? `<span class="pm-ws-model-pin-note">Not available</span>`
+    : pinned && setting
+      ? `<span class="pm-ws-model-pin-note">Workshop setting: <b>${setting}</b></span>`
+      : '';
+  return `
+  <header class="pm-ws-header">
+    <div class="pm-ws-brand">
+      <div class="pm-ws-logo"><span class="mk-logo-tile">pm</span></div>
+      <div>
+        <div class="pm-ws-eyebrow pm-ws-header-eyebrow">Prose Minion · Assistant</div>
+        <h1 class="pm-ws-title">Workshop</h1>
+        <p class="pm-ws-subtitle">${icon('doc', 12)} ${subtitle}</p>
+      </div>
+    </div>
+    <div class="pm-ws-header-actions">
+      <button class="pm-ws-persona-trigger" type="button">${icon('person', 15)} Jill</button>
+      <div class="pm-ws-sessions-menu-wrap">
+        <button class="pm-ws-reset pm-ws-sessions-trigger" type="button" aria-haspopup="menu" aria-expanded="false">
+          ${icon('book', 14)}<span class="pm-ws-sessions-trigger-label">${session}</span>${icon('chevDown', 13)}
+        </button>
+      </div>
+      <div class="${groupClass}">
+        <div class="pm-ws-model-pin-row">
+          <div class="model-selector">
+            <button type="button" class="model-selector-trigger"
+              aria-label="Browse assistant model options. ${current}"
+              title="Browse assistant model options. ${current}">
+              ${pin === 'gone' ? icon('alert', 14) : ''}
+              <span class="model-selector-current">${model}</span>
+              ${icon('chevDown', 15)}
+            </button>
+          </div>
+          <button type="button" class="pm-ws-model-pin${focusPin ? ' mk-focus' : ''}"
+            aria-label="${pinName}" ${pinDisabled ? 'aria-disabled="true"' : ''}>
+            ${icon('pin', 13)}${pinned ? 'Pinned' : 'Pin'}
+          </button>
+        </div>
+        ${note}
+      </div>
+      <div class="pm-ws-balance"><span class="pm-ws-balance-label">Window tokens</span><span class="pm-ws-balance-val">48,210</span></div>
+      <div class="pm-ws-balance"><span class="pm-ws-balance-dot pm-ws-balance-dot-ok"></span><span class="pm-ws-balance-label">OpenRouter</span><span class="pm-ws-balance-val">$ 12.40</span></div>
+    </div>
+  </header>`;
+}
+
+const writer = (text) =>
+  `<div class="pm-ws-turn pm-ws-turn-user"><span class="pm-ws-turn-chip">${text}</span></div>`;
+
+const reply = (model, text, usage = '6,204 processed') => `
+  <div class="pm-ws-turn pm-ws-turn-assistant">
+    <div class="pm-ws-turn-head">
+      <span class="pm-ws-eyebrow">${icon('person', 12)} Jill <span class="pm-ws-turn-model">· ${model}</span></span>
+      <span class="pm-ws-turn-usage-group"><span class="pm-ws-turn-usage">${usage}</span></span>
+    </div>
+    <div class="pm-ws-turn-body"><p>${text}</p></div>
+  </div>`;
+
+const divider = (text) => `
+  <div class="pm-ws-revision-divider pm-ws-session-divider pm-ws-model-slice" role="separator" aria-label="${text}">
+    <span>${icon('chip', 12)}${text}</span>
+  </div>`;
+
+const thread = (inner) => `<section class="pm-ws-main"><div class="pm-ws-thread">${inner}</div></section>`;
+
+function composer({ cache, draft = '' }) {
+  return `
+  <div class="pm-ws-composer-wrap">
+    <form class="pm-ws-composer">
+      <textarea class="pm-ws-comp-input" rows="2" placeholder="Continue with Jill…" aria-label="Message Jill">${draft}</textarea>
+      <div class="pm-ws-comp-controls">
+        <div class="pm-ws-comp-add-wrap"><button class="pm-ws-comp-add" type="button" aria-label="Add context">${icon('plus', 18)}</button></div>
+        ${cache ? `<span class="pm-ws-comp-cache-group"><span class="pm-ws-comp-cache">${icon('clock', 12)} Est. Cache Time Remaining: ${cache}</span></span>` : '<span class="pm-ws-comp-cache-group"></span>'}
+        <div class="pm-ws-comp-right">
+          <button class="pm-ws-comp-pill" type="button">${icon('grid', 13)} Tools</button>
+          <button class="pm-ws-comp-send" type="submit" aria-label="Send">${icon('send', 16)}</button>
+        </div>
+      </div>
+    </form>
+  </div>`;
+}
+
+const meter = (model, used, usable, percent, windowText) => `
+  <div class="mk-rail-slice">
+    <div class="pm-ws-eyebrow">Participants</div>
+    <details class="pm-context-budget pm-context-budget-ok" open>
+      <summary class="pm-context-budget-row">
+        <span class="pm-context-budget-dot pm-context-budget-dot-0"></span>
+        <span class="pm-context-budget-name"><b>Jill</b>&nbsp;context</span>
+        <span class="pm-context-budget-track"><span class="pm-context-budget-fill" style="width:${percent}%"></span></span>
+        <span class="pm-context-budget-nums"><b>${used}</b> / ${usable}</span>
+        <span class="pm-context-budget-pct">${percent}%</span>
+      </summary>
+      <div class="pm-context-budget-body">
+        <dl class="pm-context-budget-details">
+          <div><dt>Measured model</dt><dd>${model}</dd></div>
+          <div><dt>Model window</dt><dd>${windowText}</dd></div>
+        </dl>
+      </div>
+    </details>
+  </div>`;
+
+const root = (inner, tabs = '') => `
+  <div class="mk-root">${tabs}
+    <div data-pm-frame="fulltab" data-pm-surface="workshop"><div class="pm-ws">${inner}</div></div>
+  </div>`;
+
+const frame = (id, title, lede, body) =>
+  `<section class="mk-frame" id="${id}"><h2>${title}</h2><p>${lede}</p>${body}</section>`;
+
+const SUB = 'chapters/chapter-01.md · v2 · 1,284 words';
+const ALICE_1 = 'The fall down the well works because Alice keeps noticing shelves and maps while she drops. The paragraph never hurries her, so the reader has time to be curious too.';
+const ALICE_2 = 'The cupboard list could lose one jar. Orange marmalade does the work alone; the second label slows the fall without adding to it.';
+
+const frames = [
+  frame('s1', '1 · Unpinned, following the setting',
+    'Today&rsquo;s chip, with <b>Pin</b> joined to its right end. The chip still names the Workshop model setting, because the room follows it. The second header shows the Pin with keyboard focus and its tooltip.',
+    root(header({ subtitle: SUB, session: 'Chapter 1 pass', model: 'Claude Sonnet 5' })
+      + thread(writer('Does the fall down the well run too long?') + reply('Claude Sonnet 5', ALICE_1)))
+    + '<div class="mk-sub">Focus on Pin, with its tooltip</div>'
+    + root(header({ subtitle: SUB, session: 'Chapter 1 pass', model: 'Claude Sonnet 5', focusPin: true })
+      + '<div class="mk-tip" style="right:150px; top:66px">Pin this session to Claude Sonnet 5. It stays on this model when the Workshop model setting changes.</div><div style="height:26px"></div>')),
+
+  frame('s2', '2 · Pinned',
+    'The chip and the pin take the accent the Sessions menu takes when open, the pin fills, and the word reads <b>Pinned</b>. The setting still names the same model, so there is no note.',
+    root(header({ subtitle: SUB, session: 'Chapter 1 pass', model: 'Claude Sonnet 5', pin: 'on' })
+      + thread(writer('Does the fall down the well run too long?') + reply('Claude Sonnet 5', ALICE_1)))),
+
+  frame('s3', '3 · Pinned, and the setting names another model',
+    'The setting was changed elsewhere (another tab, the sidebar, Settings). The room stays on its model, and one quiet note under the chip says what the setting is now. Replies keep their label.',
+    root(header({ subtitle: SUB, session: 'Chapter 1 pass', model: 'Claude Sonnet 5', pin: 'on', setting: 'GPT-5' })
+      + thread(reply('Claude Sonnet 5', ALICE_1) + writer('And the cupboards?') + reply('Claude Sonnet 5', ALICE_2, '7,930 processed')))),
+
+  frame('s4', '4 · Unpinning',
+    'With the setting on the same model, Unpin is immediate. When the setting differs, unpinning changes the next reply&rsquo;s model and starts a new provider cache, so the room asks once. After Unpin the chip names the setting&rsquo;s model and the pin is empty again.',
+    '<div class="mk-sub">The setting differs: confirm</div>'
+    + root(header({ subtitle: SUB, session: 'Chapter 1 pass', model: 'Claude Sonnet 5', pin: 'on', setting: 'GPT-5' })
+      + thread(reply('Claude Sonnet 5', ALICE_1) + writer('And the cupboards?') + reply('Claude Sonnet 5', ALICE_2, '7,930 processed'))
+      + `<div class="pm-ws-modal-backdrop" role="presentation">
+          <div class="pm-ws-tools-modal pm-ws-confirm-modal" role="dialog" aria-modal="true" aria-labelledby="mk-confirm-title">
+            <div class="pm-ws-session-sheet-head pm-ws-confirm-head">
+              <div>
+                <div class="pm-ws-eyebrow">Workshop</div>
+                <h2 id="mk-confirm-title">Unpin this session?</h2>
+                <p>The next reply will use GPT-5, the Workshop model setting, instead of Claude Sonnet 5. A new model starts a new provider cache.</p>
+              </div>
+              <button class="pm-ws-modal-close" type="button" aria-label="Dismiss confirmation">${icon('x', 15)}</button>
+            </div>
+            <footer class="pm-ws-session-sheet-foot pm-ws-confirm-foot">
+              <button class="pm-ws-session-secondary" type="button">Keep pinned</button>
+              <button class="pm-ws-session-primary pm-ws-session-primary-large" type="button">Unpin</button>
+            </footer>
+          </div>
+        </div>`)
+    + '<div class="mk-sub">After Unpin</div>'
+    + root(header({ subtitle: SUB, session: 'Chapter 1 pass', model: 'GPT-5', focusPin: true })
+      + thread(reply('Claude Sonnet 5', ALICE_2, '7,930 processed')))),
+
+  frame('s5', '5 · The pinned model is no longer available',
+    'The chip turns amber and names the model by what the session stored. A banner says what is wrong and offers the way out. A send is refused in the same words and the message goes back to the composer; nothing is sent to another model.',
+    root(header({ subtitle: SUB, session: 'Chapter 1 pass', model: 'Claude Opus 4', pin: 'gone' })
+      + `<div class="pm-ws-banners"><div class="pm-ws-degraded-memory pm-ws-pin-unavailable" role="alert">
+          ${icon('alert', 14)}
+          <span><strong>This session is pinned to Claude Opus 4</strong> (<code>anthropic/claude-opus-4</code>), which OpenRouter no longer offers. Nothing is sent while the pin stands. Unpin to continue on the Workshop model setting, GPT-5.</span>
+          <button type="button">Unpin and use GPT-5</button>
+        </div></div>`
+      + thread(reply('Claude Opus 4', ALICE_1)
+        + `<div class="pm-ws-error" role="alert"><span>Not sent. This session&rsquo;s pinned model, Claude Opus 4, is no longer available. Unpin above to continue. The message is back in the composer.</span><button type="button" aria-label="Dismiss error">${icon('x', 13)}</button></div>`)
+      + composer({ draft: 'And the cupboards?' }))),
+
+  frame('s6', '6 · Two tabs pinned to different models',
+    'Each tab is its own room, so each header names its own model and pin. The tab titles stay as they are: a session or excerpt name tells the tabs apart, and the model is in the header.',
+    '<div class="mk-pair">'
+    + root(header({ subtitle: SUB, session: 'Chapter 1 pass', model: 'Claude Opus 5.5', pin: 'on', setting: 'GPT-5' }),
+      '<div class="mk-tabs"><span class="mk-tab mk-tab-on">Workshop · Chapter 1 pass</span><span class="mk-tab">Workshop · Line edits</span><span class="mk-tab">chapter-01.md</span></div>')
+    + root(header({ subtitle: 'chapters/chapter-02.md · v1 · 2,031 words', session: 'Line edits', model: 'Claude Haiku 5.5', pin: 'on', setting: 'GPT-5' }),
+      '<div class="mk-tabs"><span class="mk-tab">Workshop · Chapter 1 pass</span><span class="mk-tab mk-tab-on">Workshop · Line edits</span><span class="mk-tab">chapter-01.md</span></div>')
+    + '</div>'),
+
+  frame('s7', '7 · The model-change divider',
+    'The divider is derived from each reply&rsquo;s model stamp, as it is today, so it needs no new rule. Pinning the current model changes nothing and draws no divider. Unpinning while the setting differs changes the next reply&rsquo;s model, and the divider appears there.',
+    root(header({ subtitle: SUB, session: 'Chapter 1 pass', model: 'GPT-5' })
+      + thread(reply('Claude Sonnet 5', ALICE_1)
+        + divider('Model · Claude Sonnet 5 → GPT-5')
+        + writer('And the cupboards?')
+        + reply('GPT-5', ALICE_2, '7,930 processed')))
+    + '<div class="mk-sub">Considered, not recommended: the divider says why</div>'
+    + root(thread(divider('Model · Claude Sonnet 5 → GPT-5 · unpinned')))),
+
+  frame('s8', '8 · The cache clock and the context meter read the room&rsquo;s model',
+    'The setting says GPT-5; the room is pinned to Claude Sonnet 5. The composer&rsquo;s clock keeps counting, because the next request still goes to the model that wrote the cache. The context meter measures against the pinned model&rsquo;s window.',
+    root(header({ subtitle: SUB, session: 'Chapter 1 pass', model: 'Claude Sonnet 5', pin: 'on', setting: 'GPT-5' })
+      + thread(reply('Claude Sonnet 5', ALICE_2, '7,930 processed'))
+      + composer({ cache: '42 min' })
+      + meter('Claude Sonnet 5', '48.2k', '180k', 27, '200,000'))
+    + '<div class="mk-sub">For contrast, today: an unpinned room after the setting changed. The clock is hidden.</div>'
+    + root(header({ subtitle: SUB, session: 'Chapter 1 pass', model: 'GPT-5' })
+      + composer({})))
+];
+
+document.getElementById('frames').innerHTML = frames.join('');
+if (new URLSearchParams(location.search).get('theme') === 'light') {
+  document.body.classList.add('mk-light');
+}
+</script>
+</body>
+</html>
