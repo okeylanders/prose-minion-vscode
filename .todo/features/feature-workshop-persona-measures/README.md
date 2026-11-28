@@ -81,9 +81,9 @@ narrowing, PR #298): `PassageSearchScope`
 ### Category Search joins Passage Search's consent door
 
 Category Search is a paid model call, so it doesn't belong in `measure.*`.
-Once Passage Search's persona request exists (its P2: a card with the
-price, then Run), Category Search can be a second kind of paid search a
-persona asks for through the same card.
+It is its own item, [#46](../feature-workshop-persona-category-search/README.md):
+a second kind of paid search on Passage Search's persona card (a price,
+then Run), built after this epic's scope lift.
 
 ## How it fits the house rules
 
