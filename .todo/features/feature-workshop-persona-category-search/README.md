@@ -1,7 +1,7 @@
 # Feature: Personas Ask for a Category Search
 
 **Date Identified:** 2026-11-28
-**Status:** Idea. Medium. An addendum to ADR 2026-11-20 (D16–D21): the persona's paid-search card serves a second kind. Build it after the [Persona Measures](../../epics/epic-persona-measures-2026-11-27/README.md) epic's A1, which lifts the scope type it reuses.
+**Status:** Idea, decided: Okey took Ada's leans (2026-11-28). Medium. An addendum to ADR 2026-11-20 (D16–D21): the persona's paid-search card serves a second kind. Build it after the [Persona Measures](../../epics/epic-persona-measures-2026-11-27/README.md) epic's A1, which lifts the scope type it reuses.
 **Priority:** Medium
 **Origin:** Okey, 2026-11-28. Split from [#35](../feature-workshop-persona-measures/README.md): Category Search isn't deterministic, so it doesn't join `measure.*`.
 
@@ -71,9 +71,9 @@ filtered out.
    - Rewind keeps a result whose card it left as searched;
    - logs carry counts and closed outcomes only.
 
-## Decisions to make
+## Decisions (Okey, 2026-11-28: Ada's leans, taken)
 
-| # | Question | Ada's lean |
+| # | Question | Decision |
 |---|---|---|
 | C1 | One card for both kinds, or a second card? | One card, extracted to serve both. The run slot, held results and delivery become kind-neutral; each kind keeps its own trailer, records and codec. |
 | C2 | Which options can a persona set? | Category, scopes, relevance, and words or n-grams. The word limit takes the sidebar's default unless named, within its closed values. |

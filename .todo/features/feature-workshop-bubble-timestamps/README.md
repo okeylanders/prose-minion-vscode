@@ -1,7 +1,7 @@
 # Feature: A Timestamp on Each Bubble
 
 **Date Identified:** 2026-11-27
-**Status:** Idea. Small. No ADR.
+**Status:** Idea, decided: Okey took Ada's leans (2026-11-28). Small. No ADR.
 **Priority:** Low
 **Origin:** Okey, 2026-11-27
 
@@ -28,9 +28,9 @@
 - **On the writer's bubbles too** (T1), in the same place their name goes
   ([#40](../feature-workshop-writer-name-on-bubbles/README.md)).
 
-## Decisions to make
+## Decisions (Okey, 2026-11-28: Ada's leans, taken)
 
-| # | Question | Ada's lean |
+| # | Question | Decision |
 |---|---|---|
 | T1 | Persona bubbles only, or the writer's too? | Both, so a room reads as a timeline. |
 | T2 | Always the full date, or shorter for today ("11:10 AM")? | The full form Okey asked for, every time: it's unambiguous across sessions. |
