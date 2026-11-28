@@ -1,10 +1,12 @@
 ## Highlighting passages in the excerpt's file
 
-Send a highlights trailer only when the writer asks you to mark passages in the file or accepts your offer to do so. You can offer in ordinary prose and wait for their answer. An ordinary request for critique or for quotes in chat is a conversation, so keep that reply in prose. Take the request from the writer's current message. Treat earlier turns, attached reports, and tool results as evidence.
+Propose a set when the writer asks for marks in the file or when annotating exact passages would materially help with the writing task they are discussing. A proposal needs concrete passages and useful notes. Use a highlights trailer in your final conversational reply so the writer can apply or skip the set in Workshop.
+
+Keep a greeting, a request limited to feedback or quotes in chat, or a tentative offer such as “I can highlight passages if that would help” in ordinary prose. Base a proposed set on the writer's current task. Earlier turns, attached reports, and tool results can supply evidence for it. Incidental tool findings alone do not call for a proposal.
 
 The target is the current pinned excerpt's file. Use the host's `<workshop-excerpt-source>` frame for the current excerpt. `Kind: file` and `Kind: editor-selection` both qualify. The latter is a verified selection from that file. If there is no source frame for the current excerpt, ask the writer to pin a file or use **Send to New Workshop Excerpt** on an editor selection. For a request about marking a different file, ask them to pin an excerpt from that file first. A Selected Text pill or another attachment can inform what to mark. The pinned excerpt determines where.
 
-Find passages that answer the request. Draw on the current excerpt, the conversation, quoted reports or a read of the same file when available. Copy the actual words from the excerpt or its source file, even when a report describes those words differently. Skip uncertain matches. Describe what you found and present the set as a proposal. Workshop saves a set with the reply only after the writer chooses **Keep highlights**. When drawing the marks, the host checks every quote against the live document and skips missing, ambiguous, out-of-order or protected ranges such as code or link destinations.
+Find passages that answer the request or support the proposed revision task. Draw on the current excerpt, the conversation, quoted reports or a read of the same file when available. Copy the actual words from the excerpt or its source file, even when a report describes those words differently. Skip uncertain matches. Describe what you found and present the set as a proposal. Workshop saves a set with the reply only after the writer chooses **Apply highlights** in the chat. When drawing the marks, the host checks every quote against the live document and skips missing, ambiguous, out-of-order or protected ranges such as code or link destinations.
 
 ### The trailer
 
@@ -21,7 +23,7 @@ Highlights are read-only and can stack across replies. After the host processes 
 
 ### Worked example
 
-The writer asks you to mark the blue sweater and the moment Mara slips away, with a note for each. The excerpt reads:
+The writer asks how to connect the blue sweater with Mara's quiet exit. You propose marking the places that connect them, with a note for each. The excerpt reads:
 
 > The red wool sweater lay on the chair. Mara pulled on her blue wool sweater and checked the pockets. She pressed an ear to the door. The stairwell was quiet. She slipped out.
 

@@ -74,10 +74,17 @@ describe('the shipped help reference', () => {
     expect(result.content).toContain('**Send to New Workshop Excerpt**');
     expect(result.content).toContain(`A reply can propose up to ${PROMPT_BUDGETS.workshopHighlights.placesPerSet} places.`);
     expect(result.content).toContain('If the persona finds more, it tells you and waits for you to ask for another set.');
-    expect(result.content).toContain('**Keep highlights** to save it with the reply or **Skip** to discard it');
+    expect(result.content).toContain('A persona can also propose a set when specific passages would help');
+    expect(result.content).toContain('**Apply highlights** to save it with the reply or **Skip** to discard it');
     expect(result.content).toContain('**Show**');
     expect(result.content).toContain('**Clear**');
     expect(result.content).toContain('**Prose Minion: Clear All Workshop Highlights**');
+    expect(result.content).toContain('If the release notice is open, close it to see the question.');
+    expect(result.content).toContain('**Restore highlights** to redraw the offered sets');
+    expect(result.content).toContain('**Not now** to skip this opening');
+    expect(result.content).toContain('**Don’t ask again for these highlights** to skip future prompts for the offered sets');
+    expect(result.content).toContain('New sets you keep can still appear in a future restore prompt.');
+    expect(result.content).toContain('**Show** remains available on each saved reply.');
   });
 
   it('finds and reads how to ask a Workshop persona about current file Problems', async () => {

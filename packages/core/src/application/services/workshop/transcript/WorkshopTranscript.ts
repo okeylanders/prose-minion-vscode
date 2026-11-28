@@ -292,7 +292,7 @@ function locationsCard(entry: WorkshopTranscriptEntry, turn: WorkshopTurn): Work
 function highlightSet(entry: WorkshopTranscriptEntry, turn: WorkshopTurn): WorkshopTranscriptEventEntry[] {
   const count = turn.highlights?.set.places.length;
   return entry.kind === 'reply' && count
-    ? [{ kind: 'event', turnId: turn.id, timestamp: turn.timestamp, text: `Requested ${count} ${count === 1 ? 'highlight' : 'highlights'}.` }]
+    ? [{ kind: 'event', turnId: turn.id, timestamp: turn.timestamp, text: `Kept ${count} ${count === 1 ? 'highlight' : 'highlights'}.` }]
     : [];
 }
 

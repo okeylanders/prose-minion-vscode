@@ -55,6 +55,8 @@ import { useWorkshopMemoryManager } from '@hooks/domain/workshop/useWorkshopMemo
 import { useWorkshopFileEdits } from '@hooks/domain/workshop/useWorkshopFileEdits';
 import { useWorkshopTodoReceiptControls } from '@components/workshop/todos/useWorkshopTodoReceiptControls';
 import { useWorkshopLocationsProposalControls } from '@components/workshop/locations/useWorkshopLocationsProposalControls';
+import { useWorkshopHighlightPrompt } from '@hooks/domain/workshop/useWorkshopHighlightPrompt';
+import { WorkshopHighlightPromptModal } from './components/workshop/WorkshopHighlightPromptModal';
 import { useWorkshopHighlightAction } from '@hooks/domain/workshop/useWorkshopHighlightAction';
 import { useWorkshopPassageSearchControls } from '@components/workshop/passageSearch/useWorkshopPassageSearchControls';
 import { useWorkshopNamedSessionRecovery } from '@hooks/domain/workshop/useWorkshopNamedSessionRecovery';
@@ -284,6 +286,7 @@ export const WorkshopApp: React.FC = () => {
     [contextSources]
   );
   const readIn = useWorkshopReadIn();
+  const highlightPrompts = useWorkshopHighlightPrompt();
   const pastedText = useWorkshopPastedText();
   const sentAttachments = useWorkshopSentAttachments(workshop.sessionReady ? workshop.roomRevision : undefined);
   const bookmarks = useWorkshopBookmarks({ onBeforeChange: workshop.clearError });
@@ -495,6 +498,7 @@ export const WorkshopApp: React.FC = () => {
   );
 
   useWorkshopAppMessageRouter({
+    highlightPrompts,
     pastedText,
     sentAttachments,
     readIn,
@@ -1886,6 +1890,14 @@ export const WorkshopApp: React.FC = () => {
             modelsSettings.setModelSelection('widget', modelId)}
           onOpenWidgetModelBrowser={() => modelsSettings.requestModelData(true)}
           onClose={widgetOpening.closeLexicalGravity}
+        />
+      )}
+      {startupNotice.noticeResolved && !startupNotice.noticeOpen && highlightPrompts.prompt
+        && highlightPrompts.prompt.roomRevision === workshop.roomRevision && (
+        <WorkshopHighlightPromptModal
+          key={highlightPrompts.prompt.promptId}
+          prompt={highlightPrompts.prompt}
+          onAnswer={highlightPrompts.answer}
         />
       )}
       <WorkshopNoticeModal

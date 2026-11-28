@@ -86,8 +86,8 @@ file.**
 6. **When they show.**
    - They're drawn at once if the file is open; otherwise the chip opens it
      and draws them.
-   - Diagnostics are session-only, so the chip redraws a set after a Clear,
-     a close or a reload, anchored afresh.
+   - A valid proposed set opens a confirmation over its Workshop chat. **Apply highlights** keeps it. **Show** on a saved reply redraws the set directly.
+   - Reopening a session offers to restore its eligible sets for the current excerpt after the startup release notice closes. **Not now** defers for this opening. **Don’t ask again for these highlights** remembers the choice for the displayed sets. Newly kept sets remain eligible on the next opening.
    - A Rewind that removes the reply clears its set.
 7. **Read-only.** Highlights never change the text. If the writer then
    wants changes, the persona's existing edit-offer chip and Persona File
@@ -102,7 +102,7 @@ file.**
 | # | Decision | By |
 |---|---|---|
 | H0 | **General purpose.** Any passage, any note, about anything the writer asks, in the open excerpt's file. | Okey, 2026-11-26 |
-| H1 | **Only when the writer asks.** Otherwise a persona may offer ("Want me to highlight them?"), never highlight unasked. | Okey, 2026-11-27 (Ada's lean) |
+| H1 | **Confirm before applying.** An express request or a concrete persona proposal may produce a set for the writer to accept in chat. A general offer in prose needs no dialog. | Okey, 2026-11-27 (Ada's lean) |
 | H2 | **The excerpt's file first.** Other project files come later, named as file edits name them. | Okey, 2026-11-27 (Ada's lean) |
 
 

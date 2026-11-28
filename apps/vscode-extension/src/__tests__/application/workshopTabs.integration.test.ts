@@ -669,6 +669,7 @@ describe.each([
       // The writer initiated Branch from the second editor group.
       Object.assign(source, { viewColumn: 2 });
       const create = jest.spyOn(vscode.window, 'createWebviewPanel');
+      const openNamed = jest.spyOn(WorkshopSessionPersistenceCoordinator.prototype, 'openNamed');
       try {
         await source.send(MessageType.WORKSHOP_BRANCH_SESSION, { turnId: writer.id, title: 'Lantern branch' });
         expect(panels).toHaveLength(panelCount + 1);
@@ -687,6 +688,7 @@ describe.each([
         expect(await mockFiles.readFile(original)).toEqual(sourceBytes);
         const branch = mockFiles.json(namedFile('Lantern branch')) as { sessionId: string };
         expect(branch.sessionId).not.toBe(sourceRecord.sessionId);
+        expect(openNamed).toHaveBeenCalledWith(branch.sessionId, undefined, 'new-branch');
         const cut = turnIds.indexOf(writer.id);
         expect(destination.snapshot().turns.map(turn => turn.id)).toEqual(turnIds.slice(0, cut));
         expect(drafts(source)).toEqual([]);
@@ -695,6 +697,7 @@ describe.each([
           type: MessageType.WORKSHOP_SESSION_ACTION_RESULT, payload: expect.objectContaining({ action: 'branch', ok: true })
         }));
       } finally {
+        openNamed.mockRestore();
         create.mockRestore();
       }
     } finally {

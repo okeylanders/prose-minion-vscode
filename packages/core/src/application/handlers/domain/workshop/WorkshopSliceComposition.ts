@@ -17,6 +17,8 @@ import { WorkshopSessionExportHandler } from '@handlers/domain/workshop/Workshop
 import { WorkshopStandingDirectiveHandler } from '@handlers/domain/workshop/WorkshopStandingDirectiveHandler';
 import { WorkshopTodoHandler } from '@handlers/domain/workshop/WorkshopTodoHandler';
 import { WorkshopLocationsProposalHandler } from '@handlers/domain/workshop/WorkshopLocationsProposalHandler';
+import { WorkshopHighlightProposal } from './WorkshopHighlightProposal';
+import { WorkshopHighlightRestore } from './WorkshopHighlightRestore';
 import { WorkshopHighlightHandler } from '@handlers/domain/workshop/WorkshopHighlightHandler';
 import { WorkshopPassageSearchHandler } from '@handlers/domain/workshop/WorkshopPassageSearchHandler';
 import { resolveWorkshopReplyPassageSearch } from '@/application/services/workshop/passageSearch/WorkshopReplyPassageSearch';
@@ -72,6 +74,7 @@ import type { WorkshopSessionAction, WorkshopTurn } from '@messages';
 import { MessageType } from '@messages';
 
 export class WorkshopSliceComposition {
+  private readonly highlightProposal: WorkshopHighlightProposal;
   private readonly highlightHandler: WorkshopHighlightHandler;
   private readonly sessionMessageHandler: WorkshopSessionMessageHandler;
   private readonly sessionExportHandler: WorkshopSessionExportHandler;
@@ -126,8 +129,11 @@ export class WorkshopSliceComposition {
     } = dependencies;
     const markDirty = (reason: string): void => sessionPersistence.markDirty(reason);
 
+    this.highlightProposal = new WorkshopHighlightProposal(host.postSessionState);
+    const restore = new WorkshopHighlightRestore(session, sessionPersistence, contextIntakeService, host.postSessionState);
     this.highlightHandler = new WorkshopHighlightHandler(
-      session, sessionPersistence, contextIntakeService, dependencies.workshopHighlights, host.sendStatus
+      session, sessionPersistence, contextIntakeService, dependencies.workshopHighlights, host.sendStatus,
+      { proposal: this.highlightProposal, restore }
     );
     this.contextHandler = new WorkshopContextHandler(
       contextAssistantService,
@@ -422,6 +428,9 @@ export class WorkshopSliceComposition {
       outputChannel
     );
   }
+
+  highlightPrompt = () => this.highlightHandler.highlightPrompt();
+  askHighlightProposal = (...args: Parameters<WorkshopHighlightProposal['ask']>) => this.highlightProposal.ask(...args);
 
   registerRoutes(
     router: MessageRouter,

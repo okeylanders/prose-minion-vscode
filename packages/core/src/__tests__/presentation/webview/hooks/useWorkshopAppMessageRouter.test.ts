@@ -24,6 +24,7 @@ const makeDeps = (): WorkshopAppMessageRouterDeps => ({
     handleSessionContextScan: jest.fn(),
     handleSessionRecoveryNotice: jest.fn()
   } as never,
+  highlightPrompts: { handleSessionState: jest.fn() },
   sentAttachments: { receive: jest.fn() },
   readIn: {
     handleReadInResourceContent: jest.fn()
@@ -160,6 +161,7 @@ describe('buildWorkshopAppMessageRoutes', () => {
     routes[MessageType.WORKSHOP_SESSION_STATE]!(message);
 
     expect(deps.workshopRoom.handleSessionState).toHaveBeenCalledWith(message);
+    expect(deps.highlightPrompts.handleSessionState).toHaveBeenCalledWith(message);
     expect(deps.bookmarks.handleSessionState).toHaveBeenCalledWith(message);
     expect(deps.reactions.handleSessionState).toHaveBeenCalledWith(message);
     expect(deps.bookmarkBrowser.handleSessionState).toHaveBeenCalledWith(message);

@@ -2867,6 +2867,12 @@
 [data-pm-surface="workshop"] .pm-ws-confirm-foot {
   justify-content: flex-end;
 }
+[data-pm-surface="workshop"] .pm-ws-highlight-prompt .pm-ws-confirm-head {
+  overflow-wrap: anywhere;
+}
+[data-pm-surface="workshop"] .pm-ws-highlight-prompt .pm-ws-confirm-foot {
+  flex-wrap: wrap;
+}
 [data-pm-surface="workshop"] .pm-ws-save-session-manifest {
   display: grid;
   gap: 9px;

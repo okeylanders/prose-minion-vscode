@@ -201,6 +201,7 @@ import {
   WorkshopApplyLocationsProposalMessage,
   WorkshopLocationsProposalResultMessage,
   WorkshopHighlightMessage,
+  WorkshopAnswerHighlightPromptMessage,
   WorkshopPassageSearchWebviewMessage,
   WorkshopPassageSearchExtensionMessage,
   WorkshopRecoverNamedSessionMessage,
@@ -416,6 +417,7 @@ export type WebviewToExtensionMessage =
   | WorkshopUndoTodoStatusMessage
   | WorkshopApplyLocationsProposalMessage
   | WorkshopHighlightMessage
+  | WorkshopAnswerHighlightPromptMessage
   | WorkshopPassageSearchWebviewMessage
   | WorkshopRecoverNamedSessionMessage
   | WorkshopSetTurnBookmarkMessage

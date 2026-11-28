@@ -8,7 +8,10 @@ export function assertWorkshopHighlightRecord(turn: Record<string, unknown>, pat
     || turn.artifact !== 'persona_message' || turn.kind !== 'message') {
     shapeError(at, 'a highlight set on a persona message');
   }
-  const record = exactObject(turn.highlights, at, ['source', 'set']);
+  const record = exactObject(turn.highlights, at, ['source', 'set'], ['suppressRestorePrompt']);
+  if (record.suppressRestorePrompt !== undefined && record.suppressRestorePrompt !== true) {
+    shapeError(`${at}.suppressRestorePrompt`, 'true');
+  }
   const source = exactObject(record.source, `${at}.source`, ['sourceUri', 'relativePath']);
   if (typeof source.relativePath !== 'string' || !source.relativePath.trim() || typeof source.sourceUri !== 'string') {
     shapeError(`${at}.source`, 'a file source');
