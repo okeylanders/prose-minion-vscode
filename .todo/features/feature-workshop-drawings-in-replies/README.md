@@ -1,7 +1,7 @@
 # Feature: Personas Draw in Their Replies (SVG, then Mermaid)
 
 **Date Identified:** 2026-11-27
-**Status:** Idea. Medium. A short ADR: a new rendering path past the bubble's no-images rule.
+**Status:** Idea, decided: Okey took Ada's leans (2026-11-28). Medium. A short ADR: a new rendering path past the bubble's no-images rule.
 **Priority:** Medium
 **Origin:** Okey, 2026-11-27
 
@@ -64,9 +64,9 @@ both, SVG first because it's small (D1).
 6. **Recall and context** see the code block as text. The model reads what
    it drew, no more.
 
-## Decisions to make
+## Decisions (Okey, 2026-11-28: Ada's leans, taken)
 
-| # | Question | Ada's lean |
+| # | Question | Decision |
 |---|---|---|
 | D1 | SVG first, Mermaid first, or both together? | SVG first: no dependency. Mermaid as step 2. |
 | D2 | A setting to turn drawings off? | Yes, on by default: a drawing costs output tokens. |

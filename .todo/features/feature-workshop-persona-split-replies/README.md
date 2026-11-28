@@ -1,7 +1,7 @@
 # Feature: A Persona's Reply Can Arrive as Several Bubbles
 
 **Date Identified:** 2026-11-27
-**Status:** Idea. Medium. An addendum to ADR 2026-11-07 (reactions), and a short section on the split marker.
+**Status:** Idea, decided: Okey took Ada's leans (2026-11-28). Medium. An addendum to ADR 2026-11-07 (reactions), and a short section on the split marker.
 **Priority:** Medium
 **Origin:** Okey, 2026-11-27
 
@@ -45,9 +45,9 @@ mark. Only its drawing splits.
    all read one turn. Copy, Save and Bookmark act on the whole reply. The
    transcript export draws the parts, and the marker never appears in it.
 
-## Decisions to make
+## Decisions (Okey, 2026-11-28: Ada's leans, taken)
 
-| # | Question | Ada's lean |
+| # | Question | Decision |
 |---|---|---|
 | S1 | Can the writer react to each part? | Yes; it's the point. |
 | S2 | Do Copy and Bookmark act per part? | No, on the whole reply. A part-level bookmark can come later. |

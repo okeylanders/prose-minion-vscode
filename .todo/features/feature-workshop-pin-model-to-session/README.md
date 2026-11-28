@@ -1,7 +1,7 @@
 # Feature: Pin a Model to a Workshop Session
 
 **Date Identified:** 2026-11-27
-**Status:** Idea. Medium. A short ADR: which model a run uses, and what follows it (window measure, prices, cache clock).
+**Status:** Idea, decided: Okey took Ada's leans (2026-11-28). The on-screen design is being drawn in a Fable session (2026-11-28). Medium. A short ADR: which model a run uses, and what follows it (window measure, prices, cache clock).
 **Priority:** Medium
 **Origin:** Okey, 2026-11-27
 
@@ -48,9 +48,9 @@
    first. The parked [header model browser](../feature-workshop-header-model-browser/README.md)
    is the natural home for picking a model to pin.
 
-## Decisions to make
+## Decisions (Okey, 2026-11-28: Ada's leans, taken)
 
-| # | Question | Ada's lean |
+| # | Question | Decision |
 |---|---|---|
 | PM1 | Pin to the current model only, or pick any model to pin? | Pin the current one first. Picking comes with the model browser. |
 | PM2 | Do Branch and Rewind keep the pin? | Yes; it's the room's. |

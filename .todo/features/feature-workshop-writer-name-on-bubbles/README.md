@@ -1,7 +1,7 @@
 # Feature: The Writer's Name on Their Own Bubbles
 
 **Date Identified:** 2026-11-27
-**Status:** Idea. Small. No ADR.
+**Status:** Idea, decided: Okey took Ada's leans (2026-11-28). Small. No ADR.
 **Priority:** Medium
 **Origin:** Okey, 2026-11-27
 
@@ -31,9 +31,9 @@
   is filled in, whether or not About you is switched on for personas (W1).
 - **No name, no label,** as today.
 
-## Decisions to make
+## Decisions (Okey, 2026-11-28: Ada's leans, taken)
 
-| # | Question | Ada's lean |
+| # | Question | Decision |
 |---|---|---|
 | W1 | Show the name only while About you is on? | No: whenever it's filled in. Showing your own name to yourself shares nothing. |
 | W2 | Use it in transcript exports too? | Yes, in place of "You". An export is the writer's own document. |

@@ -1,6 +1,6 @@
 # Feature Ideas: Status Index
 
-**As of:** 2026-11-27. `main` holds 2.17.0 (Workshop tabs, PR #312), waiting for its release tag.
+**As of:** 2026-11-28. `main` holds 2.17.0, waiting for its release tag: Workshop tabs (PR #312), and persona highlights with the conveniences patch (PR #322).
 
 Numbers come from Okey's idea inbox. Each row links to a note. The note
 holds the problem, Okey's decisions, the open questions and the completion
@@ -27,9 +27,11 @@ criteria.
 |---|---|---|---|
 | 2 | Emoji reactions, both ways | v2.13.0 | [message reactions](../archive/features/feature-workshop-message-reactions/README.md) |
 | 4 | Personas read several files in one request | v2.14.0 | [reads fit the window](feature-workshop-reads-fit-the-window/README.md) (first part; see 4+) |
+| 4+ | Reads, the rest: `memory.read` fit and the engine backstop | 2.17.0 (PR #322) | [reads fit the window](feature-workshop-reads-fit-the-window/README.md) |
 | 6 | "Selected Text" pill and toggle | v2.14.0 | [send selection with message](../archive/features/feature-workshop-send-selection-with-message/README.md) |
 | 7 | Search the Dictionary's history | v2.14.0 | [dictionary history search](../archive/features/feature-dictionary-history-search/README.md) |
 | 8 | How readily personas suggest memories | v2.15.0 | [memory suggestion level](feature-workshop-memory-suggestion-level/README.md) |
+| 9 | Several Workshop tabs, including unsaved rooms | 2.17.0 | [Epic](../epics/epic-workshop-tabs-2026-11-25/README.md) · [feature note](feature-multiple-workshop-and-lightbox-tabs/README.md) |
 | 10 | Collapse the Workshop's side pane | v2.14.0 | [collapsible rail](../archive/features/feature-workshop-collapsible-rail/README.md) |
 | 12 | Personas list and read your lenses | v2.15.0 | [persona reads lenses](feature-workshop-persona-reads-lenses/README.md) |
 | 13 | Lexical Gravity JSON repair | v2.15.0 | [tech debt](../tech-debt/2026-11-09-lexical-gravity-reads-json-without-repair.md) |
@@ -48,9 +50,12 @@ criteria.
 | 28 | Personas read a file's git history | v2.16.0 | [file git history](feature-workshop-file-git-history/README.md) |
 | 29 | Passage Search, with group narrowing | v2.16.0 | [passage search](feature-passage-search/README.md) |
 | 30 | Personas mark to-dos done, here and in saved sessions | v2.16.0 | [recall to-do closeout](feature-workshop-recall-todo-closeout/README.md) |
-| 9 | Several Workshop tabs, including unsaved rooms | 2.17.0 | [Epic](../epics/epic-workshop-tabs-2026-11-25/README.md) · [feature note](feature-multiple-workshop-and-lightbox-tabs/README.md) |
+| 33 | The default models updated, one table instead of three | 2.17.0 (PR #322) | [tech debt](../tech-debt/2026-11-20-default-models-behind.md) |
+| 34 | Click a sent pill to see what was sent | 2.17.0 (PR #322) | [sent attachment viewer](feature-workshop-sent-attachment-viewer/README.md) |
+| 36 | A long paste becomes a "Pasted text" pill | 2.17.0 (PR #322) | [long paste pill](feature-workshop-long-paste-pill/README.md) |
 | 37 | A session keeps its cache key and cache clock across a reload | 2.17.0 (tabs Sprint 08, PR #310) | [session cache key](feature-workshop-session-cache-key/README.md) |
 | 38 (core) | Branch opens the saved branch in a new tab; the source tab stays | 2.17.0 (tabs Sprint 08, PR #310) | [branch in new tab](feature-workshop-branch-in-new-tab/README.md) |
+| 39 | Personas highlight the excerpt's file, each with a note | 2.17.0 (PR #322) | [persona highlights](../epics/epic-workshop-persona-highlights/README.md) |
 
 Several of these notes still carry their build-time status line (for example
 "In the … epic, on `epic/…`"). This table is the truth. They move to
@@ -58,24 +63,18 @@ Several of these notes still carry their build-time status line (for example
 
 ## 🔨 In flight
 
-Feature 39 and the conveniences patch share `epic/workshop-persona-highlights`.
-The highlights sprints are merged into the epic. The patch sprints target the
-same branch. See the [patch scope and review cases](../epics/epic-workshop-persona-highlights/conveniences-runway.md).
+| # | What | Who and where | Note |
+|---|---|---|---|
+| 42 | Pin a model: the on-screen design | A Fable session (2026-11-28); the design lands in the feature folder | [pin model](feature-workshop-pin-model-to-session/README.md) |
 
-| # | Idea | Priority | Size and notes | Note |
-|---|---|---|---|---|
-| 4+ | Reads, the rest: `memory.read` fit and the engine backstop | High | Medium; ADR first. | [reads fit the window](feature-workshop-reads-fit-the-window/README.md) |
-| 33 | Update the default models (one table instead of three) | Medium | Small; a chore for any release. | [tech debt](../tech-debt/2026-11-20-default-models-behind.md) |
-| 34 | Click a sent pill to see what was sent | Medium | Small; V1 decided. | [sent attachment viewer](feature-workshop-sent-attachment-viewer/README.md) |
-| 36 | A long paste becomes a "Pasted text" pill | Medium | Small to medium; P1 (500 characters) and P2 decided. | [long paste pill](feature-workshop-long-paste-pill/README.md) |
-| 39 | Personas highlight the excerpt's file: any passages, each with a note (squiggles and Problems-panel notes) | Medium | In development | [persona highlights](../epics/epic-workshop-persona-highlights/README.md) |
+Nothing else is being built. 2.17.0 is on `main`, waiting for its release.
 
 ## ⏳ Not started
 
 | # | Idea | Priority | Size and notes | Note |
 |---|---|---|---|---|
 | 1 | Research agent | Low | Large; ADR first. Would call Passage Search and the measures. | [research agent](feature-workshop-research-agent/README.md) |
-| 3 | Helper drafts the session name | Medium | Small; N1–N4 decided. Pairs with 18. | [session name draft](feature-workshop-session-name-draft/README.md) |
+| 3 | Helper drafts the session name | Medium | Small; N1–N4 decided. Pairs with 18. More useful with tabs: more rooms to tell apart. | [session name draft](feature-workshop-session-name-draft/README.md) |
 | 5 | Anthropic, OpenAI and local providers | High | Epic; ADR first. | [model providers](feature-model-providers/README.md) |
 | 6a | Selection inside the excerpt sent as a pointer | Low | Small; deferred by Okey. | [selection in excerpt pointer](feature-workshop-selection-in-excerpt-pointer/README.md) |
 | 9 (Lightbox) | Several Lightbox tabs | Medium | Follow-up to the Workshop tabs epic. | [multiple tabs](feature-multiple-workshop-and-lightbox-tabs/README.md) |
@@ -84,10 +83,16 @@ same branch. See the [patch scope and review cases](../epics/epic-workshop-perso
 | 17 | Compaction that keeps the whole history | High | Epic. | [compaction keeps history](feature-workshop-compaction-keeps-history/README.md) |
 | 18 | Searchable session summary | Medium | Small to medium. Pairs with 3. | [session summary](feature-workshop-session-summary/README.md) |
 | 19 | Context strategies (diffs, superseded versions) | Medium | Medium. Pairs with 17. | [context strategies](feature-workshop-context-strategies/README.md) |
-| 31 | Read Aloud: measured cadence | Medium | Medium; ADR first; R1 decided. Lands as `measure.cadence` after 35. | [read aloud cadence](feature-read-aloud-cadence/README.md) |
+| 31 | Read Aloud: measured cadence | Medium | Step 2 of the [Persona Measures epic](../epics/epic-persona-measures-2026-11-27/README.md), after 35 ships; R1–R4 decided. | [read aloud cadence](feature-read-aloud-cadence/README.md) |
 | 32 | Help section: using an OpenAI or Claude account (BYOK) | Medium | Small; the text is drafted in the note. | [help: OpenRouter BYOK](feature-help-openrouter-byok/README.md) |
-| 35 | Personas run the deterministic measures | Medium | Medium; short ADR. Reuses Passage Search's scopes. | [persona measures](feature-workshop-persona-measures/README.md) |
+| 35 | Personas run the deterministic measures | Medium | Step 1 of the [Persona Measures epic](../epics/epic-persona-measures-2026-11-27/README.md); M1–M3 decided; kickoff prompt ready. | [persona measures](feature-workshop-persona-measures/README.md) |
 | 38 (rest) | Branch from an unsaved room; "Branch in new tab instead" in Rewind's confirm | Medium | Small. Branch still requires a saved room (ADR 2026-09-30, multi-tab amendment). B1 and B2 open, with leans. | [branch in new tab](feature-workshop-branch-in-new-tab/README.md) |
+| 40 | The writer's name on their own bubbles | Medium | Small; W1–W2 decided. | [writer name on bubbles](feature-workshop-writer-name-on-bubbles/README.md) |
+| 41 | A persona's reply can arrive as several bubbles (react to each) | Medium | Medium; reactions ADR addendum. S1–S3 decided. | [split replies](feature-workshop-persona-split-replies/README.md) |
+| 43 | Reactions in the transcript export | Low | Small; answers the reactions ADR's Q9. R1–R2 decided. | [reactions in export](feature-workshop-reactions-in-export/README.md) |
+| 44 | A timestamp on each bubble | Low | Small; T1–T2 decided. | [bubble timestamps](feature-workshop-bubble-timestamps/README.md) |
+| 45 | Personas draw in their replies (SVG, then Mermaid) | Medium | Medium; short ADR. D1–D3 decided. | [drawings in replies](feature-workshop-drawings-in-replies/README.md) |
+| 46 | Personas ask for a Category Search (the paid-search card) | Medium | Medium; ADR 2026-11-20 addendum. After the measures epic's scope lift. C1–C3 decided. | [persona category search](feature-workshop-persona-category-search/README.md) |
 
 ### Follow-ups split from shipped work (Low)
 
@@ -113,25 +118,21 @@ The full list is in [`.todo/tech-debt/`](../tech-debt/README.md).
 
 ## Suggested next rounds
 
-The two threads touch different parts of the code, so they can run side by
-side.
-
-1. **Everyday Conveniences, round three: the composer and cleanup.**
+1. **The Persona Measures epic: 35, then 31.** One epic, two releases. The
+   [plan and kickoff prompt](../epics/epic-persona-measures-2026-11-27/README.md)
+   are ready.
+2. **Bubble polish: 40, 44 and 43.** Small, visible, and none of them
+   touches the session file's format beyond an optional field.
+3. **Round three cleanup:**
    - **The tabs follow-ups' High item first:** the writer bio still sent
-     after About you is off. It's a privacy fix; a 2.17.x patch.
-   - **The CI timing test next.** It blocks other people's PRs.
-   - **The draft-loss tech debt.** It's the same composer.
-   - **32 (BYOK help).** The text is drafted.
-   - **The Lexical Gravity log leak.** Room-bound context reads shipped with the Workshop tabs epic.
-   - **38's rest,** while the tabs code is fresh.
-2. **Measures, then Read Aloud: 35, then 31.** The highlights work is on its own branch.
-   - 35 reuses Passage Search's scope type, lifted to a neutral module.
-   - 31 then lands as `measure.cadence`, with the CMUdict dependency.
-   - One short ADR covers the family.
+     after About you is off. A privacy fix, and a 2.17.x patch.
+   - **The CI timing test.** It blocks other people's PRs.
+   - **The draft-loss tech debt** and **the Lexical Gravity log leak.**
+   - **32 (BYOK help)** and **38's rest.**
 
-**After those: a context and memory epic** (19, 17). These are the
-High items that have waited longest. They matter more as rooms get longer,
-and they share machinery.
+**After those:** 42 (its design is being drawn), 41, 45 and 46, each its
+own slice; then a context and memory epic (19, 17), the High items that
+have waited longest.
 
 ## Older notes in this folder
 

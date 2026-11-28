@@ -1,7 +1,7 @@
 # Feature: Reactions in the Transcript Export
 
 **Date Identified:** 2026-11-27
-**Status:** Idea. Small. Answers ADR 2026-11-07's Q9 and amends its D7.
+**Status:** Idea, decided: Okey took Ada's leans (2026-11-28). Small. Answers ADR 2026-11-07's Q9 and amends its D7.
 **Priority:** Low
 **Origin:** Okey, 2026-11-27: "Reactions should be present in the rich HTML export 🙂"
 
@@ -29,9 +29,9 @@
 - **Hidden reactions stay hidden.** A persona's reaction the writer hid
   isn't exported.
 
-## Decisions to make
+## Decisions (Okey, 2026-11-28: Ada's leans, taken)
 
-| # | Question | Ada's lean |
+| # | Question | Decision |
 |---|---|---|
 | R1 | HTML only, as asked? | HTML, plus the other two below. |
 | R2 | Markdown and JSON too? | Yes: one line in Markdown, an optional array in JSON. |
